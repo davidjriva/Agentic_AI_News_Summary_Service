@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import src.config as _cfg
 from src.processor import process_articles
 
 
@@ -53,7 +54,8 @@ class TestValidJsonResponse:
         article = make_article()
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles([article])
 
         result = results[0]
@@ -67,7 +69,8 @@ class TestValidJsonResponse:
         article = make_article()
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles([article])
 
         result = results[0]
@@ -82,7 +85,8 @@ class TestValidJsonResponse:
         articles = [make_article(url=f"https://example.com/{i}") for i in range(3)]
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles(articles)
 
         assert len(results) == 3
@@ -93,7 +97,8 @@ class TestValidJsonResponse:
     def test_returns_list(self):
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles([make_article()])
 
         assert isinstance(results, list)
@@ -106,7 +111,8 @@ class TestFallbackOnMalformedResponse:
         article = make_article()
         mock_client = _make_mock_client("This is not valid JSON at all!")
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles([article])
 
         assert results[0]["impact_score"] == 5
@@ -115,7 +121,8 @@ class TestFallbackOnMalformedResponse:
         article = make_article()
         mock_client = _make_mock_client("not json")
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles([article])
 
         assert results[0]["authenticity_score"] == 5
@@ -125,7 +132,8 @@ class TestFallbackOnMalformedResponse:
         article = make_article(description=long_description)
         mock_client = _make_mock_client("not json")
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles([article])
 
         assert results[0]["summary"] == long_description[:200]
@@ -135,7 +143,8 @@ class TestFallbackOnMalformedResponse:
         article = make_article(description=short_description)
         mock_client = _make_mock_client("{broken json")
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles([article])
 
         assert results[0]["summary"] == short_description
@@ -147,7 +156,8 @@ class TestFallbackOnMalformedResponse:
         mock_client = MagicMock()
         mock_client.messages = mock_messages
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles([article])
 
         assert results[0]["impact_score"] == 5
@@ -158,7 +168,8 @@ class TestFallbackOnMalformedResponse:
         article = make_article()
         mock_client = _make_mock_client("not json")
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             results = process_articles([article])
 
         result = results[0]
@@ -174,7 +185,8 @@ class TestPromptCachingSystemMessage:
         article = make_article()
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             process_articles([article])
 
         call_kwargs = mock_client.messages.create.call_args
@@ -194,7 +206,8 @@ class TestPromptCachingSystemMessage:
         article = make_article()
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             process_articles([article])
 
         call_kwargs = mock_client.messages.create.call_args
@@ -207,7 +220,8 @@ class TestPromptCachingSystemMessage:
         article = make_article()
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             process_articles([article])
 
         call_kwargs = mock_client.messages.create.call_args
@@ -228,7 +242,8 @@ class TestPromptCachingSystemMessage:
         articles = [make_article(url=f"https://example.com/{i}") for i in range(4)]
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             process_articles(articles)
 
         assert mock_client.messages.create.call_count == 4
@@ -237,7 +252,8 @@ class TestPromptCachingSystemMessage:
         article = make_article()
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             process_articles([article])
 
         call_kwargs = mock_client.messages.create.call_args
@@ -248,10 +264,119 @@ class TestPromptCachingSystemMessage:
         article = make_article()
         mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
 
-        with patch("anthropic.Anthropic", return_value=mock_client):
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
             process_articles([article])
 
         call_kwargs = mock_client.messages.create.call_args
         kwargs = call_kwargs.kwargs if call_kwargs.kwargs else call_kwargs[1]
         assert "max_tokens" in kwargs
         assert kwargs["max_tokens"] == 512
+
+
+def _make_local_mock_response(content: str) -> MagicMock:
+    """Build a mock requests.Response for a llama.cpp /v1/chat/completions call."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"choices": [{"message": {"content": content}}]}
+    mock_resp.raise_for_status.return_value = None
+    return mock_resp
+
+
+class TestLocalLLMProvider:
+    """Tests for LLM_PROVIDER='local' (llama.cpp OpenAI-compatible endpoint)."""
+
+    def test_local_provider_returns_parsed_scores(self):
+        article = make_article()
+        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp):
+            results = process_articles([article])
+
+        assert results[0]["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
+        assert results[0]["authenticity_score"] == VALID_CLAUDE_RESPONSE["authenticity_score"]
+        assert results[0]["summary"] == VALID_CLAUDE_RESPONSE["summary"]
+
+    def test_local_provider_calls_correct_url(self):
+        article = make_article()
+        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch.object(_cfg, "LOCAL_LLM_URL", "http://localhost:8080"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            process_articles([article])
+
+        called_url = mock_post.call_args[0][0]
+        assert called_url == "http://localhost:8080/v1/chat/completions"
+
+    def test_local_provider_sends_system_and_user_messages(self):
+        article = make_article()
+        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            process_articles([article])
+
+        payload = mock_post.call_args[1]["json"]
+        messages = payload["messages"]
+        roles = [m["role"] for m in messages]
+        assert "system" in roles
+        assert "user" in roles
+
+    def test_local_provider_user_message_contains_article_fields(self):
+        article = make_article()
+        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            process_articles([article])
+
+        payload = mock_post.call_args[1]["json"]
+        user_msg = next(m for m in payload["messages"] if m["role"] == "user")
+        assert article["title"] in user_msg["content"]
+        assert article["author"] in user_msg["content"]
+        assert article["publication"] in user_msg["content"]
+
+    def test_local_provider_sends_model_name(self):
+        article = make_article()
+        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch.object(_cfg, "LOCAL_LLM_MODEL", "qwen2.5-7b"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            process_articles([article])
+
+        payload = mock_post.call_args[1]["json"]
+        assert payload["model"] == "qwen2.5-7b"
+
+    def test_local_provider_fallback_on_request_error(self):
+        article = make_article()
+
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", side_effect=Exception("connection refused")):
+            results = process_articles([article])
+
+        assert results[0]["impact_score"] == 5
+        assert results[0]["authenticity_score"] == 5
+        assert results[0]["summary"] == article["description"][:200]
+
+    def test_local_provider_fallback_on_malformed_json(self):
+        article = make_article()
+        mock_resp = _make_local_mock_response("not valid json")
+
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp):
+            results = process_articles([article])
+
+        assert results[0]["impact_score"] == 5
+
+    def test_local_provider_does_not_call_anthropic(self):
+        article = make_article()
+        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp), \
+             patch("anthropic.Anthropic") as mock_anthropic:
+            process_articles([article])
+
+        mock_anthropic.assert_not_called()

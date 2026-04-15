@@ -25,8 +25,18 @@ RECIPIENTS: list[str] = [r.strip() for r in _recipients_env.split(",") if r.stri
 
 TOP_N: int = 15
 MAX_ARTICLES_PER_SOURCE: int = 10
-CLAUDE_MODEL: str = "claude-haiku-4-5-20251001"
+CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
 LOOKBACK_HOURS: int = 12
+
+# ---------------------------------------------------------------------------
+# LLM provider selection
+# ---------------------------------------------------------------------------
+# LLM_PROVIDER: "anthropic" (default) | "local"
+#   "anthropic" — uses the Anthropic SDK (ANTHROPIC_API_KEY required)
+#   "local"     — uses a local llama.cpp server via its OpenAI-compatible API
+LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "anthropic")
+LOCAL_LLM_URL: str = os.getenv("LOCAL_LLM_URL", "http://localhost:8080")
+LOCAL_LLM_MODEL: str = os.getenv("LOCAL_LLM_MODEL", "local")
 
 # ---------------------------------------------------------------------------
 # Article dict schema — locked contract shared by all pipeline stages
