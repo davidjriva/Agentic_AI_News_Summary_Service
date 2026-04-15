@@ -277,26 +277,24 @@
 
       <!-- Run Now section -->
       <div class="run-now-section">
-        <form method="POST" action="/run" style="margin:0;">
-          <button
-            type="submit"
-            class="btn-run"
-            title="Fetch new articles not seen before and send the newsletter"
-            {% if running %}disabled{% endif %}
-          >
-            &#9654; Run Now
-          </button>
-        </form>
-        <form method="POST" action="/run?clean=true" style="margin:0;">
-          <button
-            type="submit"
-            class="btn-run-clean"
-            title="Clears articles seen in the last 12 hours from the dedup cache, then runs the pipeline — use this if a recent run missed articles or you want a fresh fetch"
-            {% if running %}disabled{% endif %}
-          >
-            &#8635; Clean Run
-          </button>
-        </form>
+        <button
+          type="button"
+          class="btn-run"
+          title="Fetch new articles not seen before and send the newsletter"
+          onclick="triggerRun(false)"
+          {% if running %}disabled{% endif %}
+        >
+          &#9654; Run Now
+        </button>
+        <button
+          type="button"
+          class="btn-run-clean"
+          title="Clears articles seen in the last 12 hours from the dedup cache, then runs the pipeline — use this if a recent run missed articles or you want a fresh fetch"
+          onclick="triggerRun(true)"
+          {% if running %}disabled{% endif %}
+        >
+          &#8635; Clean Run
+        </button>
         {% if running %}
         <div class="running-badge">
           <div class="running-dot"></div>
@@ -403,5 +401,14 @@
     </div>
 
   </div>
+
+<script>
+function triggerRun(clean) {
+  const url = clean ? '/run?clean=true' : '/run';
+  fetch(url, { method: 'POST' })
+    .then(() => window.location.reload())
+    .catch(() => window.location.reload());
+}
+</script>
 </body>
 </html>
