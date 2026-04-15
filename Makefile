@@ -16,6 +16,9 @@ serve:
 test:
 	poetry run pytest tests/ -v
 
+run-clean:
+	poetry run python src/main.py --clean
+
 install-launchd:
 	cp deploy/com.agenticnews.service.plist ~/Library/LaunchAgents/
 	launchctl load ~/Library/LaunchAgents/com.agenticnews.service.plist
