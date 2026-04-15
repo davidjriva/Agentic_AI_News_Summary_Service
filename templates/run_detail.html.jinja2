@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Run {{ run_id[:8] }} &mdash; Agentic AI News</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #f4f6f9;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #222222;
+    }
+    /* Top bar */
+    .topbar {
+      background-color: #1a1a2e;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+    .topbar a {
+      color: #a0a0cc;
+      text-decoration: none;
+      font-size: 13px;
+    }
+    .topbar a:hover { color: #e0e0ff; }
+    .topbar-title {
+      color: #e0e0ff;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .topbar-sep {
+      color: #4a4a6a;
+    }
+    .topbar-ts {
+      font-size: 12px;
+      color: #7070aa;
+      font-family: monospace;
+    }
+    /* Layout */
+    .layout {
+      display: flex;
+      height: calc(100vh - 45px);
+    }
+    /* Newsletter pane */
+    .newsletter-pane {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    .newsletter-pane iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      background-color: #ffffff;
+      border-left: 1px solid #e0e0f0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar-header {
+      background-color: #1a1a2e;
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .sidebar-header h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: #e0e0ff;
+      letter-spacing: 0.3px;
+    }
+    .sidebar-header p {
+      margin: 4px 0 0;
+      font-size: 11px;
+      color: #7070aa;
+    }
+    .sidebar-body {
+      padding: 16px;
+      flex: 1;
+    }
+    /* Source group */
+    .source-group {
+      margin-bottom: 18px;
+    }
+    .source-group:last-child {
+      margin-bottom: 0;
+    }
+    .source-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin: 0 0 6px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e0e0f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .source-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: #ffffff;
+      background-color: #5b5bd6;
+      border-radius: 10px;
+      padding: 1px 7px;
+      flex-shrink: 0;
+    }
+    .article-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .article-list li {
+      margin-bottom: 5px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .article-list a {
+      color: #444;
+      text-decoration: none;
+    }
+    .article-list a:hover {
+      color: #5b5bd6;
+      text-decoration: underline;
+    }
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: #888;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/">&larr; Dashboard</a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-title">Run {{ run_id[:8] }}&hellip;</span>
+    {% if started_at %}
+    <span class="topbar-ts">{{ started_at }}</span>
+    {% endif %}
+  </div>
+
+  <div class="layout">
+    <div class="newsletter-pane">
+      <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter"></iframe>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Articles by Source</h2>
+        <p>{{ sources | length }} source{{ 's' if sources | length != 1 else '' }} &mdash; {{ sources.values() | map('length') | sum }} fetched</p>
+      </div>
+      <div class="sidebar-body">
+        {% if sources %}
+          {% for publication, articles in sources.items() %}
+          <div class="source-group">
+            <h3 class="source-name">
+              <span>{{ publication }}</span>
+              <span class="source-count">{{ articles | length }}</span>
+            </h3>
+            <ul class="article-list">
+              {% for article in articles %}
+              <li>
+                <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.title }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">No article data for this run.</div>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+</body>
+</html>
