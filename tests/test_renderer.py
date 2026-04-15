@@ -14,9 +14,9 @@ def articles():
             "publication": "TechCrunch",
             "published_at": datetime(2026, 4, 14, 9, 0, 0),
             "summary": "AI agents are increasingly being used to automate complex workflows.",
-            "impact_score": 0.92,
-            "authenticity_score": 0.88,
-            "rank_score": 0.90,
+            "impact_score": 9,
+            "authenticity_score": 8,
+            "rank_score": 8.6,
         },
         {
             "title": "GPT-5 Released with Agentic Features",
@@ -25,9 +25,9 @@ def articles():
             "publication": "Wired",
             "published_at": datetime(2026, 4, 14, 8, 30, 0),
             "summary": "OpenAI released GPT-5 with powerful new agentic capabilities.",
-            "impact_score": 0.95,
-            "authenticity_score": 0.91,
-            "rank_score": 0.93,
+            "impact_score": 9,
+            "authenticity_score": 9,
+            "rank_score": 9.0,
         },
     ]
 
