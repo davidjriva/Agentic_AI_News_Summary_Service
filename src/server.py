@@ -1,5 +1,6 @@
 """FastAPI dashboard and pipeline trigger server."""
 
+import json
 import threading
 import uuid
 from pathlib import Path
@@ -9,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+import src.config as _cfg
 from src.db import get_connection
 from src.main import run_pipeline
 
@@ -34,7 +36,7 @@ def dashboard(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
-        {"runs": runs, "running": _is_running},
+        {"runs": runs, "running": _is_running, "active": "dashboard"},
     )
 
 
@@ -137,6 +139,60 @@ def get_run(request: Request, run_id: str) -> HTMLResponse:
         request,
         "run_detail.html.jinja2",
         {"run_id": run_id, "started_at": row["started_at"], "sources": sources},
+    )
+
+
+@app.get("/metrics", response_class=HTMLResponse)
+def metrics(request: Request) -> HTMLResponse:
+    """Serve the lifetime metrics dashboard."""
+    conn = get_connection()
+
+    articles_seen = conn.execute("SELECT COUNT(*) FROM seen_articles").fetchone()[0]
+    total_runs = conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0]
+    successful_runs = conn.execute(
+        "SELECT COUNT(*) FROM runs WHERE status='success'"
+    ).fetchone()[0]
+
+    status_rows = conn.execute(
+        "SELECT status, COUNT(*) as count FROM runs GROUP BY status"
+    ).fetchall()
+    status_counts = {row["status"]: row["count"] for row in status_rows}
+
+    source_rows = conn.execute(
+        "SELECT publication, COUNT(*) as count FROM run_articles "
+        "GROUP BY publication ORDER BY 2 DESC"
+    ).fetchall()
+
+    run_rows = conn.execute(
+        "SELECT started_at, article_count FROM runs WHERE status='success' "
+        "ORDER BY started_at ASC LIMIT 20"
+    ).fetchall()
+
+    conn.close()
+
+    subscribers = len(_cfg.RECIPIENTS)
+    emails_delivered = successful_runs * subscribers
+
+    return templates.TemplateResponse(
+        request,
+        "metrics.html.jinja2",
+        {
+            "subscribers": subscribers,
+            "emails_delivered": emails_delivered,
+            "total_runs": total_runs,
+            "articles_seen": articles_seen,
+            "sources_labels_json": json.dumps(
+                [row["publication"] for row in source_rows]
+            ),
+            "sources_data_json": json.dumps([row["count"] for row in source_rows]),
+            "run_status_labels_json": json.dumps(list(status_counts.keys())),
+            "run_status_data_json": json.dumps(list(status_counts.values())),
+            "run_dates_json": json.dumps(
+                [row["started_at"][:10] for row in run_rows]
+            ),
+            "run_counts_json": json.dumps([row["article_count"] for row in run_rows]),
+            "active": "metrics",
+        },
     )
 
 

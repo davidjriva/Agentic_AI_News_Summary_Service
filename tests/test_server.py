@@ -50,6 +50,12 @@ def temp_db(tmp_path, monkeypatch):
                 published_at TEXT
             )"""
         )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS seen_articles (
+                url TEXT PRIMARY KEY,
+                seen_at TIMESTAMP
+            )"""
+        )
         conn.commit()
         return conn
 
@@ -256,3 +262,39 @@ def test_dashboard_shows_run_history(client, temp_db):
     response = client.get("/")
     assert response.status_code == 200
     assert "run-4" in response.text or "Success" in response.text
+
+
+# ---------------------------------------------------------------------------
+# GET /metrics
+# ---------------------------------------------------------------------------
+
+class TestMetricsRoute:
+    def test_metrics_renders(self, client, temp_db):
+        """GET /metrics returns 200 with expected stat values in body."""
+        conn = sqlite3.connect(str(temp_db))
+        conn.execute(
+            "INSERT INTO runs (id, started_at, completed_at, status, article_count) "
+            "VALUES (?,?,?,?,?)",
+            ("m-run-1", "2026-04-14T07:00:00", "2026-04-14T07:05:00", "success", 8),
+        )
+        conn.execute(
+            "INSERT INTO run_articles (run_id, title, url, publication) VALUES (?,?,?,?)",
+            ("m-run-1", "Test Article", "https://example.com/1", "TechCrunch"),
+        )
+        conn.commit()
+        conn.close()
+
+        response = client.get("/metrics")
+        assert response.status_code == 200
+        assert "Metrics" in response.text
+        # Stat values present
+        assert "1" in response.text          # total_runs = 1
+        assert "TechCrunch" in response.text  # source label in chart data
+
+    def test_metrics_empty_state(self, client):
+        """GET /metrics with empty DB returns 200 (no crash on empty charts)."""
+        response = client.get("/metrics")
+        assert response.status_code == 200
+        assert "Metrics" in response.text
+        # Empty JSON arrays rendered safely
+        assert "[]" in response.text

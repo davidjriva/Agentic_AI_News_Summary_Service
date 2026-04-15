@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Metrics &mdash; Agentic AI News Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f4f6f9;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #222222;
+    }
+    .page-wrapper {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 16px;
+    }
+    /* Header */
+    .header {
+      background-color: #1a1a2e;
+      border-radius: 8px 8px 0 0;
+      padding: 32px 40px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0 0 8px 0;
+      font-size: 26px;
+      font-weight: 700;
+      color: #e0e0ff;
+      letter-spacing: 0.5px;
+    }
+    .header p {
+      margin: 0;
+      font-size: 14px;
+      color: #a0a0cc;
+    }
+    /* Nav tabs */
+    .nav-tabs {
+      background-color: #12122a;
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .nav-tab {
+      padding: 12px 24px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #7070aa;
+      text-decoration: none;
+      border-bottom: 3px solid transparent;
+      transition: color 0.15s;
+    }
+    .nav-tab:hover {
+      color: #c0c0ee;
+    }
+    .nav-tab.active {
+      color: #e0e0ff;
+      border-bottom-color: #5b5bd6;
+    }
+    /* Body card */
+    .body-card {
+      background-color: #ffffff;
+      padding: 32px 40px;
+      border-left: 1px solid #e8e8f0;
+      border-right: 1px solid #e8e8f0;
+    }
+    /* Section heading */
+    .section-heading {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin: 0 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #5b5bd6;
+    }
+    .section-heading + .section-heading,
+    .chart-row + .section-heading,
+    .chart-full + .section-heading {
+      margin-top: 32px;
+    }
+    /* Stat grid */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background-color: #f8f8ff;
+      border: 1px solid #e0e0f0;
+      border-radius: 8px;
+      padding: 20px 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #5b5bd6;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .stat-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    /* Chart row (2-up) */
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+    .chart-box {
+      background-color: #f8f8ff;
+      border: 1px solid #e0e0f0;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .chart-box h3 {
+      margin: 0 0 16px 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    /* Full-width chart */
+    .chart-full {
+      background-color: #f8f8ff;
+      border: 1px solid #e0e0f0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 32px;
+    }
+    .chart-full h3 {
+      margin: 0 0 16px 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    /* Footer */
+    .footer {
+      background-color: #1a1a2e;
+      border-radius: 0 0 8px 8px;
+      padding: 20px 40px;
+      text-align: center;
+    }
+    .footer p {
+      margin: 0;
+      font-size: 12px;
+      color: #7070aa;
+    }
+    .footer p + p {
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <!-- Header -->
+    <div class="header">
+      <h1>Agentic AI News Dashboard</h1>
+      <p>Lifetime pipeline &amp; content metrics</p>
+    </div>
+
+    <!-- Nav tabs -->
+    <div class="nav-tabs">
+      <a class="nav-tab {% if active == 'dashboard' %}active{% endif %}" href="/">Run History</a>
+      <a class="nav-tab {% if active == 'metrics' %}active{% endif %}" href="/metrics">Metrics</a>
+    </div>
+
+    <!-- Body -->
+    <div class="body-card">
+
+      <!-- Lifetime Stats -->
+      <h2 class="section-heading">Lifetime Stats</h2>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-value">{{ emails_delivered }}</div>
+          <div class="stat-label">Emails Delivered</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ subscribers }}</div>
+          <div class="stat-label">Subscribers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ total_runs }}</div>
+          <div class="stat-label">Total Runs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ articles_seen }}</div>
+          <div class="stat-label">Articles Seen</div>
+        </div>
+      </div>
+
+      <!-- Content & Pipeline -->
+      <h2 class="section-heading">Content &amp; Pipeline</h2>
+      <div class="chart-row">
+        <div class="chart-box">
+          <h3>Articles by Source</h3>
+          <canvas id="sourcesChart"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Run Success Rate</h3>
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Articles per Run -->
+      <h2 class="section-heading">Articles per Run</h2>
+      <div class="chart-full">
+        <h3>Article volume across last 20 successful runs</h3>
+        <canvas id="runTrendChart"></canvas>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Agentic AI News Summary Service &mdash; Local Dashboard</p>
+      <p>Served at <a href="http://localhost:8000" style="color:#a0a0cc;">http://localhost:8000</a></p>
+    </div>
+
+  </div>
+
+  <!-- Chart data -->
+  <script>
+    const SOURCES_LABELS = {{ sources_labels_json | safe }};
+    const SOURCES_DATA   = {{ sources_data_json | safe }};
+    const STATUS_LABELS  = {{ run_status_labels_json | safe }};
+    const STATUS_DATA    = {{ run_status_data_json | safe }};
+    const RUN_DATES      = {{ run_dates_json | safe }};
+    const RUN_COUNTS     = {{ run_counts_json | safe }};
+  </script>
+
+  <!-- Chart.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+          integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3oD+sCoJrzXJ+yKolds6+6Zs1EuATdilms3Bq5u6k5nZp08KLnPZg=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    // Horizontal bar — Articles by Source
+    new Chart(document.getElementById('sourcesChart'), {
+      type: 'bar',
+      data: {
+        labels: SOURCES_LABELS,
+        datasets: [{
+          label: 'Articles',
+          data: SOURCES_DATA,
+          backgroundColor: '#5b5bd6',
+          borderRadius: 3,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+
+    // Doughnut — Run Success Rate
+    new Chart(document.getElementById('statusChart'), {
+      type: 'doughnut',
+      data: {
+        labels: STATUS_LABELS,
+        datasets: [{
+          data: STATUS_DATA,
+          backgroundColor: STATUS_LABELS.map(function(label) {
+            if (label === 'success') return '#1a7a4a';
+            if (label === 'error')   return '#9b2020';
+            return '#856404';
+          }),
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+
+    // Line — Articles per Run
+    new Chart(document.getElementById('runTrendChart'), {
+      type: 'line',
+      data: {
+        labels: RUN_DATES,
+        datasets: [{
+          label: 'Articles',
+          data: RUN_COUNTS,
+          borderColor: '#5b5bd6',
+          backgroundColor: 'rgba(91,91,214,0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4,
+          pointBackgroundColor: '#5b5bd6',
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

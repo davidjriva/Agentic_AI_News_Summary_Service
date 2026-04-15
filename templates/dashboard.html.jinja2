@@ -203,6 +203,29 @@
     .view-link:hover {
       text-decoration: underline;
     }
+    /* Nav tabs */
+    .nav-tabs {
+      background-color: #12122a;
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid #2a2a4a;
+    }
+    .nav-tab {
+      padding: 12px 24px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #7070aa;
+      text-decoration: none;
+      border-bottom: 3px solid transparent;
+      transition: color 0.15s;
+    }
+    .nav-tab:hover {
+      color: #c0c0ee;
+    }
+    .nav-tab.active {
+      color: #e0e0ff;
+      border-bottom-color: #5b5bd6;
+    }
     /* Footer */
     .footer {
       background-color: #1a1a2e;
@@ -241,6 +264,12 @@
     <div class="header">
       <h1>Agentic AI News Dashboard</h1>
       <p>Run history &amp; controls</p>
+    </div>
+
+    <!-- Nav tabs -->
+    <div class="nav-tabs">
+      <a class="nav-tab {% if active == 'dashboard' %}active{% endif %}" href="/">Run History</a>
+      <a class="nav-tab {% if active == 'metrics' %}active{% endif %}" href="/metrics">Metrics</a>
     </div>
 
     <!-- Body -->
