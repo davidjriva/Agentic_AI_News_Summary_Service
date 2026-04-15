@@ -297,11 +297,11 @@
             <td>
               <span class="duration">
                 {% if run.started_at and run.completed_at %}
-                  {# Calculate duration in seconds using string parsing #}
-                  {% set start_parts = run.started_at.split(' ') %}
-                  {% set end_parts = run.completed_at.split(' ') %}
-                  {% set start_time = start_parts[1].split(':') %}
-                  {% set end_time = end_parts[1].split(':') %}
+                  {# Timestamps are ISO 8601: 2026-04-15T19:05:48.649370+00:00 #}
+                  {% set start_parts = run.started_at.replace('T', ' ').split(' ') %}
+                  {% set end_parts = run.completed_at.replace('T', ' ').split(' ') %}
+                  {% set start_time = start_parts[1].split('.')[0].split(':') %}
+                  {% set end_time = end_parts[1].split('.')[0].split(':') %}
                   {% set start_secs = start_time[0]|int * 3600 + start_time[1]|int * 60 + start_time[2]|int %}
                   {% set end_secs = end_time[0]|int * 3600 + end_time[1]|int * 60 + end_time[2]|int %}
                   {% set diff = end_secs - start_secs %}

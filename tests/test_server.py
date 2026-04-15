@@ -40,6 +40,16 @@ def temp_db(tmp_path, monkeypatch):
                 error TEXT
             )"""
         )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS run_articles (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id       TEXT NOT NULL,
+                title        TEXT,
+                url          TEXT,
+                publication  TEXT,
+                published_at TEXT
+            )"""
+        )
         conn.commit()
         return conn
 
@@ -145,7 +155,7 @@ def test_list_runs_returns_records(client, temp_db):
 
 
 # ---------------------------------------------------------------------------
-# GET /runs/{run_id}
+# GET /runs/{run_id} (detail wrapper)
 # ---------------------------------------------------------------------------
 
 def test_get_run_not_found(client):
@@ -153,7 +163,7 @@ def test_get_run_not_found(client):
     assert response.status_code == 404
 
 
-def test_get_run_returns_html(client, temp_db):
+def test_get_run_renders_detail_page(client, temp_db):
     html_content = "<html><body>Newsletter content</body></html>"
     conn = sqlite3.connect(str(temp_db))
     conn.execute(
@@ -165,7 +175,8 @@ def test_get_run_returns_html(client, temp_db):
 
     response = client.get("/runs/run-2")
     assert response.status_code == 200
-    assert "Newsletter content" in response.text
+    assert "Articles by Source" in response.text
+    assert "/runs/run-2/newsletter" in response.text
 
 
 def test_get_run_error_status_returns_404(client, temp_db):
@@ -178,6 +189,30 @@ def test_get_run_error_status_returns_404(client, temp_db):
     conn.close()
 
     response = client.get("/runs/run-3")
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# GET /runs/{run_id}/newsletter (raw HTML)
+# ---------------------------------------------------------------------------
+
+def test_get_run_newsletter_returns_raw_html(client, temp_db):
+    html_content = "<html><body>Newsletter content</body></html>"
+    conn = sqlite3.connect(str(temp_db))
+    conn.execute(
+        "INSERT INTO runs (id, started_at, status, article_count, html) VALUES (?,?,?,?,?)",
+        ("run-5", "2026-04-14T07:00:00", "success", 10, html_content),
+    )
+    conn.commit()
+    conn.close()
+
+    response = client.get("/runs/run-5/newsletter")
+    assert response.status_code == 200
+    assert "Newsletter content" in response.text
+
+
+def test_get_run_newsletter_not_found(client):
+    response = client.get("/runs/nonexistent-id/newsletter")
     assert response.status_code == 404
 
 

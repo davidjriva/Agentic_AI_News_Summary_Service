@@ -82,9 +82,9 @@ def list_runs() -> list[dict]:
     return [dict(row) for row in rows]
 
 
-@app.get("/runs/{run_id}")
-def get_run(run_id: str) -> HTMLResponse:
-    """Return the rendered HTML newsletter for a completed run.
+@app.get("/runs/{run_id}/newsletter", response_class=HTMLResponse)
+def get_run_newsletter(run_id: str) -> HTMLResponse:
+    """Return the raw rendered HTML newsletter for a completed run.
 
     Raises:
         HTTPException(404) if run_id is unknown or the run did not succeed.
@@ -101,6 +101,40 @@ def get_run(run_id: str) -> HTMLResponse:
         raise HTTPException(status_code=404, detail="Run has no HTML output")
 
     return HTMLResponse(content=row["html"])
+
+
+@app.get("/runs/{run_id}", response_class=HTMLResponse)
+def get_run(request: Request, run_id: str) -> HTMLResponse:
+    """Render the run detail page: newsletter iframe + articles-by-source sidebar.
+
+    Raises:
+        HTTPException(404) if run_id is unknown or the run did not succeed.
+    """
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT status, started_at FROM runs WHERE id=?", (run_id,)
+    ).fetchone()
+    source_rows = conn.execute(
+        "SELECT publication, title, url FROM run_articles WHERE run_id=? ORDER BY publication, title",
+        (run_id,),
+    ).fetchall()
+    conn.close()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if row["status"] != "success":
+        raise HTTPException(status_code=404, detail="Run has no HTML output")
+
+    sources: dict[str, list[dict]] = {}
+    for r in source_rows:
+        pub = r["publication"] or "Unknown"
+        sources.setdefault(pub, []).append({"title": r["title"], "url": r["url"]})
+
+    return templates.TemplateResponse(
+        request,
+        "run_detail.html.jinja2",
+        {"run_id": run_id, "started_at": row["started_at"], "sources": sources},
+    )
 
 
 @app.get("/status")

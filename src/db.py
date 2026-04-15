@@ -22,6 +22,17 @@ CREATE TABLE IF NOT EXISTS runs (
 );
 """
 
+_CREATE_RUN_ARTICLES = """
+CREATE TABLE IF NOT EXISTS run_articles (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id       TEXT NOT NULL,
+    title        TEXT,
+    url          TEXT,
+    publication  TEXT,
+    published_at TEXT
+);
+"""
+
 
 def get_connection() -> sqlite3.Connection:
     """Return a fresh sqlite3 connection with row_factory set to sqlite3.Row.
@@ -35,5 +46,6 @@ def get_connection() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute(_CREATE_SEEN_ARTICLES)
     conn.execute(_CREATE_RUNS)
+    conn.execute(_CREATE_RUN_ARTICLES)
     conn.commit()
     return conn

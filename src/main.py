@@ -6,6 +6,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
+from src.config import LLM_PROVIDER
 from src.db import get_connection
 from src.emailer import send_newsletter
 from src.fetcher import fetch_articles
@@ -51,7 +52,19 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None) -> str:
         articles = fetch_articles()
         log.info("[%s] Fetched %d articles", run_id, len(articles))
 
-        log.info("[%s] Stage 2: Processing with Claude…", run_id)
+        conn = get_connection()
+        conn.executemany(
+            "INSERT INTO run_articles (run_id, title, url, publication, published_at) VALUES (?, ?, ?, ?, ?)",
+            [
+                (run_id, a["title"], a["url"], a["publication"], str(a.get("published_at", "")))
+                for a in articles
+            ],
+        )
+        conn.commit()
+        conn.close()
+
+        provider_label = "local llama server" if LLM_PROVIDER == "local" else "Claude"
+        log.info("[%s] Stage 2: Processing with %s…", run_id, provider_label)
         articles = process_articles(articles)
         log.info("[%s] Processed %d articles", run_id, len(articles))
 
