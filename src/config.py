@@ -27,3 +27,26 @@ TOP_N: int = 15
 MAX_ARTICLES_PER_SOURCE: int = 10
 CLAUDE_MODEL: str = "claude-haiku-4-5-20251001"
 LOOKBACK_HOURS: int = 12
+
+# ---------------------------------------------------------------------------
+# Article dict schema — locked contract shared by all pipeline stages
+# ---------------------------------------------------------------------------
+# Produced by fetcher.py:
+#   title:               str   — article headline
+#   url:                 str   — canonical URL; primary dedup key
+#   description:         str   — raw snippet from feed (may be empty)
+#   author:              str   — empty string if unknown
+#   publication:         str   — human-readable feed source name (domain)
+#   published_at:        datetime — UTC-aware datetime object
+#
+# Added by processor.py:
+#   summary:             str   — 2-3 sentence summary from Claude
+#   impact_score:        int   — 1–10; Claude-assigned impact rating
+#   authenticity_score:  int   — 1–10; Claude-assigned authenticity rating
+#   impact_reason:       str   — one-line rationale for impact_score
+#   authenticity_reason: str   — one-line rationale for authenticity_score
+#
+# Added by ranker.py:
+#   rank_score:          float — (impact_score * 0.6) + (authenticity_score * 0.4)
+#   rank:                int   — 1-based position after descending sort
+# ---------------------------------------------------------------------------

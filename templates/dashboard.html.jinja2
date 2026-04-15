@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agentic AI News Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f4f6f9;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #222222;
+    }
+    .page-wrapper {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 16px;
+    }
+    /* Header */
+    .header {
+      background-color: #1a1a2e;
+      border-radius: 8px 8px 0 0;
+      padding: 32px 40px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0 0 8px 0;
+      font-size: 26px;
+      font-weight: 700;
+      color: #e0e0ff;
+      letter-spacing: 0.5px;
+    }
+    .header p {
+      margin: 0;
+      font-size: 14px;
+      color: #a0a0cc;
+    }
+    /* Body card */
+    .body-card {
+      background-color: #ffffff;
+      padding: 32px 40px;
+      border-left: 1px solid #e8e8f0;
+      border-right: 1px solid #e8e8f0;
+    }
+    /* Run Now section */
+    .run-now-section {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .btn-run {
+      background-color: #5b5bd6;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+    .btn-run:hover {
+      background-color: #4848b8;
+    }
+    .btn-run:disabled {
+      background-color: #9999cc;
+      cursor: not-allowed;
+    }
+    /* Running indicator */
+    .running-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background-color: #fff8e1;
+      border: 1px solid #f0c040;
+      color: #856404;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 6px;
+    }
+    .running-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #f0c040;
+      animation: pulse 1.2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    /* Section heading */
+    .section-heading {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a2e;
+      margin: 0 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #5b5bd6;
+    }
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 48px 0;
+      color: #888888;
+      font-size: 15px;
+    }
+    /* Runs table */
+    .runs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .runs-table thead tr {
+      background-color: #f0f0ff;
+    }
+    .runs-table thead th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #5b5bd6;
+      border-bottom: 2px solid #e0e0f0;
+    }
+    .runs-table tbody tr {
+      border-bottom: 1px solid #ececec;
+      transition: background-color 0.1s;
+    }
+    .runs-table tbody tr:last-child {
+      border-bottom: none;
+    }
+    .runs-table tbody tr:hover {
+      background-color: #f8f8ff;
+    }
+    .runs-table td {
+      padding: 12px 12px;
+      vertical-align: middle;
+    }
+    /* Status badges */
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .badge-success {
+      background-color: #e6f9f0;
+      color: #1a7a4a;
+    }
+    .badge-running {
+      background-color: #fff8e1;
+      color: #856404;
+    }
+    .badge-error {
+      background-color: #fde8e8;
+      color: #9b2020;
+    }
+    /* Error message */
+    .error-msg {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #9b2020;
+      background-color: #fde8e8;
+      border-radius: 4px;
+      padding: 4px 8px;
+    }
+    /* View link */
+    .view-link {
+      color: #5b5bd6;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .view-link:hover {
+      text-decoration: underline;
+    }
+    /* Footer */
+    .footer {
+      background-color: #1a1a2e;
+      border-radius: 0 0 8px 8px;
+      padding: 20px 40px;
+      text-align: center;
+    }
+    .footer p {
+      margin: 0;
+      font-size: 12px;
+      color: #7070aa;
+    }
+    .footer p + p {
+      margin-top: 6px;
+    }
+    /* Timestamp monospace */
+    .ts {
+      font-family: monospace;
+      font-size: 13px;
+      color: #444;
+    }
+    .duration {
+      font-size: 13px;
+      color: #666;
+    }
+    .article-count {
+      font-size: 13px;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+
+    <!-- Header -->
+    <div class="header">
+      <h1>Agentic AI News Dashboard</h1>
+      <p>Run history &amp; controls</p>
+    </div>
+
+    <!-- Body -->
+    <div class="body-card">
+
+      <!-- Run Now section -->
+      <div class="run-now-section">
+        <form method="POST" action="/run" style="margin:0;">
+          <button
+            type="submit"
+            class="btn-run"
+            {% if running %}disabled title="A run is already in progress"{% endif %}
+          >
+            &#9654; Run Now
+          </button>
+        </form>
+        {% if running %}
+        <div class="running-badge">
+          <div class="running-dot"></div>
+          Run in progress&hellip;
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Run history -->
+      <h2 class="section-heading">Run History</h2>
+
+      {% if runs %}
+      <table class="runs-table">
+        <thead>
+          <tr>
+            <th>Started</th>
+            <th>Status</th>
+            <th>Articles</th>
+            <th>Duration</th>
+            <th>Newsletter</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in runs %}
+          <tr>
+            <!-- Timestamp -->
+            <td>
+              <span class="ts">{{ run.started_at }}</span>
+            </td>
+
+            <!-- Status badge + optional error -->
+            <td>
+              {% if run.status == 'success' %}
+                <span class="badge badge-success">Success</span>
+              {% elif run.status == 'running' %}
+                <span class="badge badge-running">Running</span>
+              {% else %}
+                <span class="badge badge-error">Error</span>
+              {% endif %}
+              {% if run.status == 'error' and run.error %}
+                <div class="error-msg">{{ run.error }}</div>
+              {% endif %}
+            </td>
+
+            <!-- Article count -->
+            <td>
+              <span class="article-count">
+                {% if run.article_count is not none %}
+                  {{ run.article_count }}
+                {% else %}
+                  &mdash;
+                {% endif %}
+              </span>
+            </td>
+
+            <!-- Duration -->
+            <td>
+              <span class="duration">
+                {% if run.started_at and run.completed_at %}
+                  {# Calculate duration in seconds using string parsing #}
+                  {% set start_parts = run.started_at.split(' ') %}
+                  {% set end_parts = run.completed_at.split(' ') %}
+                  {% set start_time = start_parts[1].split(':') %}
+                  {% set end_time = end_parts[1].split(':') %}
+                  {% set start_secs = start_time[0]|int * 3600 + start_time[1]|int * 60 + start_time[2]|int %}
+                  {% set end_secs = end_time[0]|int * 3600 + end_time[1]|int * 60 + end_time[2]|int %}
+                  {% set diff = end_secs - start_secs %}
+                  {% if diff < 0 %}{% set diff = diff + 86400 %}{% endif %}
+                  {% if diff >= 60 %}
+                    {{ (diff // 60)|int }}m {{ (diff % 60)|int }}s
+                  {% else %}
+                    {{ diff }}s
+                  {% endif %}
+                {% else %}
+                  &mdash;
+                {% endif %}
+              </span>
+            </td>
+
+            <!-- View link -->
+            <td>
+              {% if run.status == 'success' %}
+                <a class="view-link" href="/runs/{{ run.id }}">View</a>
+              {% else %}
+                &mdash;
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        No runs yet. Click <strong>Run Now</strong> to generate your first newsletter.
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Agentic AI News Summary Service &mdash; Local Dashboard</p>
+      <p>Served at <a href="http://localhost:8000" style="color:#a0a0cc;">http://localhost:8000</a></p>
+    </div>
+
+  </div>
+</body>
+</html>

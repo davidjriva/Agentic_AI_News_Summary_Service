@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agentic AI News Digest</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f6f9;font-family:Arial,Helvetica,sans-serif;color:#222222;">
+
+  <!-- Outer wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f6f9;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <!-- Container -->
+        <table width="640" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;width:100%;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#1a1a2e;border-radius:8px 8px 0 0;padding:32px 40px;text-align:center;">
+              <h1 style="margin:0 0 8px 0;font-size:26px;font-weight:700;color:#e0e0ff;letter-spacing:0.5px;">
+                Agentic AI News Digest
+              </h1>
+              <p style="margin:0;font-size:14px;color:#a0a0cc;">
+                {{ run_time.strftime('%A, %B %-d, %Y at %H:%M UTC') }}
+              </p>
+              <p style="margin:12px 0 0 0;font-size:13px;color:#7070aa;">
+                {{ article_count }} article{{ 's' if article_count != 1 else '' }} curated for you
+              </p>
+            </td>
+          </tr>
+
+          <!-- Articles -->
+          {% for article in articles %}
+          <tr>
+            <td style="background-color:#ffffff;padding:0 40px;">
+              <!-- Card -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="
+                    border-left: 4px solid #5b5bd6;
+                    padding: 24px 0 24px 20px;
+                    border-bottom: 1px solid #ececec;
+                  ">
+                    <!-- Rank + publication row -->
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td>
+                          <span style="
+                            display:inline-block;
+                            background-color:#5b5bd6;
+                            color:#ffffff;
+                            font-size:11px;
+                            font-weight:700;
+                            padding:2px 8px;
+                            border-radius:12px;
+                            margin-bottom:8px;
+                          ">#{{ loop.index }}</span>
+                          <span style="
+                            display:inline-block;
+                            background-color:#f0f0ff;
+                            color:#5b5bd6;
+                            font-size:11px;
+                            font-weight:600;
+                            padding:2px 8px;
+                            border-radius:12px;
+                            margin-left:6px;
+                            margin-bottom:8px;
+                          ">{{ article.publication }}</span>
+                        </td>
+                        <td align="right" style="vertical-align:top;">
+                          <span style="font-size:11px;color:#888888;">
+                            {{ article.published_at.strftime('%b %-d, %Y') }}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Title -->
+                    <h2 style="margin:0 0 6px 0;font-size:17px;font-weight:700;line-height:1.4;">
+                      <a href="{{ article.url }}" style="color:#1a1a2e;text-decoration:none;">
+                        {{ article.title }}
+                      </a>
+                    </h2>
+
+                    <!-- Author -->
+                    <p style="margin:0 0 10px 0;font-size:13px;color:#666666;">
+                      By {{ article.author }}
+                    </p>
+
+                    <!-- Summary -->
+                    <p style="margin:0 0 14px 0;font-size:14px;line-height:1.6;color:#444444;">
+                      {{ article.summary }}
+                    </p>
+
+                    <!-- Scores -->
+                    <table cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="padding-right:16px;">
+                          <span style="font-size:11px;color:#888888;text-transform:uppercase;letter-spacing:0.5px;">Impact</span>
+                          <span style="
+                            display:inline-block;
+                            margin-left:4px;
+                            font-size:12px;
+                            font-weight:700;
+                            color:#2a9d8f;
+                          ">{{ '%.0f%%' | format(article.impact_score * 100) }}</span>
+                        </td>
+                        <td>
+                          <span style="font-size:11px;color:#888888;text-transform:uppercase;letter-spacing:0.5px;">Authenticity</span>
+                          <span style="
+                            display:inline-block;
+                            margin-left:4px;
+                            font-size:12px;
+                            font-weight:700;
+                            color:#e9c46a;
+                          ">{{ '%.0f%%' | format(article.authenticity_score * 100) }}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          {% endfor %}
+
+          <!-- Footer -->
+          <tr>
+            <td style="
+              background-color:#1a1a2e;
+              border-radius:0 0 8px 8px;
+              padding:24px 40px;
+              text-align:center;
+            ">
+              <p style="margin:0;font-size:12px;color:#7070aa;">
+                Agentic AI News Summary Service &mdash; Automated digest
+              </p>
+              <p style="margin:8px 0 0 0;font-size:12px;color:#7070aa;">
+                Generated at {{ run_time.strftime('%Y-%m-%d %H:%M UTC') }}
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

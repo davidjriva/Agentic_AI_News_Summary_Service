@@ -13,10 +13,12 @@ CREATE TABLE IF NOT EXISTS seen_articles (
 _CREATE_RUNS = """
 CREATE TABLE IF NOT EXISTS runs (
     id TEXT PRIMARY KEY,
-    run_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    article_count INTEGER,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
     status TEXT,
-    html TEXT
+    article_count INTEGER,
+    html TEXT,
+    error TEXT
 );
 """
 
@@ -28,7 +30,7 @@ def get_connection() -> sqlite3.Connection:
     Callers are expected to use the connection as a context manager.
     """
     _DATA_DIR.mkdir(parents=True, exist_ok=True)
-    db_path = _DATA_DIR / "news.db"
+    db_path = _DATA_DIR / "state.db"
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute(_CREATE_SEEN_ARTICLES)
