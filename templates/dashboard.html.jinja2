@@ -70,6 +70,25 @@
       background-color: #9999cc;
       cursor: not-allowed;
     }
+    .btn-run-clean {
+      background-color: transparent;
+      color: #5b5bd6;
+      border: 2px solid #5b5bd6;
+      border-radius: 6px;
+      padding: 8px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s, color 0.15s;
+    }
+    .btn-run-clean:hover {
+      background-color: #f0f0ff;
+    }
+    .btn-run-clean:disabled {
+      border-color: #9999cc;
+      color: #9999cc;
+      cursor: not-allowed;
+    }
     /* Running indicator */
     .running-badge {
       display: inline-flex;
@@ -233,9 +252,20 @@
           <button
             type="submit"
             class="btn-run"
-            {% if running %}disabled title="A run is already in progress"{% endif %}
+            title="Fetch new articles not seen before and send the newsletter"
+            {% if running %}disabled{% endif %}
           >
             &#9654; Run Now
+          </button>
+        </form>
+        <form method="POST" action="/run?clean=true" style="margin:0;">
+          <button
+            type="submit"
+            class="btn-run-clean"
+            title="Clears articles seen in the last 12 hours from the dedup cache, then runs the pipeline — use this if a recent run missed articles or you want a fresh fetch"
+            {% if running %}disabled{% endif %}
+          >
+            &#8635; Clean Run
           </button>
         </form>
         {% if running %}

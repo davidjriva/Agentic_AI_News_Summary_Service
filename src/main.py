@@ -20,12 +20,13 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-def run_pipeline(dry_run: bool = False, run_id: str | None = None) -> str:
+def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool = False) -> str:
     """Execute the full news pipeline.
 
     Args:
         dry_run: If True, skip email delivery and print HTML to stdout.
         run_id: Optional run ID to use; a UUID is generated if not provided.
+        clean: If True, delete seen_articles from the past 12 hours before fetching.
 
     Returns:
         The run ID string.
@@ -47,6 +48,15 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None) -> str:
     conn.close()
 
     try:
+        if clean:
+            conn = get_connection()
+            conn.execute(
+                "DELETE FROM seen_articles WHERE seen_at >= datetime('now', '-12 hours')"
+            )
+            conn.commit()
+            conn.close()
+            log.info("[%s] Clean run: cleared seen_articles for past 12 hours", run_id)
+
         log.info("[%s] Stage 1: Fetching articles…", run_id)
         articles = fetch_articles()
         log.info("[%s] Fetched %d articles", run_id, len(articles))
@@ -103,10 +113,15 @@ def main() -> None:
         action="store_true",
         help="Skip email delivery and print HTML to stdout instead",
     )
+    parser.add_argument(
+        "--clean",
+        action="store_true",
+        help="Delete seen_articles from the past 12 hours before fetching",
+    )
     args = parser.parse_args()
 
     try:
-        run_pipeline(dry_run=args.dry_run)
+        run_pipeline(dry_run=args.dry_run, clean=args.clean)
     except Exception:
         sys.exit(1)
 

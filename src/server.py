@@ -39,8 +39,11 @@ def dashboard(request: Request) -> HTMLResponse:
 
 
 @app.post("/run")
-def trigger_run() -> dict:
+def trigger_run(clean: bool = False) -> dict:
     """Start the pipeline in a background thread.
+
+    Args:
+        clean: If True, delete seen_articles from the past 12 hours before fetching.
 
     Returns:
         {"run_id": str} — the ID of the new run.
@@ -60,7 +63,7 @@ def trigger_run() -> dict:
     def _background():
         global _is_running
         try:
-            run_pipeline(run_id=run_id, dry_run=False)
+            run_pipeline(run_id=run_id, dry_run=False, clean=clean)
         finally:
             _is_running = False
 

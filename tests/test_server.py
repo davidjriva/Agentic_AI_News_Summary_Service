@@ -100,9 +100,10 @@ def test_post_run_conflict_when_already_running(client):
 def test_post_run_passes_run_id_to_pipeline(client):
     called_with = {}
 
-    def capture_run(run_id, dry_run):
+    def capture_run(run_id, dry_run, clean):
         called_with["run_id"] = run_id
         called_with["dry_run"] = dry_run
+        called_with["clean"] = clean
 
     with patch("src.server.run_pipeline", side_effect=capture_run):
         response = client.post("/run")
@@ -114,6 +115,23 @@ def test_post_run_passes_run_id_to_pipeline(client):
     assert response.status_code == 200
     assert called_with.get("run_id") == response.json()["run_id"]
     assert called_with.get("dry_run") is False
+    assert called_with.get("clean") is False
+
+
+def test_post_run_clean_passes_clean_true(client):
+    called_with = {}
+
+    def capture_run(run_id, dry_run, clean):
+        called_with["clean"] = clean
+
+    with patch("src.server.run_pipeline", side_effect=capture_run):
+        response = client.post("/run?clean=true")
+
+    import time
+    time.sleep(0.05)
+
+    assert response.status_code == 200
+    assert called_with.get("clean") is True
 
 
 # ---------------------------------------------------------------------------
