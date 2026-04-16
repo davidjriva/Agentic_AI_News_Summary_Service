@@ -3,149 +3,522 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Agentic AI News Digest</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>The Agentic Times</title>
+  <style>
+    /* Reset */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 100% !important;
+      background-color: #F7F7F5;
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      color: #121212;
+      line-height: 1.6;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+
+    table { border-spacing: 0; border-collapse: collapse; }
+    img { border: 0; height: auto; outline: none; text-decoration: none; }
+    a { color: #C41230; text-decoration: none; }
+
+    /* ── WRAPPER ────────────────────────────────────── */
+    .wrapper {
+      width: 100%;
+      background-color: #F7F7F5;
+      padding: 24px 0 40px;
+    }
+
+    .main {
+      width: 100%;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* ── MASTHEAD ───────────────────────────────────── */
+    .masthead-table {
+      width: 100%;
+      background-color: #121212;
+    }
+
+    .masthead-eyebrow {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #888;
+      text-align: center;
+      padding: 20px 24px 8px;
+      display: block;
+    }
+
+    .masthead-rule-top {
+      border: none;
+      border-top: 1px solid #3a3a3a;
+      margin: 0 auto 14px;
+      width: 260px;
+      display: block;
+    }
+
+    .masthead-title {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 42px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -1px;
+      line-height: 1;
+      text-align: center;
+      display: block;
+      margin: 0;
+    }
+
+    .masthead-rule-bottom {
+      border: none;
+      border-top: 1px solid #3a3a3a;
+      margin: 14px auto 12px;
+      width: 260px;
+      display: block;
+    }
+
+    .masthead-tagline {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #888;
+      text-align: center;
+      display: block;
+      padding-bottom: 20px;
+    }
+
+    /* ── RED RULE BELOW MASTHEAD ─────────────────────── */
+    .masthead-red-rule {
+      width: 100%;
+      height: 3px;
+      background-color: #C41230;
+      display: block;
+    }
+
+    /* ── EDITION INFO ───────────────────────────────── */
+    .edition-bar {
+      width: 100%;
+      background-color: #121212;
+      border-bottom: 1px solid #222;
+    }
+
+    .edition-bar-inner {
+      padding: 8px 24px;
+      display: table;
+      width: 100%;
+    }
+
+    .edition-date {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #AAAAAA;
+      font-style: italic;
+      display: table-cell;
+      vertical-align: middle;
+    }
+
+    .edition-number {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      background-color: #C41230;
+      color: #fff;
+      padding: 3px 9px;
+      display: table-cell;
+      vertical-align: middle;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* ── ARTICLE COUNT INTRO ────────────────────────── */
+    .intro-row {
+      padding: 20px 24px 16px;
+      text-align: center;
+      background-color: #fff;
+      border-bottom: 1px solid #DEDEDE;
+    }
+
+    .intro-count {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      color: #555;
+      letter-spacing: 0.3px;
+    }
+
+    .intro-count strong {
+      color: #121212;
+      font-weight: 700;
+    }
+
+    /* ── ARTICLE CARD ───────────────────────────────── */
+    .article-card {
+      width: 100%;
+      background-color: #FFFFFF;
+      border-bottom: 1px solid #DEDEDE;
+    }
+
+    .article-card:first-of-type .article-inner {
+      padding-top: 28px;
+    }
+
+    .article-inner {
+      padding: 24px 32px 28px;
+    }
+
+    /* Rank + publication bar */
+    .article-topbar {
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #DEDEDE;
+      padding-bottom: 12px;
+    }
+
+    .article-rank {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #C41230;
+      line-height: 1;
+      min-width: 32px;
+    }
+
+    .article-rank-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #888;
+      display: block;
+    }
+
+    .article-topbar-divider {
+      width: 1px;
+      height: 32px;
+      background: #DEDEDE;
+      flex-shrink: 0;
+    }
+
+    .article-publication {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #121212;
+      flex: 1;
+    }
+
+    .article-pub-date {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #888;
+      white-space: nowrap;
+    }
+
+    /* Headline */
+    .article-headline {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: #121212;
+      margin-bottom: 10px;
+    }
+
+    .article-headline a {
+      color: #121212;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+
+    .article-headline a:hover {
+      border-bottom-color: #121212;
+    }
+
+    /* Byline (dek style) */
+    .article-byline {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 14px;
+      font-style: italic;
+    }
+
+    /* Summary */
+    .article-summary {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #333;
+      margin-bottom: 18px;
+    }
+
+    /* Scores */
+    .article-scores {
+      display: flex;
+      gap: 20px;
+      padding-top: 14px;
+      border-top: 1px solid #F0F0F0;
+    }
+
+    .score-item {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+    }
+
+    .score-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #888;
+    }
+
+    .score-value {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .score-impact        { color: #1A5C1A; }
+    .score-authenticity  { color: #7B5B00; }
+
+    /* Read more link */
+    .article-readmore {
+      margin-top: 16px;
+      display: block;
+    }
+
+    .article-readmore a {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #C41230;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+
+    .article-readmore a:hover {
+      border-bottom-color: #C41230;
+    }
+
+    /* Section break between articles */
+    .article-separator {
+      width: 100%;
+      height: 1px;
+      background: #DEDEDE;
+    }
+
+    /* ── FOOTER ─────────────────────────────────────── */
+    .footer-table {
+      width: 100%;
+      background-color: #121212;
+    }
+
+    .footer-inner {
+      padding: 28px 32px;
+      text-align: center;
+    }
+
+    .footer-brand {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      display: block;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .footer-meta {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #666;
+      display: block;
+      margin-bottom: 5px;
+      letter-spacing: 0.3px;
+    }
+
+    .footer-meta a { color: #888; text-decoration: none; }
+    .footer-meta a:hover { color: #aaa; }
+
+    .footer-rule {
+      border: none;
+      border-top: 1px solid #2a2a2a;
+      margin: 16px auto;
+      width: 200px;
+    }
+
+    /* ── RESPONSIVE ─────────────────────────────────── */
+    @media only screen and (max-width: 620px) {
+      .main { width: 100% !important; }
+      .masthead-title { font-size: 30px !important; }
+      .article-inner { padding: 20px !important; }
+      .article-headline { font-size: 19px !important; }
+      .article-summary { font-size: 13px !important; }
+      .article-rank { font-size: 22px !important; }
+      .article-topbar { flex-wrap: wrap; }
+    }
+  </style>
 </head>
-<body style="margin:0;padding:0;background-color:#f4f6f9;font-family:Arial,Helvetica,sans-serif;color:#222222;">
+<body>
+  <center>
+    <div class="wrapper">
+      <table class="main" cellpadding="0" cellspacing="0">
 
-  <!-- Outer wrapper -->
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f6f9;">
-    <tr>
-      <td align="center" style="padding:32px 16px;">
+        <!-- ── MASTHEAD ──────────────────────────────── -->
+        <tr>
+          <td>
+            <table class="masthead-table" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td align="center" style="padding: 20px 24px 0;">
+                  <span class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</span>
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding: 0 24px;">
+                  <hr class="masthead-rule-top" />
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding: 0 24px;">
+                  <h1 class="masthead-title">The Agentic Times</h1>
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding: 0 24px;">
+                  <hr class="masthead-rule-bottom" />
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding: 0 24px 20px;">
+                  <span class="masthead-tagline">AI News &amp; Analysis</span>
+                </td>
+              </tr>
+            </table>
+            <div class="masthead-red-rule"></div>
+          </td>
+        </tr>
 
-        <!-- Container -->
-        <table width="640" cellpadding="0" cellspacing="0" border="0" style="max-width:640px;width:100%;">
+        <!-- ── EDITION BAR ───────────────────────────── -->
+        <tr>
+          <td>
+            <div class="edition-bar">
+              <div class="edition-bar-inner">
+                <span class="edition-date">{{ run_time.strftime('%A, %B %-d, %Y at %H:%M UTC') }}</span>
+                <span class="edition-number">Edition #{{ run_id[:6] if run_id else '000001' }}</span>
+              </div>
+            </div>
+          </td>
+        </tr>
 
-          <!-- Header -->
-          <tr>
-            <td style="background-color:#1a1a2e;border-radius:8px 8px 0 0;padding:32px 40px;text-align:center;">
-              <h1 style="margin:0 0 8px 0;font-size:26px;font-weight:700;color:#e0e0ff;letter-spacing:0.5px;">
-                Agentic AI News Digest
-              </h1>
-              <p style="margin:0;font-size:14px;color:#a0a0cc;">
-                {{ run_time.strftime('%A, %B %-d, %Y at %H:%M UTC') }}
-              </p>
-              <p style="margin:12px 0 0 0;font-size:13px;color:#7070aa;">
-                {{ article_count }} article{{ 's' if article_count != 1 else '' }} curated for you
-              </p>
-            </td>
-          </tr>
+        <!-- ── INTRO ─────────────────────────────────── -->
+        <tr>
+          <td>
+            <div class="intro-row">
+              <span class="intro-count">
+                <strong>{{ article_count }}</strong>
+                article{{ 's' if article_count != 1 else '' }} curated &amp; ranked for you today
+              </span>
+            </div>
+          </td>
+        </tr>
 
-          <!-- Articles -->
-          {% for article in articles %}
-          <tr>
-            <td style="background-color:#ffffff;padding:0 40px;">
-              <!-- Card -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="
-                    border-left: 4px solid #5b5bd6;
-                    padding: 24px 0 24px 20px;
-                    border-bottom: 1px solid #ececec;
-                  ">
-                    <!-- Rank + publication row -->
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td>
-                          <span style="
-                            display:inline-block;
-                            background-color:#5b5bd6;
-                            color:#ffffff;
-                            font-size:11px;
-                            font-weight:700;
-                            padding:2px 8px;
-                            border-radius:12px;
-                            margin-bottom:8px;
-                          ">#{{ loop.index }}</span>
-                          <span style="
-                            display:inline-block;
-                            background-color:#f0f0ff;
-                            color:#5b5bd6;
-                            font-size:11px;
-                            font-weight:600;
-                            padding:2px 8px;
-                            border-radius:12px;
-                            margin-left:6px;
-                            margin-bottom:8px;
-                          ">{{ article.publication }}</span>
-                        </td>
-                        <td align="right" style="vertical-align:top;">
-                          <span style="font-size:11px;color:#888888;">
-                            {{ article.published_at.strftime('%b %-d, %Y') }}
-                          </span>
-                        </td>
-                      </tr>
-                    </table>
+        <!-- ── ARTICLES ──────────────────────────────── -->
+        {% for article in articles %}
+        <tr>
+          <td>
+            <div class="article-card">
+              <div class="article-inner">
 
-                    <!-- Title -->
-                    <h2 style="margin:0 0 6px 0;font-size:17px;font-weight:700;line-height:1.4;">
-                      <a href="{{ article.url }}" style="color:#1a1a2e;text-decoration:none;">
-                        {{ article.title }}
-                      </a>
-                    </h2>
+                <!-- Rank + Publication -->
+                <div class="article-topbar">
+                  <div>
+                    <span class="article-rank">#{{ loop.index }}</span>
+                    <span class="article-rank-label">Rank</span>
+                  </div>
+                  <div class="article-topbar-divider"></div>
+                  <span class="article-publication">{{ article.publication }}</span>
+                  <span class="article-pub-date">{{ article.published_at.strftime('%b %-d, %Y') }}</span>
+                </div>
 
-                    <!-- Author -->
-                    <p style="margin:0 0 10px 0;font-size:13px;color:#666666;">
-                      By {{ article.author }}
-                    </p>
+                <!-- Headline -->
+                <h2 class="article-headline">
+                  <a href="{{ article.url }}">{{ article.title }}</a>
+                </h2>
 
-                    <!-- Summary -->
-                    <p style="margin:0 0 14px 0;font-size:14px;line-height:1.6;color:#444444;">
-                      {{ article.summary }}
-                    </p>
+                <!-- Byline -->
+                <p class="article-byline">By {{ article.author }}</p>
 
-                    <!-- Scores -->
-                    <table cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="padding-right:16px;">
-                          <span style="font-size:11px;color:#888888;text-transform:uppercase;letter-spacing:0.5px;">Impact</span>
-                          <span style="
-                            display:inline-block;
-                            margin-left:4px;
-                            font-size:12px;
-                            font-weight:700;
-                            color:#2a9d8f;
-                          ">{{ article.impact_score }}/10</span>
-                        </td>
-                        <td>
-                          <span style="font-size:11px;color:#888888;text-transform:uppercase;letter-spacing:0.5px;">Authenticity</span>
-                          <span style="
-                            display:inline-block;
-                            margin-left:4px;
-                            font-size:12px;
-                            font-weight:700;
-                            color:#e9c46a;
-                          ">{{ article.authenticity_score }}/10</span>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          {% endfor %}
+                <!-- Summary -->
+                <p class="article-summary">{{ article.summary }}</p>
 
-          <!-- Footer -->
-          <tr>
-            <td style="
-              background-color:#1a1a2e;
-              border-radius:0 0 8px 8px;
-              padding:24px 40px;
-              text-align:center;
-            ">
-              <p style="margin:0;font-size:12px;color:#7070aa;">
-                Agentic AI News Summary Service &mdash; Automated digest
-              </p>
-              <p style="margin:8px 0 0 0;font-size:12px;color:#7070aa;">
-                Generated at {{ run_time.strftime('%Y-%m-%d %H:%M UTC') }}
-              </p>
-            </td>
-          </tr>
+                <!-- Scores + Read More -->
+                <div class="article-scores">
+                  <div class="score-item">
+                    <span class="score-label">Impact</span>
+                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  </div>
+                  <div class="score-item">
+                    <span class="score-label">Authenticity</span>
+                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  </div>
+                </div>
 
-        </table>
-      </td>
-    </tr>
-  </table>
+                <div class="article-readmore">
+                  <a href="{{ article.url }}">Read Full Article &rarr;</a>
+                </div>
 
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% if not loop.last %}
+        <tr><td><div class="article-separator"></div></td></tr>
+        {% endif %}
+        {% endfor %}
+
+        <!-- ── FOOTER ────────────────────────────────── -->
+        <tr>
+          <td>
+            <table class="footer-table" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td>
+                  <div class="footer-inner">
+                    <span class="footer-brand">The Agentic Times</span>
+                    <hr class="footer-rule" />
+                    <span class="footer-meta">Automated AI News &amp; Analysis</span>
+                    <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
+                    <span class="footer-meta" style="margin-top:8px;">
+                      <a href="http://localhost:8000">View Dashboard</a>
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+      </table>
+    </div>
+  </center>
 </body>
 </html>
