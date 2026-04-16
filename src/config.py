@@ -25,6 +25,7 @@ RECIPIENTS: list[str] = [r.strip() for r in _recipients_env.split(",") if r.stri
 
 TOP_N: int = 15
 MAX_ARTICLES_PER_SOURCE: int = 10
+MAX_PER_NEWSLETTER_SOURCE: int = 3
 CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
 LOOKBACK_HOURS: int = 12
 
