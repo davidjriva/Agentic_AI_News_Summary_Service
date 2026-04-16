@@ -273,7 +273,7 @@ class TestPromptCachingSystemMessage:
         call_kwargs = mock_client.messages.create.call_args
         kwargs = call_kwargs.kwargs if call_kwargs.kwargs else call_kwargs[1]
         assert "max_tokens" in kwargs
-        assert kwargs["max_tokens"] == 512
+        assert kwargs["max_tokens"] == 1024
 
 
 def _make_local_mock_response(content: str) -> MagicMock:

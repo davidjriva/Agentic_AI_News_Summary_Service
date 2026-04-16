@@ -39,7 +39,7 @@ def _call_anthropic(client: anthropic.Anthropic, user_content: str) -> str:
     """Call the Anthropic API with prompt caching on the system message."""
     response = client.messages.create(
         model=_cfg.CLAUDE_MODEL,
-        max_tokens=512,
+        max_tokens=1024,
         system=[
             {
                 "type": "text",
@@ -107,9 +107,11 @@ def process_articles(articles: list[dict]) -> list[dict]:
                 **article,
                 "impact_score": 5,
                 "authenticity_score": 5,
+                "relevance_score": 5,
                 "summary": article["description"][:200],
                 "impact_reason": "",
                 "authenticity_reason": "",
+                "relevance_reason": "",
             }
 
         results.append(article)
