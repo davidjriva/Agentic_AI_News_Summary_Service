@@ -8,7 +8,7 @@ FEED_URLS = [
     "https://arxiv.org/rss/cs.LG",                                       # cs.LG = Machine Learning
     "https://techcrunch.com/category/artificial-intelligence/feed/",
     "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",  # AI section (verified A1: 200, 10 entries)
-    "https://www.wired.com/tag/artificial-intelligence/feed/rss",         # AI tag (A1 returned 400; keeping existing full-site fallback)
+    "https://www.wired.com/tag/artificial-intelligence/feed/rss",         # AI tag feed (candidate wired.com/feed/tag/... returned 400 in A1; retaining this URL)
     "https://www.technologyreview.com/topic/artificial-intelligence/feed",
     "https://openai.com/blog/rss.xml",                                    # replaces stale VentureBeat (verified A1: 307→200, 939 entries)
     "https://huggingface.co/blog/feed.xml",                               # replaces stale VentureBeat (verified A1: 200, 764 entries)

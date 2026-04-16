@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS run_articles (
 _CREATE_FAILED_ARTICLES = """
 CREATE TABLE IF NOT EXISTS failed_articles (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id      TEXT,
+    run_id      TEXT NOT NULL,
     url         TEXT,
     title       TEXT,
     publication TEXT,
@@ -80,7 +80,7 @@ def get_connection() -> sqlite3.Connection:
     ):
         try:
             conn.execute(col_sql)
-        except Exception:
+        except sqlite3.OperationalError:
             pass  # column already exists
     conn.commit()
     return conn

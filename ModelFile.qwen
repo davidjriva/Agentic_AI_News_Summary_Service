@@ -1,3 +1,4 @@
+# PREREQUISITE: run `ollama pull qwen3:30b` (~17GB) then `ollama create agentic-news -f ModelFile.qwen`
 # Use 30B model — fits in 24GB unified memory (~17-18GB Q4_K_M)
 FROM qwen3:30b
 
