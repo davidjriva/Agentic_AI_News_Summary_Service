@@ -1,6 +1,7 @@
 import json
+import time
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
@@ -107,51 +108,22 @@ class TestValidJsonResponse:
 
 
 class TestFallbackOnMalformedResponse:
-    """(b) When Claude returns malformed/non-JSON, article gets fallback values."""
+    """(b) When Claude returns malformed/non-JSON or raises, article is excluded (no fallback scores)."""
 
-    def test_fallback_impact_score_on_invalid_json(self):
+    def test_malformed_json_excludes_article(self):
         article = make_article()
         mock_client = _make_mock_client("This is not valid JSON at all!")
 
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client), \
+             patch("src.processor._write_failed"):
             results = process_articles([article])
 
-        assert results[0]["impact_score"] == 5
+        assert len(results) == 0
 
-    def test_fallback_authenticity_score_on_invalid_json(self):
-        article = make_article()
-        mock_client = _make_mock_client("not json")
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([article])
-
-        assert results[0]["authenticity_score"] == 5
-
-    def test_fallback_summary_is_description_truncated_to_200(self):
-        long_description = "A" * 300
-        article = make_article(description=long_description)
-        mock_client = _make_mock_client("not json")
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([article])
-
-        assert results[0]["summary"] == long_description[:200]
-
-    def test_fallback_summary_short_description_unchanged(self):
-        short_description = "Short description."
-        article = make_article(description=short_description)
-        mock_client = _make_mock_client("{broken json")
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([article])
-
-        assert results[0]["summary"] == short_description
-
-    def test_fallback_on_api_exception(self):
+    def test_api_exception_excludes_article(self):
         article = make_article()
         mock_messages = MagicMock()
         mock_messages.create.side_effect = Exception("API error")
@@ -159,25 +131,13 @@ class TestFallbackOnMalformedResponse:
         mock_client.messages = mock_messages
 
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client), \
+             patch("src.processor._write_failed"):
             results = process_articles([article])
 
-        assert results[0]["impact_score"] == 5
-        assert results[0]["authenticity_score"] == 5
-        assert results[0]["summary"] == article["description"][:200]
-
-    def test_fallback_original_keys_still_present(self):
-        article = make_article()
-        mock_client = _make_mock_client("not json")
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([article])
-
-        result = results[0]
-        assert result["title"] == article["title"]
-        assert result["url"] == article["url"]
-        assert result["author"] == article["author"]
+        assert len(results) == 0
 
 
 class TestPromptCachingSystemMessage:
@@ -351,26 +311,30 @@ class TestLocalLLMProvider:
         payload = mock_post.call_args[1]["json"]
         assert payload["model"] == "qwen2.5-7b"
 
-    def test_local_provider_fallback_on_request_error(self):
+    def test_local_provider_excludes_article_on_request_error(self):
         article = make_article()
 
         with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch("requests.post", side_effect=Exception("connection refused")):
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("requests.post", side_effect=Exception("connection refused")), \
+             patch("src.processor._write_failed"):
             results = process_articles([article])
 
-        assert results[0]["impact_score"] == 5
-        assert results[0]["authenticity_score"] == 5
-        assert results[0]["summary"] == article["description"][:200]
+        assert len(results) == 0
 
-    def test_local_provider_fallback_on_malformed_json(self):
+    def test_local_provider_excludes_article_on_malformed_json(self):
         article = make_article()
         mock_resp = _make_local_mock_response("not valid json")
 
         with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch("requests.post", return_value=mock_resp):
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("requests.post", return_value=mock_resp), \
+             patch("src.processor._write_failed"):
             results = process_articles([article])
 
-        assert results[0]["impact_score"] == 5
+        assert len(results) == 0
 
     def test_local_provider_does_not_call_anthropic(self):
         article = make_article()
@@ -408,3 +372,72 @@ class TestRelevanceScore:
     def test_relevance_score_in_system_prompt(self):
         from src.processor import SYSTEM_PROMPT
         assert "relevance_score" in SYSTEM_PROMPT
+
+
+class TestRetryAndDeadLetter:
+    def test_retries_on_api_failure_before_giving_up(self):
+        article = make_article()
+        mock_messages = MagicMock()
+        mock_messages.create.side_effect = Exception("transient error")
+        mock_client = MagicMock()
+        mock_client.messages = mock_messages
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 2), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client), \
+             patch("src.processor._write_failed") as mock_dlq:
+            results = process_articles([article])
+
+        assert mock_client.messages.create.call_count == 3  # 1 attempt + 2 retries
+        mock_dlq.assert_called_once()
+        assert len(results) == 0  # failed article excluded
+
+    def test_succeeds_on_second_attempt(self):
+        article = make_article()
+
+        call_count = {"n": 0}
+
+        def side_effect(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise Exception("transient")
+            # Return a valid mock response on second attempt
+            mock_msg = MagicMock()
+            mock_msg.content = [MagicMock(text=json.dumps(VALID_CLAUDE_RESPONSE))]
+            return mock_msg
+
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = side_effect
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 2), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = process_articles([article])
+
+        assert len(results) == 1
+        assert results[0]["relevance_score"] == VALID_CLAUDE_RESPONSE["relevance_score"]
+
+    def test_dead_letter_receives_article_url_and_reason(self):
+        article = make_article()
+        mock_messages = MagicMock()
+        mock_messages.create.side_effect = Exception("api down")
+        mock_client = MagicMock()
+        mock_client.messages = mock_messages
+
+        written = {}
+
+        def capture_dlq(article, reason, run_id):
+            written["url"] = article["url"]
+            written["reason"] = reason
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client), \
+             patch("src.processor._write_failed", side_effect=capture_dlq):
+            process_articles([article])
+
+        assert written["url"] == article["url"]
+        assert "api down" in written["reason"]

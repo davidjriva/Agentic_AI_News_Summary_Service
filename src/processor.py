@@ -3,14 +3,19 @@
 Supports two providers, selected via the LLM_PROVIDER config value:
   "anthropic" (default) — Anthropic SDK with prompt caching
   "local"               — local llama.cpp server via its OpenAI-compatible API
+
+Articles that fail LLM processing after all retries are written to the
+failed_articles dead-letter queue and excluded from results.
 """
 
 import json
+import time
 
 import anthropic
 import requests
 
 from src import config as _cfg
+from src.db import get_connection
 
 SYSTEM_PROMPT = """You are an AI news analyst specializing in agentic AI, machine learning, and deep learning. For each article provided, return a JSON object with exactly these keys:
 - summary: a 2-3 sentence summary of the article
@@ -70,29 +75,31 @@ def _call_local_llm(user_content: str) -> str:
     return response.json()["choices"][0]["message"]["content"]
 
 
-def process_articles(articles: list[dict]) -> list[dict]:
-    """Process articles by calling the configured LLM to add summary and scores."""
-    use_local = _cfg.LLM_PROVIDER == "local"
-    client = None if use_local else anthropic.Anthropic()
+def _write_failed(article: dict, reason: str, run_id: str | None) -> None:
+    """Persist a failed article to the dead-letter queue."""
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO failed_articles (run_id, url, title, publication, reason) VALUES (?, ?, ?, ?, ?)",
+        (run_id, article.get("url", ""), article.get("title", ""), article.get("publication", ""), reason),
+    )
+    conn.commit()
+    conn.close()
 
-    results = []
-    for article in articles:
-        user_content = (
-            f"Author: {article['author']}\n"
-            f"Publication: {article['publication']}\n"
-            f"Title: {article['title']}\n"
-            f"Description: {article['description']}"
-        )
 
+def _process_one(article: dict, client, use_local: bool, run_id: str | None = None) -> dict | None:
+    """Process a single article with retry. Returns None on final failure (article dead-lettered)."""
+    last_exc: Exception | None = None
+    for attempt in range(_cfg.PROCESSOR_MAX_RETRIES + 1):
         try:
-            if use_local:
-                response_text = _call_local_llm(user_content)
-            else:
-                response_text = _call_anthropic(client, user_content)
-
+            user_content = (
+                f"Author: {article['author']}\n"
+                f"Publication: {article['publication']}\n"
+                f"Title: {article['title']}\n"
+                f"Description: {article['description']}"
+            )
+            response_text = _call_local_llm(user_content) if use_local else _call_anthropic(client, user_content)
             parsed = json.loads(response_text)
-
-            article = {
+            return {
                 **article,
                 "summary": parsed["summary"],
                 "impact_score": parsed["impact_score"],
@@ -102,18 +109,26 @@ def process_articles(articles: list[dict]) -> list[dict]:
                 "authenticity_reason": parsed["authenticity_reason"],
                 "relevance_reason": parsed["relevance_reason"],
             }
-        except Exception:
-            article = {
-                **article,
-                "impact_score": 5,
-                "authenticity_score": 5,
-                "relevance_score": 5,
-                "summary": article["description"][:200],
-                "impact_reason": "",
-                "authenticity_reason": "",
-                "relevance_reason": "",
-            }
+        except Exception as exc:
+            last_exc = exc
+            if attempt < _cfg.PROCESSOR_MAX_RETRIES:
+                time.sleep(_cfg.PROCESSOR_RETRY_DELAY)
 
-        results.append(article)
+    _write_failed(article, str(last_exc), run_id)
+    return None
 
+
+def process_articles(articles: list[dict], run_id: str | None = None) -> list[dict]:
+    """Process articles by calling the configured LLM to add summary and scores.
+
+    Articles that fail after all retries are written to failed_articles and excluded.
+    """
+    use_local = _cfg.LLM_PROVIDER == "local"
+    client = None if use_local else anthropic.Anthropic()
+
+    results = []
+    for article in articles:
+        result = _process_one(article, client, use_local, run_id)
+        if result is not None:
+            results.append(result)
     return results
