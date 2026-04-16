@@ -27,6 +27,8 @@ VALID_CLAUDE_RESPONSE = {
     "authenticity_score": 7,
     "impact_reason": "Significant advancement in agentic AI reliability with broad implications.",
     "authenticity_reason": "Published by named researcher at credible AI lab.",
+    "relevance_score": 9,
+    "relevance_reason": "Directly about agentic AI systems and autonomous task completion.",
 }
 
 
@@ -380,3 +382,29 @@ class TestLocalLLMProvider:
             process_articles([article])
 
         mock_anthropic.assert_not_called()
+
+
+class TestRelevanceScore:
+    def test_relevance_score_in_result(self):
+        article = make_article()
+        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = process_articles([article])
+
+        assert results[0]["relevance_score"] == 9
+
+    def test_relevance_reason_in_result(self):
+        article = make_article()
+        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = process_articles([article])
+
+        assert results[0]["relevance_reason"] == VALID_CLAUDE_RESPONSE["relevance_reason"]
+
+    def test_relevance_score_in_system_prompt(self):
+        from src.processor import SYSTEM_PROMPT
+        assert "relevance_score" in SYSTEM_PROMPT

@@ -12,12 +12,19 @@ import requests
 
 from src import config as _cfg
 
-SYSTEM_PROMPT = """You are an AI news analyst. For each article provided, return a JSON object with exactly these keys:
+SYSTEM_PROMPT = """You are an AI news analyst specializing in agentic AI, machine learning, and deep learning. For each article provided, return a JSON object with exactly these keys:
 - summary: a 2-3 sentence summary of the article
-- impact_score: integer 1-10 rating of the article's impact on the AI field
+- impact_score: integer 1-10 rating of the article's impact on the AI/ML field
 - authenticity_score: integer 1-10 rating of the article's authenticity/credibility
+- relevance_score: integer 1-10 rating of how directly relevant this article is to agentic AI, machine learning, or deep learning (1 = completely unrelated, 10 = core topic)
 - impact_reason: one-line rationale for the impact_score
 - authenticity_reason: one-line rationale for the authenticity_score
+- relevance_reason: one-line rationale for the relevance_score
+
+Relevance scoring rubric:
+- Score 8-10: Directly about agentic AI systems, LLM research, ML model training/deployment, deep learning breakthroughs, AI safety
+- Score 5-7: Adjacent topics — AI in business/product, general ML tooling, AI policy with technical substance
+- Score 1-4: Tangentially AI-related (e.g. tech company news, crypto, general software, climate tech)
 
 Authenticity scoring rubric:
 - Is the author a known researcher, practitioner, or credible journalist?
@@ -90,8 +97,10 @@ def process_articles(articles: list[dict]) -> list[dict]:
                 "summary": parsed["summary"],
                 "impact_score": parsed["impact_score"],
                 "authenticity_score": parsed["authenticity_score"],
+                "relevance_score": parsed["relevance_score"],
                 "impact_reason": parsed["impact_reason"],
                 "authenticity_reason": parsed["authenticity_reason"],
+                "relevance_reason": parsed["relevance_reason"],
             }
         except Exception:
             article = {

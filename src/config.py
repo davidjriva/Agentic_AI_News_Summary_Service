@@ -38,6 +38,9 @@ LOOKBACK_HOURS: int = 12
 LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "anthropic")
 LOCAL_LLM_URL: str = os.getenv("LOCAL_LLM_URL", "http://localhost:8080")
 LOCAL_LLM_MODEL: str = os.getenv("LOCAL_LLM_MODEL", "local")
+RELEVANCE_THRESHOLD: int = int(os.getenv("RELEVANCE_THRESHOLD", "6"))
+PROCESSOR_MAX_RETRIES: int = int(os.getenv("PROCESSOR_MAX_RETRIES", "2"))
+PROCESSOR_RETRY_DELAY: float = float(os.getenv("PROCESSOR_RETRY_DELAY", "2.0"))
 
 # ---------------------------------------------------------------------------
 # Article dict schema — locked contract shared by all pipeline stages
@@ -54,8 +57,10 @@ LOCAL_LLM_MODEL: str = os.getenv("LOCAL_LLM_MODEL", "local")
 #   summary:             str   — 2-3 sentence summary from Claude
 #   impact_score:        int   — 1–10; Claude-assigned impact rating
 #   authenticity_score:  int   — 1–10; Claude-assigned authenticity rating
+#   relevance_score:     int   — 1–10; LLM-assigned relevance to agentic AI/ML
 #   impact_reason:       str   — one-line rationale for impact_score
 #   authenticity_reason: str   — one-line rationale for authenticity_score
+#   relevance_reason:    str   — one-line rationale for relevance_score
 #
 # Added by ranker.py:
 #   rank_score:          float — (impact_score * 0.6) + (authenticity_score * 0.4)
