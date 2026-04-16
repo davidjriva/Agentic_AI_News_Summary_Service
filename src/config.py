@@ -5,14 +5,14 @@ load_dotenv()
 
 FEED_URLS = [
     "https://arxiv.org/rss/cs.AI",
-    "https://techcrunch.com/tag/artificial-intelligence/feed",
-    "https://venturebeat.com/category/ai/feed",
+    "https://arxiv.org/rss/cs.LG",                                       # cs.LG = Machine Learning
+    "https://techcrunch.com/category/artificial-intelligence/feed/",
+    "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",  # AI section (verified A1: 200, 10 entries)
+    "https://www.wired.com/tag/artificial-intelligence/feed/rss",         # AI tag (A1 returned 400; keeping existing full-site fallback)
     "https://www.technologyreview.com/topic/artificial-intelligence/feed",
-    "https://www.theverge.com/ai-artificial-intelligence/rss/index.xml",
-    "https://www.wired.com/tag/artificial-intelligence/feed/rss",
-    "https://www.anthropic.com/news/rss.xml",
+    "https://openai.com/blog/rss.xml",                                    # replaces stale VentureBeat (verified A1: 307→200, 939 entries)
+    "https://huggingface.co/blog/feed.xml",                               # replaces stale VentureBeat (verified A1: 200, 764 entries)
     "https://news.google.com/rss/search?q=agentic+AI",
-    "https://www.reddit.com/r/MachineLearning/.rss",
     "https://hn.algolia.com/api/v1/search?tags=story&query=agentic+AI",  # JSON, not RSS
 ]
 
