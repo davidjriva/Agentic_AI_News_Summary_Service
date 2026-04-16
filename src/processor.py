@@ -76,27 +76,32 @@ def _call_local_llm(user_content: str) -> str:
 
 
 def _write_failed(article: dict, reason: str, run_id: str | None) -> None:
-    """Persist a failed article to the dead-letter queue."""
-    conn = get_connection()
-    conn.execute(
-        "INSERT INTO failed_articles (run_id, url, title, publication, reason) VALUES (?, ?, ?, ?, ?)",
-        (run_id, article.get("url", ""), article.get("title", ""), article.get("publication", ""), reason),
-    )
-    conn.commit()
-    conn.close()
+    """Persist a failed article to the dead-letter queue. Best-effort: never raises."""
+    try:
+        conn = get_connection()
+        try:
+            conn.execute(
+                "INSERT INTO failed_articles (run_id, url, title, publication, reason) VALUES (?, ?, ?, ?, ?)",
+                (run_id, article.get("url", ""), article.get("title", ""), article.get("publication", ""), reason),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass  # best-effort: a DB failure must not abort the rest of the pipeline
 
 
 def _process_one(article: dict, client, use_local: bool, run_id: str | None = None) -> dict | None:
     """Process a single article with retry. Returns None on final failure (article dead-lettered)."""
+    user_content = (
+        f"Author: {article['author']}\n"
+        f"Publication: {article['publication']}\n"
+        f"Title: {article['title']}\n"
+        f"Description: {article['description']}"
+    )
     last_exc: Exception | None = None
     for attempt in range(_cfg.PROCESSOR_MAX_RETRIES + 1):
         try:
-            user_content = (
-                f"Author: {article['author']}\n"
-                f"Publication: {article['publication']}\n"
-                f"Title: {article['title']}\n"
-                f"Description: {article['description']}"
-            )
             response_text = _call_local_llm(user_content) if use_local else _call_anthropic(client, user_content)
             parsed = json.loads(response_text)
             return {

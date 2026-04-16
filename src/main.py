@@ -75,7 +75,7 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
 
         provider_label = "local llama server" if LLM_PROVIDER == "local" else "Claude"
         log.info("[%s] Stage 2: Processing with %s…", run_id, provider_label)
-        articles = process_articles(articles)
+        articles = process_articles(articles, run_id=run_id)
         log.info("[%s] Processed %d articles", run_id, len(articles))
 
         log.info("[%s] Stage 3: Ranking…", run_id)
