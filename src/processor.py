@@ -67,7 +67,7 @@ def _call_local_llm(user_content: str) -> str:
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_content},
             ],
-            "max_tokens": 512,
+            "max_tokens": 1024,
         },
         timeout=60,
     )
