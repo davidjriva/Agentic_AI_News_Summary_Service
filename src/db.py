@@ -33,6 +33,30 @@ CREATE TABLE IF NOT EXISTS run_articles (
 );
 """
 
+_CREATE_FAILED_ARTICLES = """
+CREATE TABLE IF NOT EXISTS failed_articles (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id      TEXT,
+    url         TEXT,
+    title       TEXT,
+    publication TEXT,
+    reason      TEXT,
+    failed_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
+_CREATE_FILTERED_ARTICLES = """
+CREATE TABLE IF NOT EXISTS filtered_articles (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id           TEXT NOT NULL,
+    url              TEXT,
+    title            TEXT,
+    publication      TEXT,
+    relevance_score  INTEGER,
+    relevance_reason TEXT
+);
+"""
+
 
 def get_connection() -> sqlite3.Connection:
     """Return a fresh sqlite3 connection with row_factory set to sqlite3.Row.
@@ -47,5 +71,16 @@ def get_connection() -> sqlite3.Connection:
     conn.execute(_CREATE_SEEN_ARTICLES)
     conn.execute(_CREATE_RUNS)
     conn.execute(_CREATE_RUN_ARTICLES)
+    conn.execute(_CREATE_FAILED_ARTICLES)
+    conn.execute(_CREATE_FILTERED_ARTICLES)
+    # Migrate existing runs table — safe to run repeatedly
+    for col_sql in (
+        "ALTER TABLE runs ADD COLUMN dropped_count INTEGER DEFAULT 0",
+        "ALTER TABLE runs ADD COLUMN failed_count INTEGER DEFAULT 0",
+    ):
+        try:
+            conn.execute(col_sql)
+        except Exception:
+            pass  # column already exists
     conn.commit()
     return conn
