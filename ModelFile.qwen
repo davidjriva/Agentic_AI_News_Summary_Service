@@ -1,0 +1,17 @@
+# Use 30B model — fits in 24GB unified memory (~17-18GB Q4_K_M)
+FROM qwen3:30b
+
+# Set the 32k context window
+PARAMETER num_ctx 32768
+
+# Helps model digest system prompt faster
+PARAMETER num_batch 512
+
+# Set temperature to 0 for consistent results
+PARAMETER temperature 0
+
+# Senior FDE Personality
+SYSTEM """You are a Senior Forward Deployed Engineer specialized in Agentic AI.
+You are currently working on the 'Agentic_AI_News_Summary_Service'.
+Your goal is to build robust, asynchronous news ingestion and summarization pipelines.
+Prefer functional programming and clear type definitions."""
