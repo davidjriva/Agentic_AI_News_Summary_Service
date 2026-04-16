@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>{{ newsletter.title }} &#8212; Issue #{{ newsletter.issue_number }}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>
+  </noscript>
+  <![endif]-->
+  <!--
+    Fallback <style> block for web preview only.
+    Production email clients (Gmail, Outlook, Apple Mail) strip or ignore <style> tags;
+    all critical styles are repeated inline on every element below.
+  -->
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f0ede8;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    img {
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+      -ms-interpolation-mode: bicubic;
+      display: block;
+    }
+    a { color: #326891; }
+    a:hover { text-decoration: underline !important; }
+    .article-title-link { color: #121212 !important; text-decoration: none; }
+    .article-title-link:hover { text-decoration: underline !important; color: #121212 !important; }
+    .read-more-link { color: #326891 !important; text-decoration: none; }
+    .read-more-link:hover { text-decoration: underline !important; }
+    .meta-link { color: #326891 !important; text-decoration: none; }
+    .meta-link:hover { text-decoration: underline !important; }
+    .unsub-link { color: #666666 !important; text-decoration: underline; }
+    .unsub-link:hover { color: #121212 !important; }
+    @media only screen and (max-width: 680px) {
+      .outer-wrapper  { width: 100% !important; }
+      .container      { width: 100% !important; max-width: 100% !important; }
+      .padded-cell    { padding-left: 20px !important; padding-right: 20px !important; }
+      .masthead-title { font-size: 26px !important; letter-spacing: -0.5px !important; }
+    }
+  </style>
+</head>
+
+<body style="margin: 0; padding: 0; background-color: #f0ede8;">
+
+<!-- ╔═════════════════════════════════════════════════════════════════════╗
+     ║  OUTER WRAPPER — full-width centering table, warm linen background  ║
+     ╚═════════════════════════════════════════════════════════════════════╝ -->
+<table class="outer-wrapper" role="presentation"
+       width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color: #f0ede8; padding: 32px 0; border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+  <tr>
+    <td align="center" valign="top" style="padding: 0;">
+
+      <!-- ╔══════════════════════════════════════════════════════════════╗
+           ║  MAIN CONTAINER — 680px, white, all content lives inside     ║
+           ╚══════════════════════════════════════════════════════════════╝ -->
+      <table class="container" role="presentation"
+             width="680" cellpadding="0" cellspacing="0" border="0"
+             style="max-width: 680px; width: 100%; background-color: #ffffff;
+                    border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+
+
+        <!-- ═══════════════════════════════════════════════════════════
+             MASTHEAD
+             ─ Red accent bar
+             ─ Newsletter title (Georgia, 36px, bold)
+             ─ Tagline (italic sans-serif, 13px)
+             ─ Date · Issue number (uppercase, 11px, letter-spaced)
+             ─ Bottom divider
+             ═══════════════════════════════════════════════════════════ -->
+
+        <!-- Red top accent bar (4px) -->
+        <tr>
+          <td style="background-color: #c41230; height: 4px; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+              aria-hidden="true">&nbsp;</td>
+        </tr>
+
+        <!-- Masthead body -->
+        <tr>
+          <td class="padded-cell"
+              style="background-color: #ffffff; padding: 32px 48px 24px 48px; text-align: center;">
+
+            <!-- Title -->
+            <h1 class="masthead-title"
+                style="margin: 0 0 10px 0;
+                       font-family: Georgia, 'Times New Roman', Times, serif;
+                       font-size: 36px;
+                       font-weight: bold;
+                       letter-spacing: -1px;
+                       line-height: 1.15;
+                       color: #121212;">{{ newsletter.title }}</h1>
+
+            <!-- Tagline -->
+            <p style="margin: 0 0 16px 0;
+                      font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                      font-size: 13px;
+                      font-style: italic;
+                      line-height: 1.55;
+                      color: #666666;">{{ newsletter.tagline }}</p>
+
+            <!-- Date + Issue number -->
+            <p style="margin: 0;
+                      font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                      font-size: 11px;
+                      font-weight: 600;
+                      letter-spacing: 2px;
+                      text-transform: uppercase;
+                      color: #666666;">{{ newsletter.date_display }}&nbsp;&nbsp;&#183;&nbsp;&nbsp;Issue&nbsp;#{{ newsletter.issue_number }}</p>
+
+          </td>
+        </tr>
+
+        <!-- Masthead bottom divider -->
+        <tr>
+          <td style="padding: 0 48px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="border-collapse: collapse;">
+              <tr>
+                <td style="border-top: 1px solid #e2e2e2; font-size: 0; line-height: 0; padding: 0 0 24px 0; mso-line-height-rule: exactly;"
+                    aria-hidden="true">&nbsp;</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+
+        <!-- ═══════════════════════════════════════════════════════════
+             SECTIONS LOOP
+             Three layout modes:
+               featured  — hero card + sub-featured on warm off-white
+               standard  — labelled vertical article list on white
+               brief     — compact "IN BRIEF" bullets on white
+             ═══════════════════════════════════════════════════════════ -->
+        {% for section in newsletter.sections %}
+
+
+          {# ─────────────────────────────────────────────────────────
+             FEATURED SECTION
+             ──────────────────────────────────────────────────────── #}
+          {% if section.section_type == "featured" %}
+
+          <!-- Featured section wrapper — warm off-white background -->
+          <tr>
+            <td style="background-color: #f7f5f0; padding: 0;">
+
+              <!-- Inner padded content -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="border-collapse: collapse;">
+
+                <!-- Section label row -->
+                <tr>
+                  <td class="padded-cell"
+                      style="padding: 32px 48px 0 48px;">
+                    <p style="margin: 0 0 20px 0;
+                               font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                               font-size: 11px;
+                               font-weight: 700;
+                               letter-spacing: 2px;
+                               text-transform: uppercase;
+                               color: #c41230;">TOP STORIES</p>
+                  </td>
+                </tr>
+
+                {% for article in section.articles %}
+
+                  {% if loop.first %}
+                  <!-- ── Hero article (largest, full treatment) ── -->
+                  <tr>
+                    <td class="padded-cell" style="padding: 0 48px 0 48px;">
+
+                      {% if article.image_url %}
+                      <!-- Hero image -->
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                             style="border-collapse: collapse; margin-bottom: 20px;">
+                        <tr>
+                          <td>
+                            <img src="{{ article.image_url }}"
+                                 alt="{{ article.title }}"
+                                 width="584"
+                                 style="display: block; width: 100%; max-width: 584px; height: auto;
+                                        border: 0; outline: none; text-decoration: none;
+                                        -ms-interpolation-mode: bicubic;" />
+                          </td>
+                        </tr>
+                      </table>
+                      {% endif %}
+
+                      <!-- Category badge -->
+                      <p style="margin: 0 0 8px 0;
+                                font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                font-size: 11px;
+                                font-weight: 700;
+                                letter-spacing: 1.5px;
+                                text-transform: uppercase;
+                                color: #666666;">{{ article.category }}</p>
+
+                      <!-- Hero headline — 24px Georgia bold -->
+                      <h2 style="margin: 0 0 14px 0;
+                                 font-family: Georgia, 'Times New Roman', Times, serif;
+                                 font-size: 24px;
+                                 font-weight: bold;
+                                 line-height: 1.3;
+                                 color: #121212;">
+                        <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer"
+                           class="article-title-link"
+                           style="color: #121212; text-decoration: none;">{{ article.title }}</a>
+                      </h2>
+
+                      <!-- Full summary — 15px sans-serif -->
+                      {% if article.summary %}
+                      <p style="margin: 0 0 14px 0;
+                                font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                font-size: 15px;
+                                line-height: 1.7;
+                                color: #333333;">{{ article.summary }}</p>
+                      {% endif %}
+
+                      <!-- Metadata: Source · Author · Read time · Date -->
+                      <p style="margin: 0 0 14px 0;
+                                font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                font-size: 12px;
+                                line-height: 1.5;
+                                color: #666666;">
+                        <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">{{ article.source }}</span>{% if article.author %}&nbsp;&#183;&nbsp;{{ article.author }}{% endif %}&nbsp;&#183;&nbsp;{{ article.read_time_minutes }}&nbsp;min&nbsp;read&nbsp;&#183;&nbsp;{{ article.published_at.strftime("%b %-d, %Y") }}
+                      </p>
+
+                      <!-- Read more link -->
+                      <p style="margin: 0 0 24px 0;">
+                        <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer"
+                           class="read-more-link"
+                           style="font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                  font-size: 13px;
+                                  font-weight: 600;
+                                  color: #326891;
+                                  text-decoration: none;">Read more &#8594;</a>
+                      </p>
+
+                    </td>
+                  </tr>
+
+                  {% else %}
+                  <!-- ── Sub-featured article (18px title, with top rule) ── -->
+                  <tr>
+                    <td class="padded-cell" style="padding: 0 48px 0 48px;">
+
+                      <!-- Horizontal rule separator -->
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                             style="border-collapse: collapse;">
+                        <tr>
+                          <td style="border-top: 1px solid #e2e2e2; font-size: 0; line-height: 0; padding: 0 0 20px 0; mso-line-height-rule: exactly;"
+                              aria-hidden="true">&nbsp;</td>
+                        </tr>
+                      </table>
+
+                      <!-- Category badge -->
+                      <p style="margin: 0 0 6px 0;
+                                font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                font-size: 11px;
+                                font-weight: 700;
+                                letter-spacing: 1.5px;
+                                text-transform: uppercase;
+                                color: #666666;">{{ article.category }}</p>
+
+                      <!-- Sub-featured headline — 18px Georgia -->
+                      <h3 style="margin: 0 0 10px 0;
+                                 font-family: Georgia, 'Times New Roman', Times, serif;
+                                 font-size: 18px;
+                                 font-weight: bold;
+                                 line-height: 1.35;
+                                 color: #121212;">
+                        <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer"
+                           class="article-title-link"
+                           style="color: #121212; text-decoration: none;">{{ article.title }}</a>
+                      </h3>
+
+                      <!-- Summary — 14px sans-serif -->
+                      {% if article.summary %}
+                      <p style="margin: 0 0 10px 0;
+                                font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                font-size: 14px;
+                                line-height: 1.65;
+                                color: #333333;">{{ article.summary }}</p>
+                      {% endif %}
+
+                      <!-- Metadata -->
+                      <p style="margin: 0 0 8px 0;
+                                font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                font-size: 12px;
+                                line-height: 1.5;
+                                color: #666666;">
+                        <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">{{ article.source }}</span>{% if article.author %}&nbsp;&#183;&nbsp;{{ article.author }}{% endif %}&nbsp;&#183;&nbsp;{{ article.read_time_minutes }}&nbsp;min&nbsp;read&nbsp;&#183;&nbsp;{{ article.published_at.strftime("%b %-d, %Y") }}
+                      </p>
+
+                      <!-- Read more link -->
+                      <p style="margin: 0 0 24px 0;">
+                        <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer"
+                           class="read-more-link"
+                           style="font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                  font-size: 13px;
+                                  font-weight: 600;
+                                  color: #326891;
+                                  text-decoration: none;">Read more &#8594;</a>
+                      </p>
+
+                    </td>
+                  </tr>
+                  {% endif %}
+
+                {% endfor %}
+                <!-- end featured articles loop -->
+
+                <!-- Bottom padding row to close off the warm background -->
+                <tr>
+                  <td style="background-color: #f7f5f0; height: 8px; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                      aria-hidden="true">&nbsp;</td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+          <!-- End featured section -->
+
+
+          {# ─────────────────────────────────────────────────────────
+             STANDARD SECTION
+             ──────────────────────────────────────────────────────── #}
+          {% elif section.section_type == "standard" %}
+
+          <!-- Section top spacer -->
+          <tr>
+            <td style="height: 8px; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                aria-hidden="true">&nbsp;</td>
+          </tr>
+
+          <tr>
+            <td class="padded-cell" style="background-color: #ffffff; padding: 32px 48px 0 48px;">
+
+              <!-- Section label: 3px red left border, uppercase 11px bold -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="border-collapse: collapse; margin-bottom: 24px;">
+                <tr>
+                  <!-- Red left accent bar (3px wide) -->
+                  <td width="3" valign="top"
+                      style="background-color: #c41230; font-size: 0; line-height: 0; width: 3px; padding: 0;"
+                      aria-hidden="true">&nbsp;</td>
+                  <td style="padding: 1px 0 1px 10px; vertical-align: middle;">
+                    <span style="font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                 font-size: 11px;
+                                 font-weight: 700;
+                                 letter-spacing: 2px;
+                                 text-transform: uppercase;
+                                 color: #121212;">{{ section.title }}</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Article list -->
+              {% for article in section.articles %}
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="border-collapse: collapse; margin-bottom: 0;">
+                {% if not loop.first %}
+                <tr>
+                  <td style="border-top: 1px solid #e2e2e2; font-size: 0; line-height: 0; padding: 0 0 16px 0; mso-line-height-rule: exactly;"
+                      aria-hidden="true">&nbsp;</td>
+                </tr>
+                {% endif %}
+                <tr>
+                  <td style="padding-bottom: 16px;">
+
+                    <!-- Category label -->
+                    <p style="margin: 0 0 5px 0;
+                              font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                              font-size: 11px;
+                              font-weight: 700;
+                              letter-spacing: 1.5px;
+                              text-transform: uppercase;
+                              color: #666666;">{{ article.category }}</p>
+
+                    <!-- Article title — 16px Georgia -->
+                    <h3 style="margin: 0 0 8px 0;
+                               font-family: Georgia, 'Times New Roman', Times, serif;
+                               font-size: 16px;
+                               font-weight: bold;
+                               line-height: 1.4;
+                               color: #121212;">
+                      <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer"
+                         class="article-title-link"
+                         style="color: #121212; text-decoration: none;">{{ article.title }}</a>
+                    </h3>
+
+                    <!-- Summary — 14px sans-serif -->
+                    {% if article.summary %}
+                    <p style="margin: 0 0 8px 0;
+                              font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                              font-size: 14px;
+                              line-height: 1.65;
+                              color: #333333;">{{ article.summary }}</p>
+                    {% endif %}
+
+                    <!-- Metadata + inline read link -->
+                    <p style="margin: 0;
+                              font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                              font-size: 12px;
+                              line-height: 1.5;
+                              color: #666666;">
+                      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">{{ article.source }}</span>{% if article.author %}&nbsp;&#183;&nbsp;{{ article.author }}{% endif %}&nbsp;&#183;&nbsp;{{ article.read_time_minutes }}&nbsp;min&nbsp;read&nbsp;&#183;&nbsp;{{ article.published_at.strftime("%b %-d, %Y") }}&nbsp;&#183;&nbsp;<a href="{{ article.url }}" target="_blank" rel="noopener noreferrer" class="meta-link" style="color: #326891; text-decoration: none;">Read &#8594;</a>
+                    </p>
+
+                  </td>
+                </tr>
+              </table>
+
+              {% endfor %}
+              <!-- end standard articles loop -->
+
+            </td>
+          </tr>
+
+          <!-- Section bottom spacer -->
+          <tr>
+            <td style="height: 8px; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                aria-hidden="true">&nbsp;</td>
+          </tr>
+          <!-- End standard section -->
+
+
+          {# ─────────────────────────────────────────────────────────
+             BRIEF SECTION
+             ──────────────────────────────────────────────────────── #}
+          {% elif section.section_type == "brief" %}
+
+          <!-- Section top spacer -->
+          <tr>
+            <td style="height: 8px; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                aria-hidden="true">&nbsp;</td>
+          </tr>
+
+          <tr>
+            <td class="padded-cell" style="background-color: #ffffff; padding: 32px 48px 0 48px;">
+
+              <!-- "IN BRIEF" section label with red left border -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="border-collapse: collapse; margin-bottom: 20px;">
+                <tr>
+                  <td width="3" valign="top"
+                      style="background-color: #c41230; font-size: 0; line-height: 0; width: 3px; padding: 0;"
+                      aria-hidden="true">&nbsp;</td>
+                  <td style="padding: 1px 0 1px 10px; vertical-align: middle;">
+                    <span style="font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                 font-size: 11px;
+                                 font-weight: 700;
+                                 letter-spacing: 2px;
+                                 text-transform: uppercase;
+                                 color: #c41230;">IN BRIEF</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Brief article list — compact bullets -->
+              {% for article in section.articles %}
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="border-collapse: collapse;">
+                {% if not loop.first %}
+                <tr>
+                  <td style="border-top: 1px solid #e2e2e2; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                      aria-hidden="true">&nbsp;</td>
+                </tr>
+                {% endif %}
+                <tr>
+                  <td style="padding: 10px 0;">
+
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                           style="border-collapse: collapse;">
+                      <tr>
+                        <!-- Single-character arrow bullet -->
+                        <td width="18" valign="top"
+                            style="font-family: Georgia, 'Times New Roman', Times, serif;
+                                   font-size: 16px;
+                                   line-height: 1.4;
+                                   color: #c41230;
+                                   padding: 0;
+                                   width: 18px;">&#8250;</td>
+
+                        <td style="padding-left: 6px; vertical-align: top;">
+                          <!-- Bold linked title inline -->
+                          <span style="font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                       font-size: 14px;
+                                       font-weight: 700;
+                                       line-height: 1.45;
+                                       color: #121212;">
+                            <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer"
+                               class="article-title-link"
+                               style="color: #121212; text-decoration: none;">{{ article.title }}</a>
+                          </span>
+
+                          <!-- Em-dash one-liner summary (truncated) -->
+                          {% if article.summary %}
+                          <span style="font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                       font-size: 13px;
+                                       line-height: 1.45;
+                                       color: #444444;">&#8201;&#8212;&#8201;{{ article.summary | truncate(120, true, '&#8230;') }}</span>
+                          {% endif %}
+
+                          <!-- Source tag -->
+                          <span style="display: inline-block;
+                                       font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                       font-size: 11px;
+                                       font-weight: 600;
+                                       letter-spacing: 0.5px;
+                                       text-transform: uppercase;
+                                       color: #888888;
+                                       margin-left: 5px;">{{ article.source }}</span>
+                        </td>
+                      </tr>
+                    </table>
+
+                  </td>
+                </tr>
+              </table>
+
+              {% endfor %}
+              <!-- end brief articles loop -->
+
+            </td>
+          </tr>
+
+          <!-- Section bottom spacer -->
+          <tr>
+            <td style="height: 8px; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                aria-hidden="true">&nbsp;</td>
+          </tr>
+          <!-- End brief section -->
+
+
+          {# ─────────────────────────────────────────────────────────
+             FALLBACK — unknown section_type treated as standard
+             ──────────────────────────────────────────────────────── #}
+          {% else %}
+
+          <tr>
+            <td style="height: 8px; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                aria-hidden="true">&nbsp;</td>
+          </tr>
+
+          <tr>
+            <td class="padded-cell" style="background-color: #ffffff; padding: 32px 48px 0 48px;">
+
+              <!-- Section label -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="border-collapse: collapse; margin-bottom: 24px;">
+                <tr>
+                  <td width="3" valign="top"
+                      style="background-color: #c41230; font-size: 0; line-height: 0; width: 3px; padding: 0;"
+                      aria-hidden="true">&nbsp;</td>
+                  <td style="padding: 1px 0 1px 10px; vertical-align: middle;">
+                    <span style="font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                                 font-size: 11px;
+                                 font-weight: 700;
+                                 letter-spacing: 2px;
+                                 text-transform: uppercase;
+                                 color: #121212;">{{ section.title }}</span>
+                  </td>
+                </tr>
+              </table>
+
+              {% for article in section.articles %}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="border-collapse: collapse; margin-bottom: 0;">
+                {% if not loop.first %}
+                <tr>
+                  <td style="border-top: 1px solid #e2e2e2; font-size: 0; line-height: 0; padding: 0 0 16px 0; mso-line-height-rule: exactly;"
+                      aria-hidden="true">&nbsp;</td>
+                </tr>
+                {% endif %}
+                <tr>
+                  <td style="padding-bottom: 16px;">
+                    <h3 style="margin: 0 0 8px 0;
+                               font-family: Georgia, 'Times New Roman', Times, serif;
+                               font-size: 16px;
+                               font-weight: bold;
+                               line-height: 1.4;
+                               color: #121212;">
+                      <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer"
+                         class="article-title-link"
+                         style="color: #121212; text-decoration: none;">{{ article.title }}</a>
+                    </h3>
+                    {% if article.summary %}
+                    <p style="margin: 0 0 8px 0;
+                              font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                              font-size: 14px;
+                              line-height: 1.65;
+                              color: #333333;">{{ article.summary }}</p>
+                    {% endif %}
+                    <p style="margin: 0;
+                              font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                              font-size: 12px;
+                              line-height: 1.5;
+                              color: #666666;">
+                      <span style="font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">{{ article.source }}</span>&nbsp;&#183;&nbsp;{{ article.read_time_minutes }}&nbsp;min&nbsp;read
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              {% endfor %}
+
+            </td>
+          </tr>
+          <tr>
+            <td style="height: 8px; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                aria-hidden="true">&nbsp;</td>
+          </tr>
+          <!-- End fallback section -->
+
+          {% endif %}
+          <!-- end section type switch -->
+
+
+        {% endfor %}
+        <!-- ═══ End sections loop ═══ -->
+
+
+        <!-- Pre-footer divider -->
+        <tr>
+          <td style="padding: 24px 48px 0 48px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="border-collapse: collapse;">
+              <tr>
+                <td style="border-top: 1px solid #e2e2e2; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                    aria-hidden="true">&nbsp;</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+
+        <!-- ═══════════════════════════════════════════════════════════
+             FOOTER
+             ─ Warm off-white background (#f7f5f0)
+             ─ Newsletter name (Georgia 16px bold)
+             ─ Copyright year
+             ─ Subscription note
+             ─ Unsubscribe / Manage preferences links
+             ═══════════════════════════════════════════════════════════ -->
+        <tr>
+          <td class="padded-cell"
+              style="background-color: #f7f5f0;
+                     border-top: 3px solid #e2e2e2;
+                     padding: 32px 48px 40px 48px;
+                     text-align: center;">
+
+            <!-- Newsletter name -->
+            <p style="margin: 0 0 8px 0;
+                      font-family: Georgia, 'Times New Roman', Times, serif;
+                      font-size: 16px;
+                      font-weight: bold;
+                      color: #121212;">{{ newsletter.title }}</p>
+
+            <!-- Copyright -->
+            <p style="margin: 0 0 16px 0;
+                      font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                      font-size: 12px;
+                      color: #666666;
+                      line-height: 1.5;">&#169; {{ newsletter.date.year }}&nbsp;{{ newsletter.title }}. All rights reserved.</p>
+
+            <!-- Short footer divider -->
+            <table role="presentation" width="64" cellpadding="0" cellspacing="0" border="0"
+                   style="border-collapse: collapse; margin: 0 auto 16px auto;">
+              <tr>
+                <td style="border-top: 1px solid #cccccc; font-size: 0; line-height: 0; padding: 0; mso-line-height-rule: exactly;"
+                    aria-hidden="true">&nbsp;</td>
+              </tr>
+            </table>
+
+            <!-- Subscription note -->
+            <p style="margin: 0 0 10px 0;
+                      font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                      font-size: 12px;
+                      color: #666666;
+                      line-height: 1.65;">You&#8217;re receiving this because you subscribed to<br /><em>{{ newsletter.title }}</em>.</p>
+
+            <!-- Unsubscribe + preferences links -->
+            <p style="margin: 0;
+                      font-family: -apple-system, Arial, 'Helvetica Neue', sans-serif;
+                      font-size: 11px;
+                      color: #999999;
+                      line-height: 1.5;">
+              <a href="#unsubscribe"
+                 class="unsub-link"
+                 style="color: #666666; text-decoration: underline;">Unsubscribe</a>
+              &nbsp;&#183;&nbsp;
+              <a href="#preferences"
+                 class="unsub-link"
+                 style="color: #666666; text-decoration: underline;">Manage preferences</a>
+            </p>
+
+          </td>
+        </tr>
+
+
+      </table>
+      <!-- ═══ End main container ═══ -->
+
+    </td>
+  </tr>
+</table>
+<!-- ═══ End outer wrapper ═══ -->
+
+</body>
+</html>
