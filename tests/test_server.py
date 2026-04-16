@@ -247,7 +247,7 @@ def test_get_run_newsletter_not_found(client):
 def test_dashboard_renders(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert "Agentic AI News" in response.text
+    assert "Agentic Times" in response.text
 
 
 def test_dashboard_shows_run_history(client, temp_db):
