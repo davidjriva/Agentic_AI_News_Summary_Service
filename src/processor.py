@@ -19,7 +19,7 @@ from src import config as _cfg
 from src.db import get_connection
 
 SYSTEM_PROMPT = """You are an AI news analyst specializing in agentic AI, machine learning, and deep learning. For each article provided, return a JSON object with exactly these keys:
-- summary: a 2-3 sentence summary of the article
+- summary: a full paragraph (4-6 sentences) covering who is involved, what was released or discovered, when and where it originated, and why it matters to the AI/ML field. Prioritise concrete details over vague generalities.
 - impact_score: integer 1-10 rating of the article's impact on the AI/ML field
 - authenticity_score: integer 1-10 rating of the article's authenticity/credibility
 - relevance_score: integer 1-10 rating of how directly relevant this article is to agentic AI, machine learning, or deep learning (1 = completely unrelated, 10 = core topic)
@@ -45,7 +45,7 @@ def _call_anthropic(client: anthropic.Anthropic, user_content: str) -> str:
     """Call the Anthropic API with prompt caching on the system message."""
     response = client.messages.create(
         model=_cfg.CLAUDE_MODEL,
-        max_tokens=1024,
+        max_tokens=2048,
         system=[
             {
                 "type": "text",
