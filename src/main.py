@@ -13,7 +13,7 @@ from src.db import get_connection
 from src.emailer import send_newsletter
 from src.fetcher import fetch_articles
 from src.filter import filter_articles
-from src.processor import process_articles
+from src.processor import process_articles, summarize_articles
 from src.ranker import rank_articles
 from src.renderer import render_newsletter
 
@@ -61,22 +61,11 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             conn.close()
             tqdm.write(f"[{run_id}] Clean run: cleared seen_articles for past 12 hours")
 
-        with tqdm(total=6, desc="Pipeline", leave=True) as bar:
+        with tqdm(total=7, desc="Pipeline", leave=True) as bar:
             bar.set_description("Fetching articles")
             articles = fetch_articles()
             tqdm.write(f"[{run_id}] Fetched {len(articles)} articles")
             bar.update(1)
-
-            conn = get_connection()
-            conn.executemany(
-                "INSERT INTO run_articles (run_id, title, url, publication, published_at) VALUES (?, ?, ?, ?, ?)",
-                [
-                    (run_id, a["title"], a["url"], a["publication"], str(a.get("published_at", "")))
-                    for a in articles
-                ],
-            )
-            conn.commit()
-            conn.close()
 
             provider_label = "local llama server" if LLM_PROVIDER == "local" else "Claude"
             bar.set_description(f"Processing with {provider_label}")
@@ -105,6 +94,22 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             articles = rank_articles(articles)
             tqdm.write(f"[{run_id}] Ranked {len(articles)} articles")
             bar.update(1)
+
+            bar.set_description("Generating summaries")
+            articles = summarize_articles(articles, run_id=run_id)
+            tqdm.write(f"[{run_id}] Summaries generated for {len(articles)} articles")
+            bar.update(1)
+
+            conn = get_connection()
+            conn.executemany(
+                "INSERT INTO run_articles (run_id, title, url, publication, published_at, rank_score) VALUES (?, ?, ?, ?, ?, ?)",
+                [
+                    (run_id, a["title"], a["url"], a["publication"], str(a.get("published_at", "")), a.get("rank_score"))
+                    for a in articles
+                ],
+            )
+            conn.commit()
+            conn.close()
 
             bar.set_description("Rendering")
             html, plain_text = render_newsletter(articles, started_at)

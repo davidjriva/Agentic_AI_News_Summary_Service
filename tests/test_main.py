@@ -23,6 +23,7 @@ def test_run_pipeline_uses_tqdm(monkeypatch):
         patch("src.main.process_articles", return_value=[]),
         patch("src.main.filter_articles", return_value=([], [])),
         patch("src.main.rank_articles", return_value=[]),
+        patch("src.main.summarize_articles", return_value=[]),
         patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
         patch("src.main.get_connection"),
         patch("src.main.tqdm", tqdm_cls),
@@ -30,8 +31,8 @@ def test_run_pipeline_uses_tqdm(monkeypatch):
         from src.main import run_pipeline
         run_pipeline(dry_run=True)
 
-    tqdm_cls.assert_called_once_with(total=6, desc="Pipeline", leave=True)
-    assert bar_mock.update.call_count == 6
+    tqdm_cls.assert_called_once_with(total=7, desc="Pipeline", leave=True)
+    assert bar_mock.update.call_count == 7
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +165,7 @@ class TestFilterCalledBetweenProcessAndRank:
             patch("src.main.process_articles", side_effect=mock_process),
             patch("src.main.filter_articles", side_effect=mock_filter),
             patch("src.main.rank_articles", side_effect=mock_rank),
+            patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
             patch("src.main.send_newsletter"),
         ):
@@ -188,6 +190,7 @@ class TestFilterCalledBetweenProcessAndRank:
             patch("src.main.process_articles", return_value=kept + dropped),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", side_effect=mock_rank),
+            patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
             patch("src.main.send_newsletter"),
         ):
@@ -220,6 +223,7 @@ class TestDroppedArticlesPersisted:
             patch("src.main.process_articles", return_value=kept + dropped),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", return_value=kept),
+            patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
             patch("src.main.send_newsletter"),
         ):
@@ -246,6 +250,7 @@ class TestDroppedArticlesPersisted:
             patch("src.main.process_articles", return_value=kept),
             patch("src.main.filter_articles", return_value=(kept, [])),
             patch("src.main.rank_articles", return_value=kept),
+            patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
             patch("src.main.send_newsletter"),
         ):
@@ -270,6 +275,7 @@ class TestDroppedArticlesPersisted:
             patch("src.main.process_articles", return_value=dropped),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", return_value=kept),
+            patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
             patch("src.main.send_newsletter"),
         ):
@@ -305,6 +311,7 @@ class TestRunCountersUpdated:
             patch("src.main.process_articles", return_value=kept + dropped),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", return_value=kept),
+            patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
             patch("src.main.send_newsletter"),
         ):
@@ -339,6 +346,7 @@ class TestRunCountersUpdated:
             patch("src.main.process_articles", return_value=kept),
             patch("src.main.filter_articles", return_value=(kept, [])),
             patch("src.main.rank_articles", return_value=kept),
+            patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
             patch("src.main.send_newsletter"),
         ):
@@ -375,6 +383,7 @@ class TestRunCountersUpdated:
             patch("src.main.process_articles", return_value=kept + dropped),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", return_value=kept),
+            patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
             patch("src.main.send_newsletter"),
         ):

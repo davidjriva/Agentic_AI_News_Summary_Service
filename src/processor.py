@@ -19,7 +19,7 @@ from src import config as _cfg
 from src.db import get_connection
 
 SYSTEM_PROMPT = """You are an AI news analyst specializing in agentic AI, machine learning, and deep learning. For each article provided, return a JSON object with exactly these keys:
-- summary: a full paragraph (4-6 sentences) covering who is involved, what was released or discovered, when and where it originated, and why it matters to the AI/ML field. Prioritise concrete details over vague generalities.
+- summary: a 2-3 sentence summary of the article
 - impact_score: integer 1-10 rating of the article's impact on the AI/ML field
 - authenticity_score: integer 1-10 rating of the article's authenticity/credibility
 - relevance_score: integer 1-10 rating of how directly relevant this article is to agentic AI, machine learning, or deep learning (1 = completely unrelated, 10 = core topic)
@@ -40,12 +40,23 @@ Authenticity scoring rubric:
 
 Return ONLY a valid JSON object with no additional text."""
 
+SUMMARY_SYSTEM_PROMPT = """You are an AI news journalist writing for a technical audience. Write a detailed editorial paragraph summarizing the provided article.
+
+Cover all of the following in 4-6 sentences:
+- Who: the organization, researchers, or individuals involved
+- What: what was released, discovered, or announced — with concrete specifics
+- When / Where: timing and context of origin
+- Why it matters: concrete significance and implications for the AI/ML field
+
+Return ONLY a valid JSON object with one key:
+- summary: the full paragraph (continuous prose, no line breaks, no bullet points)"""
+
 
 def _call_anthropic(client: anthropic.Anthropic, user_content: str) -> str:
     """Call the Anthropic API with prompt caching on the system message."""
     response = client.messages.create(
         model=_cfg.CLAUDE_MODEL,
-        max_tokens=2048,
+        max_tokens=1024,
         system=[
             {
                 "type": "text",
@@ -69,6 +80,41 @@ def _call_local_llm(user_content: str) -> str:
                 {"role": "user", "content": user_content},
             ],
             "max_tokens": 1024,
+        },
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()["choices"][0]["message"]["content"]
+
+
+def _call_anthropic_summary(client: anthropic.Anthropic, user_content: str) -> str:
+    """Call the Anthropic API with the detailed paragraph summary prompt."""
+    response = client.messages.create(
+        model=_cfg.CLAUDE_MODEL,
+        max_tokens=2048,
+        system=[
+            {
+                "type": "text",
+                "text": SUMMARY_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=[{"role": "user", "content": user_content}],
+    )
+    return response.content[0].text
+
+
+def _call_local_llm_summary(user_content: str) -> str:
+    """Call a local llama.cpp server with the detailed paragraph summary prompt."""
+    response = requests.post(
+        f"{_cfg.LOCAL_LLM_URL}/v1/chat/completions",
+        json={
+            "model": _cfg.LOCAL_LLM_MODEL,
+            "messages": [
+                {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+            "max_tokens": 2048,
         },
         timeout=60,
     )
@@ -138,5 +184,46 @@ def process_articles(articles: list[dict], run_id: str | None = None) -> list[di
             result = _process_one(article, client, use_local, run_id)
             if result is not None:
                 results.append(result)
+            bar.update(1)
+    return results
+
+
+def summarize_articles(articles: list[dict], run_id: str | None = None) -> list[dict]:
+    """Re-generate full-paragraph summaries for the given articles.
+
+    Best-effort: on failure, the original short summary is kept and the article
+    is not dead-lettered — summary regeneration must never drop an article.
+    """
+    use_local = _cfg.LLM_PROVIDER == "local"
+    client = None if use_local else anthropic.Anthropic()
+
+    results = []
+    with tqdm(total=len(articles), desc="Summaries", unit="art", leave=False) as bar:
+        for article in articles:
+            user_content = (
+                f"Author: {article.get('author', '')}\n"
+                f"Publication: {article.get('publication', '')}\n"
+                f"Title: {article.get('title', '')}\n"
+                f"Description: {article.get('description', '')}"
+            )
+            try:
+                for attempt in range(_cfg.PROCESSOR_MAX_RETRIES + 1):
+                    try:
+                        text = (
+                            _call_local_llm_summary(user_content)
+                            if use_local
+                            else _call_anthropic_summary(client, user_content)
+                        )
+                        parsed = json.loads(text)
+                        article = {**article, "summary": parsed["summary"]}
+                        break
+                    except Exception:
+                        if attempt < _cfg.PROCESSOR_MAX_RETRIES:
+                            time.sleep(_cfg.PROCESSOR_RETRY_DELAY)
+                        else:
+                            raise
+            except Exception as exc:
+                tqdm.write(f"[{run_id}] Summary regeneration failed for {article.get('url', '')}: {exc}")
+            results.append(article)
             bar.update(1)
     return results

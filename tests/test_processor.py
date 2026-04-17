@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 import src.config as _cfg
-from src.processor import process_articles
+from src.processor import process_articles, summarize_articles
 
 
 def make_article(**overrides) -> dict:
@@ -232,7 +232,7 @@ class TestPromptCachingSystemMessage:
         call_kwargs = mock_client.messages.create.call_args
         kwargs = call_kwargs.kwargs if call_kwargs.kwargs else call_kwargs[1]
         assert "max_tokens" in kwargs
-        assert kwargs["max_tokens"] == 2048
+        assert kwargs["max_tokens"] == 1024
 
 
 def _make_local_mock_response(content: str) -> MagicMock:
@@ -472,3 +472,114 @@ class TestRetryAndDeadLetter:
 
         assert written["url"] == article["url"]
         assert "api down" in written["reason"]
+
+
+# ---------------------------------------------------------------------------
+# Test: summarize_articles
+# ---------------------------------------------------------------------------
+
+def _make_processed_article(url="http://example.com") -> dict:
+    return {
+        "url": url,
+        "title": "Test Article",
+        "publication": "example.com",
+        "author": "Test Author",
+        "description": "Some description text.",
+        "summary": "Short summary.",
+        "impact_score": 8,
+        "authenticity_score": 7,
+        "relevance_score": 9,
+        "rank_score": 7.6,
+    }
+
+
+class TestSummarizeArticles:
+    """summarize_articles replaces summary with a full paragraph; keeps original on failure."""
+
+    def test_summary_replaced_on_success(self):
+        article = _make_processed_article()
+        long_summary = "This is a detailed paragraph covering who what when where and why it matters to the AI field."
+        mock_client = _make_mock_client(json.dumps({"summary": long_summary}))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles([article])
+
+        assert results[0]["summary"] == long_summary
+
+    def test_other_fields_preserved(self):
+        article = _make_processed_article()
+        mock_client = _make_mock_client(json.dumps({"summary": "Detailed summary."}))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles([article])
+
+        assert results[0]["impact_score"] == article["impact_score"]
+        assert results[0]["rank_score"] == article["rank_score"]
+        assert results[0]["url"] == article["url"]
+
+    def test_keeps_original_summary_on_api_failure(self):
+        article = _make_processed_article()
+        original_summary = article["summary"]
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = Exception("API error")
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles([article])
+
+        assert len(results) == 1
+        assert results[0]["summary"] == original_summary
+
+    def test_keeps_original_summary_on_malformed_json(self):
+        article = _make_processed_article()
+        original_summary = article["summary"]
+        mock_client = _make_mock_client("not valid json")
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles([article])
+
+        assert len(results) == 1
+        assert results[0]["summary"] == original_summary
+
+    def test_processes_all_articles(self):
+        articles = [_make_processed_article(f"http://example.com/{i}") for i in range(3)]
+        mock_client = _make_mock_client(json.dumps({"summary": "Full paragraph."}))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles(articles)
+
+        assert len(results) == 3
+        assert all(r["summary"] == "Full paragraph." for r in results)
+
+    def test_failure_does_not_drop_article(self):
+        articles = [_make_processed_article(f"http://example.com/{i}") for i in range(3)]
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = Exception("down")
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles(articles)
+
+        assert len(results) == 3
+
+    def test_local_provider_called_for_summaries(self):
+        article = _make_processed_article()
+        mock_resp = _make_local_mock_response(json.dumps({"summary": "Full paragraph."}))
+
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            results = summarize_articles([article])
+
+        assert results[0]["summary"] == "Full paragraph."
+        payload = mock_post.call_args[1]["json"]
+        assert payload["max_tokens"] == 2048

@@ -23,7 +23,7 @@ HN_ALGOLIA_URL = "https://hn.algolia.com/api/v1/search?tags=story&query=agentic+
 _recipients_env = os.getenv("EMAIL_RECIPIENTS", "")
 RECIPIENTS: list[str] = [r.strip() for r in _recipients_env.split(",") if r.strip()]
 
-TOP_N: int = 15
+TOP_N: int = 10
 MAX_ARTICLES_PER_SOURCE: int = 10
 MAX_PER_NEWSLETTER_SOURCE: int = 3
 CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
