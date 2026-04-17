@@ -17,6 +17,31 @@ from src.main import run_pipeline
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
+_PREVIEW_ARTICLES: dict[str, list[dict]] = {
+    "Anthropic Blog": [
+        {"title": "Claude 4 Achieves State-of-the-Art on Long-Context Reasoning", "url": "#", "rank_score": 9.8},
+        {"title": "Introducing Constitutional AI v2: Safer by Default", "url": "#", "rank_score": 8.4},
+    ],
+    "OpenAI Blog": [
+        {"title": "GPT-5 Technical Report: Multimodal Capabilities and Alignment", "url": "#", "rank_score": 9.2},
+        {"title": "DALL-E 4 Released with Real-Time Video Generation", "url": "#", "rank_score": 7.6},
+    ],
+    "ArXiv": [
+        {"title": "Scaling Laws for Mixture-of-Experts Language Models", "url": "#", "rank_score": 8.8},
+        {"title": "Self-Play Fine-Tuning Converts Weak to Strong Language Models", "url": "#", "rank_score": 7.2},
+        {"title": "RoPE Scaling Methods for Long-Context LLMs: A Survey", "url": "#", "rank_score": 5.8},
+    ],
+    "MIT Technology Review": [
+        {"title": "AI Regulation in 2026: What the EU Act Means for Developers", "url": "#", "rank_score": 6.4},
+        {"title": "The Hidden Carbon Cost of Training Large Language Models", "url": "#", "rank_score": 5.2},
+    ],
+    "Hacker News": [
+        {"title": "Ask HN: What is your current local LLM setup in 2026?", "url": "#", "rank_score": 4.8},
+        {"title": "Llama 4 70B runs at 120 tok/s on a single RTX 5090", "url": "#", "rank_score": 6.0},
+        {"title": "Show HN: Open-source tool for LLM prompt versioning", "url": "#", "rank_score": 4.0},
+    ],
+}
+
 app = FastAPI(title="Agentic AI News Dashboard")
 
 _running_lock = threading.Lock()
@@ -38,6 +63,21 @@ def dashboard(request: Request) -> HTMLResponse:
         request,
         "dashboard.html.jinja2",
         {"runs": runs, "running": _is_running, "active": "dashboard"},
+    )
+
+
+@app.get("/preview", response_class=HTMLResponse)
+def preview(request: Request) -> HTMLResponse:
+    """Render the run detail page with fake articles for UI development."""
+    return templates.TemplateResponse(
+        request,
+        "run_detail.html.jinja2",
+        {
+            "run_id": "preview",
+            "started_at": "Preview Mode",
+            "sources": _PREVIEW_ARTICLES,
+            "preview": True,
+        },
     )
 
 
@@ -156,7 +196,7 @@ def get_run(request: Request, run_id: str) -> HTMLResponse:
         "SELECT status, started_at FROM runs WHERE id=?", (run_id,)
     ).fetchone()
     source_rows = conn.execute(
-        "SELECT publication, title, url FROM run_articles WHERE run_id=? ORDER BY publication, title",
+        "SELECT publication, title, url, rank_score FROM run_articles WHERE run_id=? ORDER BY publication, title",
         (run_id,),
     ).fetchall()
     conn.close()
@@ -169,7 +209,7 @@ def get_run(request: Request, run_id: str) -> HTMLResponse:
     sources: dict[str, list[dict]] = {}
     for r in source_rows:
         pub = r["publication"] or "Unknown"
-        sources.setdefault(pub, []).append({"title": r["title"], "url": r["url"]})
+        sources.setdefault(pub, []).append({"title": r["title"], "url": r["url"], "rank_score": r["rank_score"]})
 
     return templates.TemplateResponse(
         request,

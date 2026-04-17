@@ -484,3 +484,37 @@ class TestDashboardDroppedFailedColumns:
         assert response.status_code == 200
         assert "4" in response.text   # dropped_count
         assert "2" in response.text   # failed_count
+
+
+# ---------------------------------------------------------------------------
+# GET /preview
+# ---------------------------------------------------------------------------
+
+class TestPreviewRoute:
+    @pytest.fixture()
+    def preview_client(self):
+        from src.server import app
+        return TestClient(app)
+
+    def test_preview_returns_200(self, preview_client):
+        response = preview_client.get("/preview")
+        assert response.status_code == 200
+
+    def test_preview_contains_banner(self, preview_client):
+        response = preview_client.get("/preview")
+        assert "Preview Mode" in response.text
+
+    def test_preview_contains_articles_by_source(self, preview_client):
+        response = preview_client.get("/preview")
+        assert "Articles by Source" in response.text
+
+    def test_preview_shows_fake_article_titles(self, preview_client):
+        from src.server import _PREVIEW_ARTICLES
+        response = preview_client.get("/preview")
+        for articles in _PREVIEW_ARTICLES.values():
+            for article in articles:
+                assert article["title"] in response.text
+
+    def test_preview_has_no_newsletter_iframe_src(self, preview_client):
+        response = preview_client.get("/preview")
+        assert "/runs/preview/newsletter" not in response.text
