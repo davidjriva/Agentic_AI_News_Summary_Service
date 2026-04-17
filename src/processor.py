@@ -13,6 +13,7 @@ import time
 
 import anthropic
 import requests
+from tqdm import tqdm
 
 from src import config as _cfg
 from src.db import get_connection
@@ -132,8 +133,10 @@ def process_articles(articles: list[dict], run_id: str | None = None) -> list[di
     client = None if use_local else anthropic.Anthropic()
 
     results = []
-    for article in articles:
-        result = _process_one(article, client, use_local, run_id)
-        if result is not None:
-            results.append(result)
+    with tqdm(total=len(articles), desc="Articles", unit="art", leave=False) as bar:
+        for article in articles:
+            result = _process_one(article, client, use_local, run_id)
+            if result is not None:
+                results.append(result)
+            bar.update(1)
     return results

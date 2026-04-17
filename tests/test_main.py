@@ -8,6 +8,33 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
+# Test: tqdm stage bar
+# ---------------------------------------------------------------------------
+
+def test_run_pipeline_uses_tqdm(monkeypatch):
+    """Stage bar should be created with total=6 during a dry run (6 stages including filter)."""
+    bar_mock = MagicMock()
+    bar_mock.__enter__ = MagicMock(return_value=bar_mock)
+    bar_mock.__exit__ = MagicMock(return_value=False)
+    tqdm_cls = MagicMock(return_value=bar_mock)
+
+    with (
+        patch("src.main.fetch_articles", return_value=[]),
+        patch("src.main.process_articles", return_value=[]),
+        patch("src.main.filter_articles", return_value=([], [])),
+        patch("src.main.rank_articles", return_value=[]),
+        patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
+        patch("src.main.get_connection"),
+        patch("src.main.tqdm", tqdm_cls),
+    ):
+        from src.main import run_pipeline
+        run_pipeline(dry_run=True)
+
+    tqdm_cls.assert_called_once_with(total=6, desc="Pipeline", leave=True)
+    assert bar_mock.update.call_count == 6
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 

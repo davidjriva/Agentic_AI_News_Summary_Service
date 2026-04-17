@@ -347,6 +347,38 @@ class TestLocalLLMProvider:
         mock_anthropic.assert_not_called()
 
 
+class TestArticleTqdmBar:
+    """process_articles should tick tqdm once per article."""
+
+    def test_tqdm_called_with_correct_total(self):
+        articles = [
+            make_article(url="https://example.com/1"),
+            make_article(url="https://example.com/2"),
+        ]
+
+        bar_mock = MagicMock()
+        bar_mock.__enter__ = MagicMock(return_value=bar_mock)
+        bar_mock.__exit__ = MagicMock(return_value=False)
+        tqdm_cls = MagicMock(return_value=bar_mock)
+
+        good_response = json.dumps({
+            "summary": "s", "impact_score": 7, "authenticity_score": 6,
+            "relevance_score": 8, "impact_reason": "r", "authenticity_reason": "r",
+            "relevance_reason": "r",
+        })
+
+        with (
+            patch.object(_cfg, "LLM_PROVIDER", "local"),
+            patch("requests.post", return_value=_make_local_mock_response(good_response)),
+            patch("src.processor.tqdm", tqdm_cls),
+        ):
+            results = process_articles(articles)
+
+        tqdm_cls.assert_called_once_with(total=2, desc="Articles", unit="art", leave=False)
+        assert bar_mock.update.call_count == 2
+        assert len(results) == 2
+
+
 class TestRelevanceScore:
     def test_relevance_score_in_result(self):
         article = make_article()

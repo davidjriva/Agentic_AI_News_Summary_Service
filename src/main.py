@@ -6,6 +6,8 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
+from tqdm import tqdm
+
 from src.config import LLM_PROVIDER
 from src.db import get_connection
 from src.emailer import send_newsletter
@@ -57,59 +59,67 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             )
             conn.commit()
             conn.close()
-            log.info("[%s] Clean run: cleared seen_articles for past 12 hours", run_id)
+            tqdm.write(f"[{run_id}] Clean run: cleared seen_articles for past 12 hours")
 
-        log.info("[%s] Stage 1: Fetching articles…", run_id)
-        articles = fetch_articles()
-        log.info("[%s] Fetched %d articles", run_id, len(articles))
+        with tqdm(total=6, desc="Pipeline", leave=True) as bar:
+            bar.set_description("Fetching articles")
+            articles = fetch_articles()
+            tqdm.write(f"[{run_id}] Fetched {len(articles)} articles")
+            bar.update(1)
 
-        conn = get_connection()
-        conn.executemany(
-            "INSERT INTO run_articles (run_id, title, url, publication, published_at) VALUES (?, ?, ?, ?, ?)",
-            [
-                (run_id, a["title"], a["url"], a["publication"], str(a.get("published_at", "")))
-                for a in articles
-            ],
-        )
-        conn.commit()
-        conn.close()
-
-        provider_label = "local llama server" if LLM_PROVIDER == "local" else "Claude"
-        log.info("[%s] Stage 2: Processing with %s…", run_id, provider_label)
-        articles = process_articles(articles, run_id=run_id)
-        log.info("[%s] Processed %d articles", run_id, len(articles))
-
-        log.info("[%s] Stage 2.5: Filtering by relevance…", run_id)
-        articles, dropped_articles = filter_articles(articles)
-        log.info("[%s] Kept %d articles, dropped %d below relevance threshold", run_id, len(articles), len(dropped_articles))
-
-        if dropped_articles:
             conn = get_connection()
             conn.executemany(
-                "INSERT INTO filtered_articles (run_id, url, title, publication, relevance_score, relevance_reason) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO run_articles (run_id, title, url, publication, published_at) VALUES (?, ?, ?, ?, ?)",
                 [
-                    (run_id, a["url"], a["title"], a["publication"], a["relevance_score"], a.get("relevance_reason", ""))
-                    for a in dropped_articles
+                    (run_id, a["title"], a["url"], a["publication"], str(a.get("published_at", "")))
+                    for a in articles
                 ],
             )
             conn.commit()
             conn.close()
 
-        log.info("[%s] Stage 3: Ranking…", run_id)
-        articles = rank_articles(articles)
-        log.info("[%s] Ranked %d articles", run_id, len(articles))
+            provider_label = "local llama server" if LLM_PROVIDER == "local" else "Claude"
+            bar.set_description(f"Processing with {provider_label}")
+            articles = process_articles(articles, run_id=run_id)
+            tqdm.write(f"[{run_id}] Processed {len(articles)} articles")
+            bar.update(1)
 
-        log.info("[%s] Stage 4: Rendering newsletter…", run_id)
-        html, plain_text = render_newsletter(articles, started_at)
-        log.info("[%s] Newsletter rendered", run_id)
+            bar.set_description("Filtering by relevance")
+            articles, dropped_articles = filter_articles(articles)
+            tqdm.write(f"[{run_id}] Kept {len(articles)} articles, dropped {len(dropped_articles)}")
+            bar.update(1)
 
-        if dry_run:
-            log.info("[%s] Dry-run: printing HTML to stdout", run_id)
-            print(html)
-        else:
-            log.info("[%s] Stage 5: Sending email…", run_id)
-            send_newsletter(html, plain_text, started_at)
-            log.info("[%s] Email sent", run_id)
+            if dropped_articles:
+                conn = get_connection()
+                conn.executemany(
+                    "INSERT INTO filtered_articles (run_id, url, title, publication, relevance_score, relevance_reason) VALUES (?, ?, ?, ?, ?, ?)",
+                    [
+                        (run_id, a["url"], a["title"], a["publication"], a["relevance_score"], a.get("relevance_reason", ""))
+                        for a in dropped_articles
+                    ],
+                )
+                conn.commit()
+                conn.close()
+
+            bar.set_description("Ranking")
+            articles = rank_articles(articles)
+            tqdm.write(f"[{run_id}] Ranked {len(articles)} articles")
+            bar.update(1)
+
+            bar.set_description("Rendering")
+            html, plain_text = render_newsletter(articles, started_at)
+            tqdm.write(f"[{run_id}] Newsletter rendered")
+            bar.update(1)
+
+            if dry_run:
+                bar.set_description("Dry-run")
+                tqdm.write(f"[{run_id}] Dry-run: printing HTML to stdout")
+                print(html)
+            else:
+                bar.set_description("Sending email")
+                send_newsletter(html, plain_text, started_at)
+                tqdm.write(f"[{run_id}] Email sent")
+            bar.update(1)
 
         completed_at = datetime.now(timezone.utc)
         conn = get_connection()
@@ -124,7 +134,7 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
         conn.commit()
         conn.close()
 
-        log.info("[%s] Run complete", run_id)
+        tqdm.write(f"[{run_id}] Run complete")
         return run_id
 
     except Exception as exc:
