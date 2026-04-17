@@ -6,7 +6,7 @@ seen_articles, and returns normalised article dicts.
 from __future__ import annotations
 
 import calendar
-import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
@@ -100,18 +100,7 @@ def fetch_articles() -> list[dict]:
         for row in conn.execute("SELECT url FROM seen_articles").fetchall()
     }
 
-    articles: list[dict] = []
-    new_urls: list[tuple[str, str]] = []  # (url, seen_at ISO)
-
-    for feed_url in FEED_URLS:
-        if feed_url == HN_ALGOLIA_URL:
-            _process_hn(
-                feed_url, now, cutoff, seen_urls, articles, new_urls
-            )
-        else:
-            _process_rss(
-                feed_url, cutoff, seen_urls, articles, new_urls
-            )
+    articles, new_urls = _fetch_parallel(seen_urls, cutoff, now)
 
     # Persist all newly-seen URLs in one batch
     if new_urls:
@@ -125,6 +114,62 @@ def fetch_articles() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Parallel fetch implementation
+# ---------------------------------------------------------------------------
+
+def _dispatch_feed(
+    feed_url: str,
+    now: datetime,
+    cutoff: datetime,
+    seen_urls: set[str],
+) -> tuple[list[dict], list[tuple[str, str]]]:
+    """Route a single feed URL to the appropriate processor.
+
+    Returns (articles, new_urls) without mutating any shared state.
+    """
+    if feed_url == HN_ALGOLIA_URL:
+        return _process_hn(feed_url, now, cutoff, seen_urls)
+    return _process_rss(feed_url, cutoff, seen_urls)
+
+
+def _fetch_parallel(
+    seen_urls: set[str],
+    cutoff: datetime,
+    now: datetime,
+) -> tuple[list[dict], list[tuple[str, str]]]:
+    """Fetch all feeds concurrently using ThreadPoolExecutor.
+
+    All processors receive the same seen_urls snapshot (read-only during
+    concurrent execution). Cross-feed URL duplicates are resolved after
+    collection via seen_in_run.
+
+    Returns (articles, new_urls). Does NOT touch the database.
+    """
+    articles: list[dict] = []
+    new_urls: list[tuple[str, str]] = []
+    seen_in_run: set[str] = set()
+
+    with ThreadPoolExecutor(max_workers=min(10, len(FEED_URLS))) as executor:
+        futures = {
+            executor.submit(_dispatch_feed, url, now, cutoff, seen_urls): url
+            for url in FEED_URLS
+        }
+        for future in as_completed(futures):
+            try:
+                feed_articles, feed_new_urls = future.result()
+            except Exception:
+                continue
+            # feed_articles and feed_new_urls are parallel lists
+            for article, (url, seen_at) in zip(feed_articles, feed_new_urls):
+                if url not in seen_in_run:
+                    seen_in_run.add(url)
+                    articles.append(article)
+                    new_urls.append((url, seen_at))
+
+    return articles, new_urls
+
+
+# ---------------------------------------------------------------------------
 # Per-source processors
 # ---------------------------------------------------------------------------
 
@@ -132,14 +177,18 @@ def _process_rss(
     feed_url: str,
     cutoff: datetime,
     seen_urls: set[str],
-    articles: list[dict],
-    new_urls: list[tuple[str, str]],
-) -> None:
-    """Parse an RSS/Atom feed and append qualifying articles."""
+) -> tuple[list[dict], list[tuple[str, str]]]:
+    """Parse an RSS/Atom feed and return qualifying articles.
+
+    Returns (articles, new_urls) without mutating any shared state.
+    """
+    articles: list[dict] = []
+    new_urls: list[tuple[str, str]] = []
+
     try:
         feed = feedparser.parse(feed_url)
     except Exception:
-        return
+        return articles, new_urls
 
     publication = _domain(feed_url)
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -156,10 +205,10 @@ def _process_rss(
         if url in seen_urls:
             continue
 
-        article = _entry_to_dict(entry, url, publication, published_at)
-        articles.append(article)
-        seen_urls.add(url)
+        articles.append(_entry_to_dict(entry, url, publication, published_at))
         new_urls.append((url, now_iso))
+
+    return articles, new_urls
 
 
 def _process_hn(
@@ -167,15 +216,19 @@ def _process_hn(
     now: datetime,
     cutoff: datetime,
     seen_urls: set[str],
-    articles: list[dict],
-    new_urls: list[tuple[str, str]],
-) -> None:
-    """Fetch HN Algolia JSON and append qualifying articles."""
+) -> tuple[list[dict], list[tuple[str, str]]]:
+    """Fetch HN Algolia JSON and return qualifying articles.
+
+    Returns (articles, new_urls) without mutating any shared state.
+    """
+    articles: list[dict] = []
+    new_urls: list[tuple[str, str]] = []
+
     try:
         resp = requests.get(hn_url)
         hits = resp.json().get("hits", [])
     except Exception:
-        return
+        return articles, new_urls
 
     publication = _domain(hn_url)
     now_iso = now.isoformat()
@@ -192,17 +245,17 @@ def _process_hn(
         if url in seen_urls:
             continue
 
-        article = {
+        articles.append({
             "title": hit.get("title", ""),
             "url": url,
             "description": hit.get("story_text") or hit.get("comment_text") or "",
             "author": hit.get("author", ""),
             "publication": publication,
             "published_at": published_at,
-        }
-        articles.append(article)
-        seen_urls.add(url)
+        })
         new_urls.append((url, now_iso))
+
+    return articles, new_urls
 
 
 # ---------------------------------------------------------------------------
