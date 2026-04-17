@@ -86,7 +86,8 @@ def temp_db(tmp_path, monkeypatch):
                 title        TEXT,
                 url          TEXT,
                 publication  TEXT,
-                published_at TEXT
+                published_at TEXT,
+                rank_score   REAL
             )"""
         )
         conn.execute(
