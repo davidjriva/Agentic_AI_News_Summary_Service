@@ -10,6 +10,7 @@ from src.config import LLM_PROVIDER
 from src.db import get_connection
 from src.emailer import send_newsletter
 from src.fetcher import fetch_articles
+from src.filter import filter_articles
 from src.processor import process_articles
 from src.ranker import rank_articles
 from src.renderer import render_newsletter
@@ -78,6 +79,22 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
         articles = process_articles(articles, run_id=run_id)
         log.info("[%s] Processed %d articles", run_id, len(articles))
 
+        log.info("[%s] Stage 2.5: Filtering by relevance…", run_id)
+        articles, dropped_articles = filter_articles(articles)
+        log.info("[%s] Kept %d articles, dropped %d below relevance threshold", run_id, len(articles), len(dropped_articles))
+
+        if dropped_articles:
+            conn = get_connection()
+            conn.executemany(
+                "INSERT INTO filtered_articles (run_id, url, title, publication, relevance_score, relevance_reason) VALUES (?, ?, ?, ?, ?, ?)",
+                [
+                    (run_id, a["url"], a["title"], a["publication"], a["relevance_score"], a.get("relevance_reason", ""))
+                    for a in dropped_articles
+                ],
+            )
+            conn.commit()
+            conn.close()
+
         log.info("[%s] Stage 3: Ranking…", run_id)
         articles = rank_articles(articles)
         log.info("[%s] Ranked %d articles", run_id, len(articles))
@@ -96,9 +113,13 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
 
         completed_at = datetime.now(timezone.utc)
         conn = get_connection()
+        failed_count_row = conn.execute(
+            "SELECT COUNT(*) FROM failed_articles WHERE run_id = ?", (run_id,)
+        ).fetchone()
+        failed_count = failed_count_row[0] if failed_count_row else 0
         conn.execute(
-            "UPDATE runs SET status=?, completed_at=?, article_count=?, html=? WHERE id=?",
-            ("success", completed_at.isoformat(), len(articles), html, run_id),
+            "UPDATE runs SET status=?, completed_at=?, article_count=?, html=?, dropped_count=?, failed_count=? WHERE id=?",
+            ("success", completed_at.isoformat(), len(articles), html, len(dropped_articles), failed_count, run_id),
         )
         conn.commit()
         conn.close()
