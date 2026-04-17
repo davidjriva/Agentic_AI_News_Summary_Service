@@ -295,8 +295,39 @@
       font-weight: 700;
     }
 
+    .score-relevance     { color: #1A3D7A; }
     .score-impact        { color: #1A5C1A; }
     .score-authenticity  { color: #7B5B00; }
+
+    /* Score label tooltips (browser only; email clients use title attr) */
+    .score-label {
+      position: relative;
+      cursor: help;
+    }
+
+    .score-label::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: 190px;
+      background: #121212;
+      color: #ddd;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.3px;
+      text-transform: none;
+      white-space: normal;
+      text-align: center;
+      padding: 6px 10px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 10;
+    }
+
+    .score-label:hover::after { opacity: 1; }
 
     /* Read more link */
     .article-readmore {
@@ -474,11 +505,15 @@
                 <!-- Scores + Read More -->
                 <div class="article-scores">
                   <div class="score-item">
-                    <span class="score-label">Impact</span>
+                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
+                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  </div>
+                  <div class="score-item">
+                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
                     <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                   <div class="score-item">
-                    <span class="score-label">Authenticity</span>
+                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
                     <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                 </div>

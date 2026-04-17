@@ -50,7 +50,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "Anthropic Blog",
         "published_at": datetime(2026, 4, 17, tzinfo=timezone.utc),
         "author": "Anthropic Research", "rank_score": 9.8,
-        "impact_score": 10, "authenticity_score": 9,
+        "impact_score": 10, "authenticity_score": 9, "relevance_score": 10,
         "summary": "Anthropic's Claude 4 sets new benchmarks on long-context reasoning tasks, outperforming all prior models on the SCROLLS and ZeroScrolls evaluation suites with a 200K-token context window.",
     },
     {
@@ -58,7 +58,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "OpenAI Blog",
         "published_at": datetime(2026, 4, 16, tzinfo=timezone.utc),
         "author": "OpenAI", "rank_score": 9.2,
-        "impact_score": 9, "authenticity_score": 10,
+        "impact_score": 9, "authenticity_score": 10, "relevance_score": 10,
         "summary": "OpenAI releases the full technical report for GPT-5, detailing its native multimodal architecture, RLHF improvements, and a new alignment technique that reduces harmful outputs by 40% vs. GPT-4.",
     },
     {
@@ -66,7 +66,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "ArXiv",
         "published_at": datetime(2026, 4, 15, tzinfo=timezone.utc),
         "author": "Various", "rank_score": 8.8,
-        "impact_score": 9, "authenticity_score": 8,
+        "impact_score": 9, "authenticity_score": 8, "relevance_score": 9,
         "summary": "Researchers derive new scaling laws for MoE architectures, showing that optimal expert count scales as a power law of total parameter count, with implications for efficient training of frontier models.",
     },
     {
@@ -74,7 +74,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "Anthropic Blog",
         "published_at": datetime(2026, 4, 14, tzinfo=timezone.utc),
         "author": "Anthropic Safety Team", "rank_score": 8.4,
-        "impact_score": 8, "authenticity_score": 9,
+        "impact_score": 8, "authenticity_score": 9, "relevance_score": 10,
         "summary": "Constitutional AI v2 introduces self-critique chains that run at inference time, allowing models to detect and revise harmful outputs without additional human labeling.",
     },
     {
@@ -82,7 +82,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "ArXiv",
         "published_at": datetime(2026, 4, 13, tzinfo=timezone.utc),
         "author": "Various", "rank_score": 7.2,
-        "impact_score": 7, "authenticity_score": 8,
+        "impact_score": 7, "authenticity_score": 8, "relevance_score": 8,
         "summary": "A new fine-tuning method using self-play — where the model generates both prompts and responses — consistently improves reasoning benchmarks without any curated dataset.",
     },
     {
@@ -90,7 +90,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "OpenAI Blog",
         "published_at": datetime(2026, 4, 12, tzinfo=timezone.utc),
         "author": "OpenAI", "rank_score": 7.6,
-        "impact_score": 8, "authenticity_score": 7,
+        "impact_score": 8, "authenticity_score": 7, "relevance_score": 8,
         "summary": "DALL-E 4 adds real-time video generation at 24fps, temporal consistency across frames, and a new prompt adherence score that reduces hallucinated scene elements by 60%.",
     },
     {
@@ -98,7 +98,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "MIT Technology Review",
         "published_at": datetime(2026, 4, 11, tzinfo=timezone.utc),
         "author": "MIT Tech Review Staff", "rank_score": 6.4,
-        "impact_score": 6, "authenticity_score": 7,
+        "impact_score": 6, "authenticity_score": 7, "relevance_score": 7,
         "summary": "A practical breakdown of the EU AI Act's high-risk system classifications and what compliance looks like for teams building customer-facing LLM products in 2026.",
     },
     {
@@ -106,7 +106,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "Hacker News",
         "published_at": datetime(2026, 4, 10, tzinfo=timezone.utc),
         "author": "community", "rank_score": 6.0,
-        "impact_score": 6, "authenticity_score": 6,
+        "impact_score": 6, "authenticity_score": 6, "relevance_score": 7,
         "summary": "Community benchmarks show Llama 4 70B achieving 120 tokens/second on a single RTX 5090 using llama.cpp with Q4_K_M quantization, making frontier-class local inference practical for developers.",
     },
     {
@@ -114,7 +114,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "ArXiv",
         "published_at": datetime(2026, 4, 9, tzinfo=timezone.utc),
         "author": "Various", "rank_score": 5.8,
-        "impact_score": 6, "authenticity_score": 5,
+        "impact_score": 6, "authenticity_score": 5, "relevance_score": 8,
         "summary": "A comprehensive survey of rotary position embedding (RoPE) scaling techniques, covering linear interpolation, YaRN, LongRoPE, and their trade-offs on context extension tasks.",
     },
     {
@@ -122,7 +122,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "MIT Technology Review",
         "published_at": datetime(2026, 4, 8, tzinfo=timezone.utc),
         "author": "MIT Tech Review Staff", "rank_score": 5.2,
-        "impact_score": 5, "authenticity_score": 6,
+        "impact_score": 5, "authenticity_score": 6, "relevance_score": 6,
         "summary": "An investigation into the energy and water consumption of frontier model training runs, with new estimates suggesting GPT-5 training consumed the equivalent of 10,000 US households' annual electricity.",
     },
     {
@@ -130,7 +130,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "Hacker News",
         "published_at": datetime(2026, 4, 7, tzinfo=timezone.utc),
         "author": "community", "rank_score": 4.8,
-        "impact_score": 4, "authenticity_score": 6,
+        "impact_score": 4, "authenticity_score": 6, "relevance_score": 6,
         "summary": "A popular Hacker News thread collecting community setups for running LLMs locally, featuring responses covering hardware choices, quantization strategies, and use-case fit.",
     },
     {
@@ -138,7 +138,7 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
         "url": "#", "publication": "Hacker News",
         "published_at": datetime(2026, 4, 6, tzinfo=timezone.utc),
         "author": "community", "rank_score": 4.0,
-        "impact_score": 4, "authenticity_score": 4,
+        "impact_score": 4, "authenticity_score": 4, "relevance_score": 6,
         "summary": "A new open-source tool for tracking prompt changes with Git-like semantics, including diff views, rollback, and evaluation hooks for regression testing prompt edits.",
     },
 ]
