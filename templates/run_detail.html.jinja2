@@ -406,7 +406,7 @@
       <!-- Newsletter iframe -->
       <div class="newsletter-pane">
         {% if preview %}
-        <div class="newsletter-placeholder">Newsletter preview not available</div>
+        <iframe src="/preview/newsletter" title="Newsletter Edition"></iframe>
         {% else %}
         <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition"></iframe>
         {% endif %}

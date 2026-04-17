@@ -3,6 +3,7 @@
 import json
 import threading
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import uvicorn
@@ -13,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 import src.config as _cfg
 from src.db import get_connection
 from src.main import run_pipeline
+from src.renderer import render_newsletter
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
@@ -41,6 +43,105 @@ _PREVIEW_ARTICLES: dict[str, list[dict]] = {
         {"title": "Show HN: Open-source tool for LLM prompt versioning", "url": "#", "rank_score": 4.0},
     ],
 }
+
+_PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
+    {
+        "title": "Claude 4 Achieves State-of-the-Art on Long-Context Reasoning",
+        "url": "#", "publication": "Anthropic Blog",
+        "published_at": datetime(2026, 4, 17, tzinfo=timezone.utc),
+        "author": "Anthropic Research", "rank_score": 9.8,
+        "impact_score": 10, "authenticity_score": 9,
+        "summary": "Anthropic's Claude 4 sets new benchmarks on long-context reasoning tasks, outperforming all prior models on the SCROLLS and ZeroScrolls evaluation suites with a 200K-token context window.",
+    },
+    {
+        "title": "GPT-5 Technical Report: Multimodal Capabilities and Alignment",
+        "url": "#", "publication": "OpenAI Blog",
+        "published_at": datetime(2026, 4, 16, tzinfo=timezone.utc),
+        "author": "OpenAI", "rank_score": 9.2,
+        "impact_score": 9, "authenticity_score": 10,
+        "summary": "OpenAI releases the full technical report for GPT-5, detailing its native multimodal architecture, RLHF improvements, and a new alignment technique that reduces harmful outputs by 40% vs. GPT-4.",
+    },
+    {
+        "title": "Scaling Laws for Mixture-of-Experts Language Models",
+        "url": "#", "publication": "ArXiv",
+        "published_at": datetime(2026, 4, 15, tzinfo=timezone.utc),
+        "author": "Various", "rank_score": 8.8,
+        "impact_score": 9, "authenticity_score": 8,
+        "summary": "Researchers derive new scaling laws for MoE architectures, showing that optimal expert count scales as a power law of total parameter count, with implications for efficient training of frontier models.",
+    },
+    {
+        "title": "Introducing Constitutional AI v2: Safer by Default",
+        "url": "#", "publication": "Anthropic Blog",
+        "published_at": datetime(2026, 4, 14, tzinfo=timezone.utc),
+        "author": "Anthropic Safety Team", "rank_score": 8.4,
+        "impact_score": 8, "authenticity_score": 9,
+        "summary": "Constitutional AI v2 introduces self-critique chains that run at inference time, allowing models to detect and revise harmful outputs without additional human labeling.",
+    },
+    {
+        "title": "Self-Play Fine-Tuning Converts Weak to Strong Language Models",
+        "url": "#", "publication": "ArXiv",
+        "published_at": datetime(2026, 4, 13, tzinfo=timezone.utc),
+        "author": "Various", "rank_score": 7.2,
+        "impact_score": 7, "authenticity_score": 8,
+        "summary": "A new fine-tuning method using self-play — where the model generates both prompts and responses — consistently improves reasoning benchmarks without any curated dataset.",
+    },
+    {
+        "title": "DALL-E 4 Released with Real-Time Video Generation",
+        "url": "#", "publication": "OpenAI Blog",
+        "published_at": datetime(2026, 4, 12, tzinfo=timezone.utc),
+        "author": "OpenAI", "rank_score": 7.6,
+        "impact_score": 8, "authenticity_score": 7,
+        "summary": "DALL-E 4 adds real-time video generation at 24fps, temporal consistency across frames, and a new prompt adherence score that reduces hallucinated scene elements by 60%.",
+    },
+    {
+        "title": "AI Regulation in 2026: What the EU Act Means for Developers",
+        "url": "#", "publication": "MIT Technology Review",
+        "published_at": datetime(2026, 4, 11, tzinfo=timezone.utc),
+        "author": "MIT Tech Review Staff", "rank_score": 6.4,
+        "impact_score": 6, "authenticity_score": 7,
+        "summary": "A practical breakdown of the EU AI Act's high-risk system classifications and what compliance looks like for teams building customer-facing LLM products in 2026.",
+    },
+    {
+        "title": "Llama 4 70B runs at 120 tok/s on a single RTX 5090",
+        "url": "#", "publication": "Hacker News",
+        "published_at": datetime(2026, 4, 10, tzinfo=timezone.utc),
+        "author": "community", "rank_score": 6.0,
+        "impact_score": 6, "authenticity_score": 6,
+        "summary": "Community benchmarks show Llama 4 70B achieving 120 tokens/second on a single RTX 5090 using llama.cpp with Q4_K_M quantization, making frontier-class local inference practical for developers.",
+    },
+    {
+        "title": "RoPE Scaling Methods for Long-Context LLMs: A Survey",
+        "url": "#", "publication": "ArXiv",
+        "published_at": datetime(2026, 4, 9, tzinfo=timezone.utc),
+        "author": "Various", "rank_score": 5.8,
+        "impact_score": 6, "authenticity_score": 5,
+        "summary": "A comprehensive survey of rotary position embedding (RoPE) scaling techniques, covering linear interpolation, YaRN, LongRoPE, and their trade-offs on context extension tasks.",
+    },
+    {
+        "title": "The Hidden Carbon Cost of Training Large Language Models",
+        "url": "#", "publication": "MIT Technology Review",
+        "published_at": datetime(2026, 4, 8, tzinfo=timezone.utc),
+        "author": "MIT Tech Review Staff", "rank_score": 5.2,
+        "impact_score": 5, "authenticity_score": 6,
+        "summary": "An investigation into the energy and water consumption of frontier model training runs, with new estimates suggesting GPT-5 training consumed the equivalent of 10,000 US households' annual electricity.",
+    },
+    {
+        "title": "Ask HN: What is your current local LLM setup in 2026?",
+        "url": "#", "publication": "Hacker News",
+        "published_at": datetime(2026, 4, 7, tzinfo=timezone.utc),
+        "author": "community", "rank_score": 4.8,
+        "impact_score": 4, "authenticity_score": 6,
+        "summary": "A popular Hacker News thread collecting community setups for running LLMs locally, featuring responses covering hardware choices, quantization strategies, and use-case fit.",
+    },
+    {
+        "title": "Show HN: Open-source tool for LLM prompt versioning",
+        "url": "#", "publication": "Hacker News",
+        "published_at": datetime(2026, 4, 6, tzinfo=timezone.utc),
+        "author": "community", "rank_score": 4.0,
+        "impact_score": 4, "authenticity_score": 4,
+        "summary": "A new open-source tool for tracking prompt changes with Git-like semantics, including diff views, rollback, and evaluation hooks for regression testing prompt edits.",
+    },
+]
 
 app = FastAPI(title="Agentic AI News Dashboard")
 
@@ -79,6 +180,16 @@ def preview(request: Request) -> HTMLResponse:
             "preview": True,
         },
     )
+
+
+@app.get("/preview/newsletter", response_class=HTMLResponse)
+def preview_newsletter() -> HTMLResponse:
+    """Render the newsletter template with fake articles for UI development."""
+    html, _ = render_newsletter(
+        _PREVIEW_NEWSLETTER_ARTICLES,
+        datetime(2026, 4, 17, 7, 0, tzinfo=timezone.utc),
+    )
+    return HTMLResponse(content=html)
 
 
 @app.post("/run")
