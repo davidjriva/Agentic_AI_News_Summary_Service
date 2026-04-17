@@ -28,7 +28,8 @@ def dashboard(request: Request) -> HTMLResponse:
     """Serve the run-history dashboard."""
     conn = get_connection()
     rows = conn.execute(
-        "SELECT id, started_at, completed_at, status, article_count, error "
+        "SELECT id, started_at, completed_at, status, article_count, error, "
+        "dropped_count, failed_count "
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
@@ -80,7 +81,8 @@ def list_runs() -> list[dict]:
     """Return metadata for all past runs, newest first."""
     conn = get_connection()
     rows = conn.execute(
-        "SELECT id, started_at, completed_at, status, article_count, error "
+        "SELECT id, started_at, completed_at, status, article_count, error, "
+        "dropped_count, failed_count "
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
@@ -106,6 +108,40 @@ def get_run_newsletter(run_id: str) -> HTMLResponse:
         raise HTTPException(status_code=404, detail="Run has no HTML output")
 
     return HTMLResponse(content=row["html"])
+
+
+@app.get("/runs/{run_id}/filtered")
+def get_filtered_articles(run_id: str) -> dict:
+    """Return filtered (dropped) articles for a run.
+
+    Returns:
+        {"filtered": list[dict]} — articles dropped due to low relevance score.
+    """
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT url, title, publication, relevance_score, relevance_reason "
+        "FROM filtered_articles WHERE run_id = ? ORDER BY relevance_score DESC",
+        (run_id,),
+    ).fetchall()
+    conn.close()
+    return {"filtered": [dict(r) for r in rows]}
+
+
+@app.get("/runs/{run_id}/failed")
+def get_failed_articles(run_id: str) -> dict:
+    """Return failed (LLM-processing error) articles for a run.
+
+    Returns:
+        {"failed": list[dict]} — articles that failed LLM processing.
+    """
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT url, title, publication, reason, failed_at "
+        "FROM failed_articles WHERE run_id = ? ORDER BY failed_at DESC",
+        (run_id,),
+    ).fetchall()
+    conn.close()
+    return {"failed": [dict(r) for r in rows]}
 
 
 @app.get("/runs/{run_id}", response_class=HTMLResponse)

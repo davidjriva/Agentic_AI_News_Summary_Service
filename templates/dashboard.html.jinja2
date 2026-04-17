@@ -512,6 +512,8 @@
             <th>Started</th>
             <th>Status</th>
             <th>Articles</th>
+            <th>Dropped</th>
+            <th>Failed</th>
             <th>Duration</th>
             <th>Edition</th>
           </tr>
@@ -538,6 +540,14 @@
               <span class="article-count">
                 {% if run.article_count is not none %}{{ run.article_count }}{% else %}&mdash;{% endif %}
               </span>
+            </td>
+
+            <td>
+              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
+            </td>
+
+            <td>
+              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
             </td>
 
             <td>
@@ -612,6 +622,8 @@
         <td><span class="ts">Just now\u2026</span></td>
         <td><span class="badge badge-running">Running</span></td>
         <td><span class="article-count">&mdash;</span></td>
+        <td><span class="article-count">&mdash;</span></td>
+        <td><span class="article-count">&mdash;</span></td>
         <td><span class="duration">&mdash;</span></td>
         <td>&mdash;</td>
       `;
@@ -683,6 +695,14 @@
         const artTd = document.createElement('td');
         artTd.innerHTML = `<span class="article-count">${run.article_count !== null ? run.article_count : '&mdash;'}</span>`;
         row.appendChild(artTd);
+
+        const droppedTd = document.createElement('td');
+        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
+        row.appendChild(droppedTd);
+
+        const failedTd = document.createElement('td');
+        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
+        row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
         let dur = '&mdash;';

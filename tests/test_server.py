@@ -37,7 +37,9 @@ def temp_db(tmp_path, monkeypatch):
                 status TEXT,
                 article_count INTEGER,
                 html TEXT,
-                error TEXT
+                error TEXT,
+                dropped_count INTEGER DEFAULT 0,
+                failed_count INTEGER DEFAULT 0
             )"""
         )
         conn.execute(
@@ -54,6 +56,28 @@ def temp_db(tmp_path, monkeypatch):
             """CREATE TABLE IF NOT EXISTS seen_articles (
                 url TEXT PRIMARY KEY,
                 seen_at TIMESTAMP
+            )"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS filtered_articles (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id           TEXT NOT NULL,
+                url              TEXT,
+                title            TEXT,
+                publication      TEXT,
+                relevance_score  INTEGER,
+                relevance_reason TEXT
+            )"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS failed_articles (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id      TEXT NOT NULL,
+                url         TEXT,
+                title       TEXT,
+                publication TEXT,
+                reason      TEXT,
+                failed_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )"""
         )
         conn.commit()
@@ -298,3 +322,165 @@ class TestMetricsRoute:
         assert "Metrics" in response.text
         # Empty JSON arrays rendered safely
         assert "[]" in response.text
+
+
+# ---------------------------------------------------------------------------
+# GET /runs/{run_id}/filtered
+# ---------------------------------------------------------------------------
+
+class TestFilteredArticlesEndpoint:
+    def test_returns_empty_list_when_no_filtered_articles(self, client):
+        response = client.get("/runs/nonexistent-run/filtered")
+        assert response.status_code == 200
+        assert response.json() == {"filtered": []}
+
+    def test_returns_filtered_articles_for_run(self, client, temp_db):
+        conn = sqlite3.connect(str(temp_db))
+        conn.execute(
+            "INSERT INTO runs (id, started_at, status, article_count) VALUES (?,?,?,?)",
+            ("filt-run-1", "2026-04-14T07:00:00", "success", 5),
+        )
+        conn.execute(
+            "INSERT INTO filtered_articles (run_id, url, title, publication, relevance_score, relevance_reason) "
+            "VALUES (?,?,?,?,?,?)",
+            (
+                "filt-run-1",
+                "https://example.com/dropped",
+                "Dropped Article",
+                "TechCrunch",
+                3,
+                "Not relevant to AI",
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        response = client.get("/runs/filt-run-1/filtered")
+        assert response.status_code == 200
+        data = response.json()
+        assert "filtered" in data
+        assert len(data["filtered"]) == 1
+        article = data["filtered"][0]
+        assert article["title"] == "Dropped Article"
+        assert article["publication"] == "TechCrunch"
+        assert article["relevance_score"] == 3
+        assert article["relevance_reason"] == "Not relevant to AI"
+
+    def test_only_returns_articles_for_requested_run(self, client, temp_db):
+        conn = sqlite3.connect(str(temp_db))
+        for run_id in ("filt-run-a", "filt-run-b"):
+            conn.execute(
+                "INSERT INTO runs (id, started_at, status) VALUES (?,?,?)",
+                (run_id, "2026-04-14T07:00:00", "success"),
+            )
+            conn.execute(
+                "INSERT INTO filtered_articles (run_id, url, title, publication, relevance_score, relevance_reason) "
+                "VALUES (?,?,?,?,?,?)",
+                (run_id, f"https://example.com/{run_id}", f"Article for {run_id}", "Source", 2, "Low relevance"),
+            )
+        conn.commit()
+        conn.close()
+
+        response = client.get("/runs/filt-run-a/filtered")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["filtered"]) == 1
+        assert data["filtered"][0]["title"] == "Article for filt-run-a"
+
+
+# ---------------------------------------------------------------------------
+# GET /runs/{run_id}/failed
+# ---------------------------------------------------------------------------
+
+class TestFailedArticlesEndpoint:
+    def test_returns_empty_list_when_no_failed_articles(self, client):
+        response = client.get("/runs/nonexistent-run/failed")
+        assert response.status_code == 200
+        assert response.json() == {"failed": []}
+
+    def test_returns_failed_articles_for_run(self, client, temp_db):
+        conn = sqlite3.connect(str(temp_db))
+        conn.execute(
+            "INSERT INTO runs (id, started_at, status, article_count) VALUES (?,?,?,?)",
+            ("fail-run-1", "2026-04-14T07:00:00", "success", 5),
+        )
+        conn.execute(
+            "INSERT INTO failed_articles (run_id, url, title, publication, reason) "
+            "VALUES (?,?,?,?,?)",
+            (
+                "fail-run-1",
+                "https://example.com/failed",
+                "Failed Article",
+                "Wired",
+                "LLM timeout",
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+        response = client.get("/runs/fail-run-1/failed")
+        assert response.status_code == 200
+        data = response.json()
+        assert "failed" in data
+        assert len(data["failed"]) == 1
+        article = data["failed"][0]
+        assert article["title"] == "Failed Article"
+        assert article["publication"] == "Wired"
+        assert article["reason"] == "LLM timeout"
+
+    def test_only_returns_articles_for_requested_run(self, client, temp_db):
+        conn = sqlite3.connect(str(temp_db))
+        for run_id in ("fail-run-a", "fail-run-b"):
+            conn.execute(
+                "INSERT INTO runs (id, started_at, status) VALUES (?,?,?)",
+                (run_id, "2026-04-14T07:00:00", "success"),
+            )
+            conn.execute(
+                "INSERT INTO failed_articles (run_id, url, title, publication, reason) "
+                "VALUES (?,?,?,?,?)",
+                (run_id, f"https://example.com/{run_id}", f"Failed for {run_id}", "Source", "error"),
+            )
+        conn.commit()
+        conn.close()
+
+        response = client.get("/runs/fail-run-a/failed")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["failed"]) == 1
+        assert data["failed"][0]["title"] == "Failed for fail-run-a"
+
+
+# ---------------------------------------------------------------------------
+# Dashboard dropped_count / failed_count columns
+# ---------------------------------------------------------------------------
+
+class TestDashboardDroppedFailedColumns:
+    def test_dashboard_has_dropped_and_failed_headers(self, client, temp_db):
+        conn = sqlite3.connect(str(temp_db))
+        conn.execute(
+            "INSERT INTO runs (id, started_at, status, article_count, dropped_count, failed_count) "
+            "VALUES (?,?,?,?,?,?)",
+            ("hdr-run-1", "2026-04-14T07:00:00", "success", 8, 2, 1),
+        )
+        conn.commit()
+        conn.close()
+
+        response = client.get("/")
+        assert response.status_code == 200
+        assert "Dropped" in response.text
+        assert "Failed" in response.text
+
+    def test_dashboard_shows_dropped_and_failed_counts(self, client, temp_db):
+        conn = sqlite3.connect(str(temp_db))
+        conn.execute(
+            "INSERT INTO runs (id, started_at, status, article_count, dropped_count, failed_count) "
+            "VALUES (?,?,?,?,?,?)",
+            ("dash-run-1", "2026-04-14T07:00:00", "success", 10, 4, 2),
+        )
+        conn.commit()
+        conn.close()
+
+        response = client.get("/")
+        assert response.status_code == 200
+        assert "4" in response.text   # dropped_count
+        assert "2" in response.text   # failed_count
