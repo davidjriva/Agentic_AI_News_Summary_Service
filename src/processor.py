@@ -19,7 +19,6 @@ from src import config as _cfg
 from src.db import get_connection
 
 SYSTEM_PROMPT = """You are an AI news analyst specializing in agentic AI, machine learning, and deep learning. For each article provided, return a JSON object with exactly these keys:
-- summary: a 2-3 sentence summary of the article
 - impact_score: integer 1-10 rating of the article's impact on the AI/ML field
 - authenticity_score: integer 1-10 rating of the article's authenticity/credibility
 - relevance_score: integer 1-10 rating of how directly relevant this article is to agentic AI, machine learning, or deep learning (1 = completely unrelated, 10 = core topic)
@@ -153,7 +152,6 @@ def _process_one(article: dict, client, use_local: bool, run_id: str | None = No
             parsed = json.loads(response_text)
             return {
                 **article,
-                "summary": parsed["summary"],
                 "impact_score": parsed["impact_score"],
                 "authenticity_score": parsed["authenticity_score"],
                 "relevance_score": parsed["relevance_score"],
@@ -224,6 +222,10 @@ def summarize_articles(articles: list[dict], run_id: str | None = None) -> list[
                             raise
             except Exception as exc:
                 tqdm.write(f"[{run_id}] Summary regeneration failed for {article.get('url', '')}: {exc}")
+                description = article.get("description", "")
+                if len(description) > 400:
+                    description = description[:400].rsplit(" ", 1)[0] + "\u2026"
+                article = {**article, "summary": description}
             results.append(article)
             bar.update(1)
     return results

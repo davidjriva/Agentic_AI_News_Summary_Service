@@ -22,7 +22,6 @@ def make_article(**overrides) -> dict:
 
 
 VALID_CLAUDE_RESPONSE = {
-    "summary": "Anthropic researchers demonstrate agentic AI completing complex tasks. The study shows significant improvements in reliability. This marks a key milestone for the field.",
     "impact_score": 8,
     "authenticity_score": 7,
     "impact_reason": "Significant advancement in agentic AI reliability with broad implications.",
@@ -61,7 +60,6 @@ class TestValidJsonResponse:
             results = process_articles([article])
 
         result = results[0]
-        assert result["summary"] == VALID_CLAUDE_RESPONSE["summary"]
         assert result["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
         assert result["authenticity_score"] == VALID_CLAUDE_RESPONSE["authenticity_score"]
         assert result["impact_reason"] == VALID_CLAUDE_RESPONSE["impact_reason"]
@@ -93,7 +91,6 @@ class TestValidJsonResponse:
 
         assert len(results) == 3
         for result in results:
-            assert "summary" in result
             assert "impact_score" in result
 
     def test_returns_list(self):
@@ -256,7 +253,6 @@ class TestLocalLLMProvider:
 
         assert results[0]["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
         assert results[0]["authenticity_score"] == VALID_CLAUDE_RESPONSE["authenticity_score"]
-        assert results[0]["summary"] == VALID_CLAUDE_RESPONSE["summary"]
 
     def test_local_provider_calls_correct_url(self):
         article = make_article()
@@ -485,7 +481,6 @@ def _make_processed_article(url="http://example.com") -> dict:
         "publication": "example.com",
         "author": "Test Author",
         "description": "Some description text.",
-        "summary": "Short summary.",
         "impact_score": 8,
         "authenticity_score": 7,
         "relevance_score": 9,
@@ -519,9 +514,8 @@ class TestSummarizeArticles:
         assert results[0]["rank_score"] == article["rank_score"]
         assert results[0]["url"] == article["url"]
 
-    def test_keeps_original_summary_on_api_failure(self):
+    def test_falls_back_to_description_on_api_failure(self):
         article = _make_processed_article()
-        original_summary = article["summary"]
         mock_client = MagicMock()
         mock_client.messages.create.side_effect = Exception("API error")
 
@@ -532,11 +526,10 @@ class TestSummarizeArticles:
             results = summarize_articles([article])
 
         assert len(results) == 1
-        assert results[0]["summary"] == original_summary
+        assert results[0]["summary"] == article["description"]
 
-    def test_keeps_original_summary_on_malformed_json(self):
+    def test_falls_back_to_description_on_malformed_json(self):
         article = _make_processed_article()
-        original_summary = article["summary"]
         mock_client = _make_mock_client("not valid json")
 
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
@@ -546,7 +539,23 @@ class TestSummarizeArticles:
             results = summarize_articles([article])
 
         assert len(results) == 1
-        assert results[0]["summary"] == original_summary
+        assert results[0]["summary"] == article["description"]
+
+    def test_description_truncated_at_400_chars_on_failure(self):
+        long_description = "word " * 200  # 1000 chars
+        article = {**_make_processed_article(), "description": long_description}
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = Exception("down")
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles([article])
+
+        summary = results[0]["summary"]
+        assert len(summary) <= 401  # 400 chars + ellipsis
+        assert summary.endswith("…")
 
     def test_processes_all_articles(self):
         articles = [_make_processed_article(f"http://example.com/{i}") for i in range(3)]
