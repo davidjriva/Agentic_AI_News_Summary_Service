@@ -528,9 +528,23 @@ class TestSummarizeArticles:
         assert len(results) == 1
         assert results[0]["summary"] == article["description"]
 
-    def test_falls_back_to_description_on_malformed_json(self):
+    def test_uses_plain_text_when_json_parse_fails(self):
+        # Local LLMs often return prose instead of JSON — use it directly as summary
         article = _make_processed_article()
-        mock_client = _make_mock_client("not valid json")
+        mock_client = _make_mock_client("not valid json but good prose summary here")
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles([article])
+
+        assert len(results) == 1
+        assert results[0]["summary"] == "not valid json but good prose summary here"
+
+    def test_falls_back_to_description_on_empty_response(self):
+        article = _make_processed_article()
+        mock_client = _make_mock_client("")
 
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
              patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \

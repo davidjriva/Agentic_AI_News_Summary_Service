@@ -228,8 +228,16 @@ def summarize_articles(articles: list[dict], run_id: str | None = None) -> list[
                             if use_local
                             else _call_anthropic_summary(client, user_content)
                         )
-                        parsed = json.loads(text)
-                        article = {**article, "summary": parsed["summary"]}
+                        try:
+                            parsed = json.loads(text)
+                            summary = parsed["summary"]
+                        except (json.JSONDecodeError, KeyError):
+                            # Local LLMs often return plain prose instead of JSON — use it directly
+                            if text and text.strip():
+                                summary = text.strip()
+                            else:
+                                raise ValueError("empty LLM response")
+                        article = {**article, "summary": summary}
                         break
                     except Exception:
                         if attempt < _cfg.PROCESSOR_MAX_RETRIES:
