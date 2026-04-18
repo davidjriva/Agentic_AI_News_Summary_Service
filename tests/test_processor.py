@@ -542,7 +542,7 @@ class TestSummarizeArticles:
         assert results[0]["summary"] == article["description"]
 
     def test_description_truncated_at_400_chars_on_failure(self):
-        long_description = "word " * 200  # 1000 chars
+        long_description = "word " * 200  # 1000 chars, no HTML/arXiv prefix
         article = {**_make_processed_article(), "description": long_description}
         mock_client = MagicMock()
         mock_client.messages.create.side_effect = Exception("down")
@@ -554,8 +554,36 @@ class TestSummarizeArticles:
             results = summarize_articles([article])
 
         summary = results[0]["summary"]
-        assert len(summary) <= 401  # 400 chars + ellipsis
+        assert len(summary) <= 401  # 400 chars + ellipsis character
         assert summary.endswith("…")
+
+    def test_arxiv_prefix_stripped_on_failure(self):
+        arxiv_desc = "arXiv:2604.14176v1 Announce Type: new Abstract: This is the real abstract text."
+        article = {**_make_processed_article(), "description": arxiv_desc}
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = Exception("down")
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles([article])
+
+        assert results[0]["summary"] == "This is the real abstract text."
+
+    def test_html_tags_stripped_on_failure(self):
+        html_desc = '<a href="http://example.com">Click here</a> for the full story.'
+        article = {**_make_processed_article(), "description": html_desc}
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = Exception("down")
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = summarize_articles([article])
+
+        assert results[0]["summary"] == "Click here for the full story."
 
     def test_processes_all_articles(self):
         articles = [_make_processed_article(f"http://example.com/{i}") for i in range(3)]
@@ -591,4 +619,4 @@ class TestSummarizeArticles:
 
         assert results[0]["summary"] == "Full paragraph."
         payload = mock_post.call_args[1]["json"]
-        assert payload["max_tokens"] == 2048
+        assert payload["max_tokens"] == 512

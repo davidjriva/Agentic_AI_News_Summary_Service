@@ -9,6 +9,7 @@ failed_articles dead-letter queue and excluded from results.
 """
 
 import json
+import re
 import time
 
 import anthropic
@@ -113,12 +114,25 @@ def _call_local_llm_summary(user_content: str) -> str:
                 {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
                 {"role": "user", "content": user_content},
             ],
-            "max_tokens": 2048,
+            "max_tokens": 512,
         },
         timeout=60,
     )
     response.raise_for_status()
     return response.json()["choices"][0]["message"]["content"]
+
+
+def _clean_description(desc: str, max_chars: int = 400) -> str:
+    """Normalize a raw feed description for use as a summary fallback."""
+    # Strip arXiv abstract preamble
+    desc = re.sub(r"^arXiv:\S+\s+Announce Type:\s*\w+\s*Abstract:\s*", "", desc)
+    # Strip HTML tags
+    desc = re.sub(r"<[^>]+>", "", desc)
+    # Collapse whitespace
+    desc = " ".join(desc.split())
+    if len(desc) > max_chars:
+        desc = desc[:max_chars].rsplit(" ", 1)[0] + "\u2026"
+    return desc
 
 
 def _write_failed(article: dict, reason: str, run_id: str | None) -> None:
@@ -198,11 +212,13 @@ def summarize_articles(articles: list[dict], run_id: str | None = None) -> list[
     results = []
     with tqdm(total=len(articles), desc="Summaries", unit="art", leave=False) as bar:
         for article in articles:
+            # Cap description length to avoid overflowing local model context windows
+            description_snippet = (article.get("description", "") or "")[:500]
             user_content = (
                 f"Author: {article.get('author', '')}\n"
                 f"Publication: {article.get('publication', '')}\n"
                 f"Title: {article.get('title', '')}\n"
-                f"Description: {article.get('description', '')}"
+                f"Description: {description_snippet}"
             )
             try:
                 for attempt in range(_cfg.PROCESSOR_MAX_RETRIES + 1):
@@ -222,10 +238,7 @@ def summarize_articles(articles: list[dict], run_id: str | None = None) -> list[
                             raise
             except Exception as exc:
                 tqdm.write(f"[{run_id}] Summary regeneration failed for {article.get('url', '')}: {exc}")
-                description = article.get("description", "")
-                if len(description) > 400:
-                    description = description[:400].rsplit(" ", 1)[0] + "\u2026"
-                article = {**article, "summary": description}
+                article = {**article, "summary": _clean_description(article.get("description", "") or "")}
             results.append(article)
             bar.update(1)
     return results
