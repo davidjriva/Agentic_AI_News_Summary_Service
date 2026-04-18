@@ -4,9 +4,6 @@ install:
 run:
 	poetry run python src/main.py
 
-run-clean:
-	sqlite3 data/state.db "DELETE FROM seen_articles;" && poetry run python src/main.py
-
 run-dry:
 	poetry run python src/main.py --dry-run
 
