@@ -225,7 +225,11 @@ def _process_hn(
     new_urls: list[tuple[str, str]] = []
 
     try:
-        resp = requests.get(hn_url)
+        resp = requests.get(
+            hn_url,
+            params={"numericFilters": f"created_at_i>{int(cutoff.timestamp())}"},
+            timeout=10,
+        )
         hits = resp.json().get("hits", [])
     except Exception:
         return articles, new_urls

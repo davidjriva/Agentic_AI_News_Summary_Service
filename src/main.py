@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from tqdm import tqdm
 
-from src.config import LLM_PROVIDER
+from src.config import LLM_PROVIDER, LOOKBACK_HOURS
 from src.db import get_connection
 from src.emailer import send_newsletter
 from src.fetcher import fetch_articles
@@ -55,7 +55,7 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
         if clean:
             conn = get_connection()
             conn.execute(
-                "DELETE FROM seen_articles WHERE seen_at >= datetime('now', '-12 hours')"
+                f"DELETE FROM seen_articles WHERE seen_at >= datetime('now', '-{LOOKBACK_HOURS} hours')"
             )
             conn.commit()
             conn.close()

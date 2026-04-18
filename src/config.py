@@ -8,17 +8,17 @@ FEED_URLS = [
     "https://arxiv.org/rss/cs.LG",                                       # cs.LG = Machine Learning
     "https://techcrunch.com/category/artificial-intelligence/feed/",
     "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",  # AI section (verified A1: 200, 10 entries)
-    "https://www.wired.com/tag/artificial-intelligence/feed/rss",         # AI tag feed (candidate wired.com/feed/tag/... returned 400 in A1; retaining this URL)
+    "https://www.wired.com/feed/rss",                                      # full Wired feed (AI tag URL returns 0 entries)
     "https://www.technologyreview.com/topic/artificial-intelligence/feed",
     "https://openai.com/blog/rss.xml",                                    # replaces stale VentureBeat (verified A1: 307→200, 939 entries)
     "https://huggingface.co/blog/feed.xml",                               # replaces stale VentureBeat (verified A1: 200, 764 entries)
     "https://news.google.com/rss/search?q=agentic+AI",
-    "https://hn.algolia.com/api/v1/search?tags=story&query=agentic+AI",  # JSON, not RSS
+    "https://hn.algolia.com/api/v1/search?tags=story&query=AI+agent",    # JSON, not RSS ("agentic AI" query returned months-old results)
 ]
 
 # The last URL (HN Algolia) is a JSON API, not an RSS feed.
 # The fetcher must handle it separately.
-HN_ALGOLIA_URL = "https://hn.algolia.com/api/v1/search?tags=story&query=agentic+AI"
+HN_ALGOLIA_URL = "https://hn.algolia.com/api/v1/search?tags=story&query=AI+agent"
 
 _recipients_env = os.getenv("EMAIL_RECIPIENTS", "")
 RECIPIENTS: list[str] = [r.strip() for r in _recipients_env.split(",") if r.strip()]
@@ -27,7 +27,7 @@ TOP_N: int = 10
 MAX_ARTICLES_PER_SOURCE: int = 10
 MAX_PER_NEWSLETTER_SOURCE: int = 3
 CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
-LOOKBACK_HOURS: int = 12
+LOOKBACK_HOURS: int = 24
 
 # ---------------------------------------------------------------------------
 # LLM provider selection
