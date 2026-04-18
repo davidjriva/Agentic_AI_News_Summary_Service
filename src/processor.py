@@ -203,8 +203,8 @@ def process_articles(articles: list[dict], run_id: str | None = None) -> list[di
 def summarize_articles(articles: list[dict], run_id: str | None = None) -> list[dict]:
     """Re-generate full-paragraph summaries for the given articles.
 
-    Best-effort: on failure, the original short summary is kept and the article
-    is not dead-lettered — summary regeneration must never drop an article.
+    Best-effort: on failure, the cleaned RSS description is used as the summary
+    and the article is not dead-lettered — summary regeneration must never drop an article.
     """
     use_local = _cfg.LLM_PROVIDER == "local"
     client = None if use_local else anthropic.Anthropic()

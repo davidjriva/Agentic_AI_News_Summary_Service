@@ -59,7 +59,7 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             )
             conn.commit()
             conn.close()
-            tqdm.write(f"[{run_id}] Clean run: cleared seen_articles for past 12 hours")
+            tqdm.write(f"[{run_id}] Clean run: cleared seen_articles for past {LOOKBACK_HOURS} hours")
 
         with tqdm(total=7, desc="Pipeline", leave=True) as bar:
             bar.set_description("Fetching articles")
