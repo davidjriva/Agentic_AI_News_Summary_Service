@@ -27,7 +27,8 @@ TOP_N: int = 10
 MAX_ARTICLES_PER_SOURCE: int = 10
 MAX_PER_NEWSLETTER_SOURCE: int = 3
 CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
-LOOKBACK_HOURS: int = 24
+LOOKBACK_HOURS: int = 72
+SCORE_CACHE_TTL_DAYS: int = LOOKBACK_HOURS // 24  # 3 — aligned with lookback window
 
 # ---------------------------------------------------------------------------
 # LLM provider selection

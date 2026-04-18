@@ -88,7 +88,7 @@ def test_old_articles_filtered(tmp_db):
     old_url = "https://example.com/old"
 
     recent_entry = _make_entry(recent_url, hours_ago=1)
-    old_entry = _make_entry(old_url, hours_ago=24)
+    old_entry = _make_entry(old_url, hours_ago=96)
 
     feed = _make_feed([recent_entry, old_entry])
 
@@ -276,7 +276,7 @@ def test_hn_algolia_old_hits_filtered(tmp_db):
     )
     old_hit = _make_hn_hit(
         url="https://news.ycombinator.com/item?id=222",
-        hours_ago=48,
+        hours_ago=96,
         object_id="222",
     )
 
