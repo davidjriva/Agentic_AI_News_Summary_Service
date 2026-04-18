@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS run_articles (
     title        TEXT,
     url          TEXT,
     publication  TEXT,
-    published_at TEXT
+    published_at TEXT,
+    rank_score   REAL
 );
 """
 
@@ -77,6 +78,7 @@ def get_connection() -> sqlite3.Connection:
     for col_sql in (
         "ALTER TABLE runs ADD COLUMN dropped_count INTEGER DEFAULT 0",
         "ALTER TABLE runs ADD COLUMN failed_count INTEGER DEFAULT 0",
+        "ALTER TABLE run_articles ADD COLUMN rank_score REAL",
     ):
         try:
             conn.execute(col_sql)
