@@ -404,7 +404,7 @@ class TestRunCountersUpdated:
 # Test: top-N URLs written to seen_articles after ranking
 # ---------------------------------------------------------------------------
 
-def test_top_n_urls_written_to_seen_articles(tmp_path, monkeypatch):
+def test_top_n_urls_written_to_seen_articles(tmp_path):
     """After ranking, exactly the top-N article URLs must be inserted into seen_articles."""
     import sqlite3
     from unittest.mock import patch, MagicMock
