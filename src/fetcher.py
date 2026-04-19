@@ -6,6 +6,7 @@ seen_articles, and returns normalised article dicts.
 from __future__ import annotations
 
 import calendar
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
@@ -63,6 +64,31 @@ def _is_recent(published_at: datetime | None, cutoff: datetime) -> bool:
     if published_at.tzinfo is None:
         published_at = published_at.replace(tzinfo=timezone.utc)
     return published_at >= cutoff
+
+
+_BYLINE_RE = re.compile(
+    r"""
+    (?:
+        [Bb]y\s+                              # "By " or "by "
+      | [Ww]ritten\s+by\s+                    # "Written by " or "written by "
+      | ^\s*[—\-]\s+                          # "— " or "- " at line start
+      | \|\s*                                 # "| "
+    )
+    (
+        [A-Z][a-z]+(?:[- ][A-Z][a-z]+){1,3}  # 2–4 title-cased words / hyphenated
+    )
+    """,
+    re.VERBOSE | re.MULTILINE,
+)
+
+
+def _extract_author(description: str) -> str:
+    """Return the first author name found in *description* via byline regex, or ''."""
+    if not description:
+        return ""
+    text = re.sub(r"<[^>]+>", "", description)
+    m = _BYLINE_RE.search(text)
+    return m.group(1) if m else ""
 
 
 # ---------------------------------------------------------------------------
@@ -314,11 +340,15 @@ def _entry_to_dict(
     published_at: datetime,
 ) -> dict:
     """Convert a feedparser entry to a normalised article dict."""
+    author = getattr(entry, "author", "")
+    description = getattr(entry, "summary", "") or getattr(entry, "description", "") or ""
+    if not author:
+        author = _extract_author(description)
     return {
         "title": getattr(entry, "title", ""),
         "url": url,
-        "description": getattr(entry, "summary", "") or getattr(entry, "description", "") or "",
-        "author": getattr(entry, "author", ""),
+        "description": description,
+        "author": author,
         "publication": publication,
         "published_at": published_at,
     }

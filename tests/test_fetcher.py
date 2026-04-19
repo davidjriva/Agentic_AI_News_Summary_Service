@@ -530,3 +530,71 @@ def test_langchain_missing_html_structure_returns_empty():
         result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
 
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# Test: _extract_author
+# ---------------------------------------------------------------------------
+from src.fetcher import _extract_author
+
+
+class TestExtractAuthor:
+    """_extract_author parses bylines from RSS description text."""
+
+    def test_by_prefix(self):
+        assert _extract_author("By Alex Wilhelm — some intro text") == "Alex Wilhelm"
+
+    def test_written_by_prefix(self):
+        assert _extract_author("Written by Sarah Chen-Moore, staff writer") == "Sarah Chen-Moore"
+
+    def test_dash_prefix_at_line_start(self):
+        assert _extract_author("— Maria Lopez\nSome article content here") == "Maria Lopez"
+
+    def test_pipe_separator(self):
+        assert _extract_author("Tech News | Jordan Kim | April 2026") == "Jordan Kim"
+
+    def test_no_match_returns_empty(self):
+        assert _extract_author("No byline information at all.") == ""
+
+    def test_empty_string_returns_empty(self):
+        assert _extract_author("") == ""
+
+    def test_html_description_with_byline(self):
+        assert _extract_author('<p>By <strong>Alex Wilhelm</strong></p>') == "Alex Wilhelm"
+
+
+# ---------------------------------------------------------------------------
+# Test: _entry_to_dict author extraction
+# ---------------------------------------------------------------------------
+from src.fetcher import _entry_to_dict
+
+
+class TestEntryToDictAuthorExtraction:
+    """_entry_to_dict calls _extract_author when feedparser returns no author."""
+
+    def _now(self):
+        return datetime.now(timezone.utc)
+
+    def test_feedparser_author_used_when_present(self):
+        entry = SimpleNamespace(
+            title="Test", link="http://x.com/a", author="Existing Author",
+            summary="By Someone Else", description="",
+        )
+        result = _entry_to_dict(entry, "http://x.com/a", "x.com", self._now())
+        assert result["author"] == "Existing Author"
+
+    def test_regex_fallback_when_author_empty(self):
+        entry = SimpleNamespace(
+            title="Test", link="http://x.com/b", author="",
+            summary="By Alex Wilhelm — intro", description="",
+        )
+        result = _entry_to_dict(entry, "http://x.com/b", "x.com", self._now())
+        assert result["author"] == "Alex Wilhelm"
+
+    def test_author_blank_when_no_regex_match(self):
+        entry = SimpleNamespace(
+            title="Test", link="http://x.com/c", author="",
+            summary="No byline here at all.", description="",
+        )
+        result = _entry_to_dict(entry, "http://x.com/c", "x.com", self._now())
+        assert result["author"] == ""
