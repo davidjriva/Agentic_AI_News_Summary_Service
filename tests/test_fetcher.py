@@ -410,3 +410,42 @@ def test_langchain_no_blog_link_returns_empty():
         result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
 
     assert result == []
+
+
+def test_langchain_happy_path_returns_article():
+    """_process_langchain returns a correctly shaped article for a recent post."""
+    from src.fetcher import _process_langchain
+    from datetime import datetime, timedelta, timezone
+    from unittest.mock import MagicMock, patch
+
+    html = """
+    <html><body>
+      <div class="blog-card">
+        <h2 class="t-heading-6-rg">Agent Engineering Deep Dive</h2>
+        <div class="date-color">April 17, 2026</div>
+        <div class="text-c-blue-light-500">Jane Smith</div>
+        <a href="/blog/agent-engineering-deep-dive" class="w-inline-block"></a>
+      </div>
+    </body></html>
+    """
+
+    mock_resp = MagicMock()
+    mock_resp.text = html
+    mock_resp.raise_for_status.return_value = None
+
+    now = datetime(2026, 4, 18, tzinfo=timezone.utc)
+    cutoff = now - timedelta(hours=72)
+
+    with patch("src.fetcher.requests.get", return_value=mock_resp):
+        result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
+
+    assert len(result) == 1
+    article = result[0]
+    assert article["title"] == "Agent Engineering Deep Dive"
+    assert article["url"] == "https://www.langchain.com/blog/agent-engineering-deep-dive"
+    assert article["author"] == "Jane Smith"
+    assert article["publication"] == "www.langchain.com"
+    assert isinstance(article["published_at"], datetime)
+    assert article["published_at"].year == 2026
+    assert article["published_at"].month == 4
+    assert article["published_at"].day == 17
