@@ -101,6 +101,7 @@ def fetch_articles() -> list[dict]:
         row[0]
         for row in conn.execute("SELECT url FROM seen_articles").fetchall()
     }
+    conn.close()
 
     return _fetch_parallel(seen_urls, cutoff, now)
 

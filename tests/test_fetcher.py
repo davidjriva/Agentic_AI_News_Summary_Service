@@ -162,7 +162,7 @@ def test_seen_articles_skipped(tmp_db):
 # (c) fetch_articles does NOT insert into seen_articles; prunes article_scores
 # ---------------------------------------------------------------------------
 
-def test_fetcher_does_not_insert_seen_articles(tmp_db):
+def test_fetcher_does_not_insert_seen_articles(tmp_db, tmp_path):
     """fetch_articles() must not write to seen_articles — that is main.py's responsibility."""
     from src.fetcher import fetch_articles
 
@@ -179,13 +179,17 @@ def test_fetcher_does_not_insert_seen_articles(tmp_db):
         mock_get.return_value.json.return_value = {"hits": []}
         fetch_articles()
 
-    row = tmp_db.execute(
+    # Re-open fresh connection since fetch_articles() closes the patched connection
+    conn2 = sqlite3.connect(str(tmp_path / "test_news.db"))
+    conn2.row_factory = sqlite3.Row
+    row = conn2.execute(
         "SELECT url FROM seen_articles WHERE url = ?", (new_url,)
     ).fetchone()
+    conn2.close()
     assert row is None, "fetch_articles() must not insert into seen_articles"
 
 
-def test_fetcher_prunes_article_scores(tmp_db):
+def test_fetcher_prunes_article_scores(tmp_db, tmp_path):
     """fetch_articles() must delete article_scores rows older than 3 days."""
     from src.fetcher import fetch_articles
 
@@ -215,12 +219,16 @@ def test_fetcher_prunes_article_scores(tmp_db):
         mock_get.return_value.json.return_value = {"hits": []}
         fetch_articles()
 
-    stale_row = tmp_db.execute(
+    # Re-open fresh connection since fetch_articles() closes the patched connection
+    conn2 = sqlite3.connect(str(tmp_path / "test_news.db"))
+    conn2.row_factory = sqlite3.Row
+    stale_row = conn2.execute(
         "SELECT url FROM article_scores WHERE url = ?", (stale_url,)
     ).fetchone()
-    fresh_row = tmp_db.execute(
+    fresh_row = conn2.execute(
         "SELECT url FROM article_scores WHERE url = ?", (fresh_url,)
     ).fetchone()
+    conn2.close()
     assert stale_row is None, "Stale cache entry (>3 days) must be pruned"
     assert fresh_row is not None, "Fresh cache entry must be kept"
 
