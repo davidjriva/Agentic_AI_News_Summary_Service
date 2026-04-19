@@ -405,15 +405,12 @@ class TestRunCountersUpdated:
 # ---------------------------------------------------------------------------
 
 def test_top_n_urls_written_to_seen_articles(tmp_path):
-    """After ranking, exactly the top-N article URLs must be inserted into seen_articles."""
+    """After ranking, exactly the top-N article URLs must be in seen_articles — no more, no less."""
     import sqlite3
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import patch
+    from src.config import TOP_N
     from src.main import run_pipeline
 
-    # Build a temp DB file with all required tables; use a factory so each
-    # get_connection() call returns a fresh connection (matching the existing
-    # test pattern in this file), which avoids "closed database" errors when
-    # run_pipeline calls conn.close() multiple times.
     db_path = tmp_path / "state.db"
 
     def _make_conn():
@@ -431,31 +428,33 @@ def test_top_n_urls_written_to_seen_articles(tmp_path):
         c.commit()
         return c
 
-    # Initialize schema
     _make_conn().close()
 
-    top_urls = [f"https://example.com/article-{i}" for i in range(3)]
+    # Seed TOP_N + 5 ranked articles so we can assert only TOP_N are written.
+    total = TOP_N + 5
+    all_urls = [f"https://example.com/article-{i}" for i in range(total)]
 
-    ranked_articles = [
-        {
+    def _make_article(i, url):
+        return {
             "url": url,
             "title": f"Title {i}",
             "publication": "example.com",
             "published_at": "2026-04-18T10:00:00+00:00",
-            "rank_score": 9.0 - i,
+            "rank_score": float(total - i),
             "impact_score": 9,
             "authenticity_score": 8,
             "relevance_score": 9,
             "summary": "A summary.",
         }
-        for i, url in enumerate(top_urls)
-    ]
+
+    ranked_articles = [_make_article(i, url) for i, url in enumerate(all_urls)]
+    top_articles = ranked_articles[:TOP_N]
 
     with patch("src.main.fetch_articles", return_value=[]), \
          patch("src.main.process_articles", return_value=ranked_articles), \
          patch("src.main.filter_articles", return_value=(ranked_articles, [])), \
          patch("src.main.rank_articles", return_value=ranked_articles), \
-         patch("src.main.summarize_articles", return_value=ranked_articles), \
+         patch("src.main.summarize_articles", return_value=top_articles), \
          patch("src.main.render_newsletter", return_value=("<html/>", "plain")), \
          patch("src.main.send_newsletter"), \
          patch("src.main.get_connection", side_effect=_make_conn):
@@ -467,5 +466,8 @@ def test_top_n_urls_written_to_seen_articles(tmp_path):
     seen = {row["url"] for row in rows}
     conn.close()
 
-    for url in top_urls:
-        assert url in seen, f"{url} must be in seen_articles after pipeline run"
+    expected = {a["url"] for a in ranked_articles[:TOP_N]}
+    unexpected = {a["url"] for a in ranked_articles[TOP_N:]}
+
+    assert seen == expected, f"seen_articles must contain exactly top-{TOP_N} URLs"
+    assert not seen & unexpected, "Articles beyond TOP_N must not be in seen_articles"

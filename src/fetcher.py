@@ -92,6 +92,7 @@ def fetch_articles() -> list[dict]:
         "DELETE FROM seen_articles WHERE seen_at < ?",
         (prune_cutoff.isoformat(),),
     )
+    # SCORE_CACHE_TTL_DAYS is a module-level int constant — not user input; f-string is safe
     conn.execute(
         f"DELETE FROM article_scores WHERE cached_at < datetime('now', '-{SCORE_CACHE_TTL_DAYS} days')"
     )

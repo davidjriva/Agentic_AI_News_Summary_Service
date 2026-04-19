@@ -153,9 +153,7 @@ def _write_failed(article: dict, reason: str, run_id: str | None) -> None:
 
 def _load_score_cache(conn) -> dict[str, dict]:
     """Load all non-expired score cache entries keyed by URL. Caller owns the connection."""
-    from src.config import SCORE_CACHE_TTL_DAYS
-
-    ttl_modifier = f"-{SCORE_CACHE_TTL_DAYS} days"
+    ttl_modifier = f"-{_cfg.SCORE_CACHE_TTL_DAYS} days"
     rows = conn.execute(
         "SELECT url, impact_score, authenticity_score, relevance_score, "
         "impact_reason, authenticity_reason, relevance_reason "

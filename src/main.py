@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from tqdm import tqdm
 
-from src.config import LLM_PROVIDER, LOOKBACK_HOURS
+from src.config import LLM_PROVIDER, LOOKBACK_HOURS, TOP_N
 from src.db import get_connection
 from src.emailer import send_newsletter
 from src.fetcher import fetch_articles
@@ -30,7 +30,7 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
     Args:
         dry_run: If True, skip email delivery and print HTML to stdout.
         run_id: Optional run ID to use; a UUID is generated if not provided.
-        clean: If True, delete seen_articles from the past 12 hours before fetching.
+        clean: If True, delete seen_articles from the past LOOKBACK_HOURS before fetching.
 
     Returns:
         The run ID string.
@@ -59,7 +59,7 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             )
             conn.commit()
             conn.close()
-            tqdm.write(f"[{run_id}] Clean run: cleared seen_articles for past 12 hours")
+            tqdm.write(f"[{run_id}] Clean run: cleared seen_articles for past {LOOKBACK_HOURS} hours")
 
         with tqdm(total=7, desc="Pipeline", leave=True) as bar:
             bar.set_description("Fetching articles")
@@ -99,7 +99,7 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             conn = get_connection()
             conn.executemany(
                 "INSERT OR IGNORE INTO seen_articles (url, seen_at) VALUES (?, ?)",
-                [(a["url"], now_iso) for a in articles],
+                [(a["url"], now_iso) for a in articles[:TOP_N]],
             )
             conn.commit()
             conn.close()
