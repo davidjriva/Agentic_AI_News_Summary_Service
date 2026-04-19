@@ -6,6 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from src.fetcher import _extract_author, _entry_to_dict
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -535,7 +537,6 @@ def test_langchain_missing_html_structure_returns_empty():
 # ---------------------------------------------------------------------------
 # Test: _extract_author
 # ---------------------------------------------------------------------------
-from src.fetcher import _extract_author
 
 
 class TestExtractAuthor:
@@ -566,7 +567,6 @@ class TestExtractAuthor:
 # ---------------------------------------------------------------------------
 # Test: _entry_to_dict author extraction
 # ---------------------------------------------------------------------------
-from src.fetcher import _entry_to_dict
 
 
 class TestEntryToDictAuthorExtraction:

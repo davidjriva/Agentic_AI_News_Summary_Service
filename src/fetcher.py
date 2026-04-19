@@ -69,13 +69,13 @@ def _is_recent(published_at: datetime | None, cutoff: datetime) -> bool:
 _BYLINE_RE = re.compile(
     r"""
     (?:
-        [Bb]y\s+                              # "By " or "by "
-      | [Ww]ritten\s+by\s+                    # "Written by " or "written by "
-      | ^\s*[—\-]\s+                          # "— " or "- " at line start
-      | \|\s*                                 # "| "
+        (?:(?:^|(?<=[.!?\n]))\s*)(?:[Bb]y)\s+  # "By " at text/line start or after sentence end
+      | [Ww]ritten\s+by\s+                      # "Written by "
+      | ^\s*[—\-]\s+                            # "— " at line start
+      | \|\s*                                   # "| "
     )
     (
-        [A-Z][a-z]+(?:[- ][A-Z][a-z]+){1,3}  # 2–4 title-cased words / hyphenated
+        [A-Z][a-z]+(?:[- ][A-Z][a-z]+){1,3}    # 2–4 title-cased words / hyphenated
     )
     """,
     re.VERBOSE | re.MULTILINE,
