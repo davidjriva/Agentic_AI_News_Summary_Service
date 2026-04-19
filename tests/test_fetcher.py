@@ -415,8 +415,6 @@ def test_langchain_no_blog_link_returns_empty():
 def test_langchain_happy_path_returns_article():
     """_process_langchain returns a correctly shaped article for a recent post."""
     from src.fetcher import _process_langchain
-    from datetime import datetime, timedelta, timezone
-    from unittest.mock import MagicMock, patch
 
     html = """
     <html><body>
@@ -445,7 +443,5 @@ def test_langchain_happy_path_returns_article():
     assert article["url"] == "https://www.langchain.com/blog/agent-engineering-deep-dive"
     assert article["author"] == "Jane Smith"
     assert article["publication"] == "www.langchain.com"
-    assert isinstance(article["published_at"], datetime)
-    assert article["published_at"].year == 2026
-    assert article["published_at"].month == 4
-    assert article["published_at"].day == 17
+    assert article["published_at"] == datetime(2026, 4, 17, tzinfo=timezone.utc)
+    assert article["description"] == ""
