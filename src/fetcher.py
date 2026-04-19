@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import feedparser
 import requests
 
-from src.config import FEED_URLS, HN_ALGOLIA_URL, LOOKBACK_HOURS, MAX_ARTICLES_PER_SOURCE
+from src.config import FEED_URLS, HN_ALGOLIA_URL, LOOKBACK_HOURS, MAX_ARTICLES_PER_SOURCE, SCORE_CACHE_TTL_DAYS
 from src.db import get_connection
 
 # ---------------------------------------------------------------------------
@@ -75,9 +75,10 @@ def fetch_articles() -> list[dict]:
     * Parse published_at to a UTC-aware datetime.
     * Discard articles older than LOOKBACK_HOURS.
     * Skip URLs already present in seen_articles.
-    * Insert new URLs into seen_articles.
 
-    Also prunes seen_articles rows older than 7 days.
+    Prunes seen_articles rows older than 7 days and article_scores older than
+    SCORE_CACHE_TTL_DAYS. Does NOT write to seen_articles — that is main.py's
+    responsibility (top-N only, after ranking).
 
     Returns a list of dicts with keys:
         title, url, description, author, publication, published_at
@@ -87,30 +88,23 @@ def fetch_articles() -> list[dict]:
     cutoff = now - timedelta(hours=LOOKBACK_HOURS)
     prune_cutoff = now - timedelta(days=7)
 
-    # Prune stale dedup records
     conn.execute(
         "DELETE FROM seen_articles WHERE seen_at < ?",
         (prune_cutoff.isoformat(),),
     )
+    # SCORE_CACHE_TTL_DAYS is a module-level int constant — not user input; f-string is safe
+    conn.execute(
+        f"DELETE FROM article_scores WHERE cached_at < datetime('now', '-{SCORE_CACHE_TTL_DAYS} days')"
+    )
     conn.commit()
 
-    # Load the current set of seen URLs for O(1) lookup
     seen_urls: set[str] = {
         row[0]
         for row in conn.execute("SELECT url FROM seen_articles").fetchall()
     }
+    conn.close()
 
-    articles, new_urls = _fetch_parallel(seen_urls, cutoff, now)
-
-    # Persist all newly-seen URLs in one batch
-    if new_urls:
-        conn.executemany(
-            "INSERT OR IGNORE INTO seen_articles (url, seen_at) VALUES (?, ?)",
-            new_urls,
-        )
-        conn.commit()
-
-    return articles
+    return _fetch_parallel(seen_urls, cutoff, now)
 
 
 # ---------------------------------------------------------------------------
@@ -122,11 +116,7 @@ def _dispatch_feed(
     now: datetime,
     cutoff: datetime,
     seen_urls: set[str],
-) -> tuple[list[dict], list[tuple[str, str]]]:
-    """Route a single feed URL to the appropriate processor.
-
-    Returns (articles, new_urls) without mutating any shared state.
-    """
+) -> list[dict]:
     if feed_url == HN_ALGOLIA_URL:
         return _process_hn(feed_url, now, cutoff, seen_urls)
     return _process_rss(feed_url, cutoff, seen_urls)
@@ -136,17 +126,16 @@ def _fetch_parallel(
     seen_urls: set[str],
     cutoff: datetime,
     now: datetime,
-) -> tuple[list[dict], list[tuple[str, str]]]:
+) -> list[dict]:
     """Fetch all feeds concurrently using ThreadPoolExecutor.
 
     All processors receive the same seen_urls snapshot (read-only during
     concurrent execution). Cross-feed URL duplicates are resolved after
     collection via seen_in_run.
 
-    Returns (articles, new_urls). Does NOT touch the database.
+    Returns a list of article dicts. Does NOT touch the database.
     """
     articles: list[dict] = []
-    new_urls: list[tuple[str, str]] = []
     seen_in_run: set[str] = set()
 
     with ThreadPoolExecutor(max_workers=min(10, len(FEED_URLS))) as executor:
@@ -156,17 +145,16 @@ def _fetch_parallel(
         }
         for future in as_completed(futures):
             try:
-                feed_articles, feed_new_urls = future.result()
+                feed_articles = future.result()
             except Exception:
                 continue
-            # feed_articles and feed_new_urls are parallel lists
-            for article, (url, seen_at) in zip(feed_articles, feed_new_urls):
+            for article in feed_articles:
+                url = article["url"]
                 if url not in seen_in_run:
                     seen_in_run.add(url)
                     articles.append(article)
-                    new_urls.append((url, seen_at))
 
-    return articles, new_urls
+    return articles
 
 
 # ---------------------------------------------------------------------------
@@ -177,38 +165,28 @@ def _process_rss(
     feed_url: str,
     cutoff: datetime,
     seen_urls: set[str],
-) -> tuple[list[dict], list[tuple[str, str]]]:
-    """Parse an RSS/Atom feed and return qualifying articles.
-
-    Returns (articles, new_urls) without mutating any shared state.
-    """
+) -> list[dict]:
+    """Parse an RSS/Atom feed and return qualifying articles."""
     articles: list[dict] = []
-    new_urls: list[tuple[str, str]] = []
-
     try:
         feed = feedparser.parse(feed_url)
     except Exception:
-        return articles, new_urls
+        return articles
 
     publication = _domain(feed_url)
-    now_iso = datetime.now(timezone.utc).isoformat()
 
     for entry in feed.entries[:MAX_ARTICLES_PER_SOURCE]:
         url = getattr(entry, "link", None)
         if not url:
             continue
-
         published_at = _parse_struct_time(getattr(entry, "published_parsed", None))
         if not _is_recent(published_at, cutoff):
             continue
-
         if url in seen_urls:
             continue
-
         articles.append(_entry_to_dict(entry, url, publication, published_at))
-        new_urls.append((url, now_iso))
 
-    return articles, new_urls
+    return articles
 
 
 def _process_hn(
@@ -216,14 +194,9 @@ def _process_hn(
     now: datetime,
     cutoff: datetime,
     seen_urls: set[str],
-) -> tuple[list[dict], list[tuple[str, str]]]:
-    """Fetch HN Algolia JSON and return qualifying articles.
-
-    Returns (articles, new_urls) without mutating any shared state.
-    """
+) -> list[dict]:
+    """Fetch HN Algolia JSON and return qualifying articles."""
     articles: list[dict] = []
-    new_urls: list[tuple[str, str]] = []
-
     try:
         resp = requests.get(
             hn_url,
@@ -232,23 +205,19 @@ def _process_hn(
         )
         hits = resp.json().get("hits", [])
     except Exception:
-        return articles, new_urls
+        return articles
 
     publication = _domain(hn_url)
-    now_iso = now.isoformat()
 
     for hit in hits[:MAX_ARTICLES_PER_SOURCE]:
         url = hit.get("url") or f"https://news.ycombinator.com/item?id={hit.get('objectID', '')}"
         if not url:
             continue
-
         published_at = _parse_iso(hit.get("created_at", ""))
         if not _is_recent(published_at, cutoff):
             continue
-
         if url in seen_urls:
             continue
-
         articles.append({
             "title": hit.get("title", ""),
             "url": url,
@@ -257,9 +226,8 @@ def _process_hn(
             "publication": publication,
             "published_at": published_at,
         })
-        new_urls.append((url, now_iso))
 
-    return articles, new_urls
+    return articles
 
 
 # ---------------------------------------------------------------------------

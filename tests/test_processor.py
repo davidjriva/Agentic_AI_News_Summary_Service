@@ -1,4 +1,5 @@
 import json
+import sqlite3
 from datetime import datetime
 from unittest.mock import MagicMock, call, patch
 
@@ -46,6 +47,83 @@ def _make_mock_client(response_text: str):
     mock_client.messages = mock_messages
 
     return mock_client
+
+
+@pytest.fixture()
+def tmp_score_db(tmp_path):
+    db_path = tmp_path / "scores.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    conn.execute("""
+        CREATE TABLE article_scores (
+            url                 TEXT PRIMARY KEY,
+            impact_score        INTEGER,
+            authenticity_score  INTEGER,
+            relevance_score     INTEGER,
+            impact_reason       TEXT,
+            authenticity_reason TEXT,
+            relevance_reason    TEXT,
+            cached_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE failed_articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id TEXT,
+            url TEXT,
+            title TEXT,
+            publication TEXT,
+            reason TEXT,
+            failed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    yield conn
+    conn.close()
+
+
+def _make_empty_db():
+    """Return an in-memory SQLite connection with the required tables (no rows)."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("""
+        CREATE TABLE article_scores (
+            url                 TEXT PRIMARY KEY,
+            impact_score        INTEGER,
+            authenticity_score  INTEGER,
+            relevance_score     INTEGER,
+            impact_reason       TEXT,
+            authenticity_reason TEXT,
+            relevance_reason    TEXT,
+            cached_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE failed_articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id TEXT,
+            url TEXT,
+            title TEXT,
+            publication TEXT,
+            reason TEXT,
+            failed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    return conn
+
+
+@pytest.fixture(autouse=True)
+def _empty_score_cache(request):
+    """Patch get_connection to return an empty in-memory DB for all tests unless the test
+    explicitly uses tmp_score_db (which manages its own connection patching)."""
+    if "tmp_score_db" in request.fixturenames:
+        yield  # TestScoreCache manages its own connection patching
+        return
+    conn = _make_empty_db()
+    with patch("src.processor.get_connection", return_value=conn):
+        yield
+    conn.close()
 
 
 class TestValidJsonResponse:
@@ -634,3 +712,90 @@ class TestSummarizeArticles:
         assert results[0]["summary"] == "Full paragraph."
         payload = mock_post.call_args[1]["json"]
         assert payload["max_tokens"] == 512
+
+
+class TestScoreCache:
+    """Score caching: cache hit skips LLM; cache miss calls LLM and writes cache."""
+
+    def test_cache_hit_skips_llm(self, tmp_score_db):
+        url = "https://example.com/cached"
+        tmp_score_db.execute(
+            "INSERT INTO article_scores "
+            "(url, impact_score, authenticity_score, relevance_score, "
+            "impact_reason, authenticity_reason, relevance_reason) "
+            "VALUES (?, 8, 7, 9, 'big impact', 'credible source', 'on topic')",
+            (url,),
+        )
+        tmp_score_db.commit()
+
+        article = make_article(url=url)
+
+        with patch("src.processor.get_connection", return_value=tmp_score_db), \
+             patch("anthropic.Anthropic") as mock_anthropic_cls, \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            results = process_articles([article])
+
+        mock_anthropic_cls.return_value.messages.create.assert_not_called()
+        assert len(results) == 1
+        assert results[0]["impact_score"] == 8
+        assert results[0]["relevance_score"] == 9
+        assert results[0]["impact_reason"] == "big impact"
+
+    def test_cache_miss_calls_llm(self, tmp_score_db):
+        article = make_article(url="https://example.com/new")
+        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch("src.processor.get_connection", return_value=tmp_score_db), \
+             patch("anthropic.Anthropic", return_value=mock_client), \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            results = process_articles([article])
+
+        mock_client.messages.create.assert_called_once()
+        assert results[0]["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
+
+    def test_cache_miss_writes_scores_to_db(self, tmp_score_db, tmp_path):
+        url = "https://example.com/write-test"
+        article = make_article(url=url)
+        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        def fresh_conn():
+            conn = sqlite3.connect(str(tmp_path / "scores.db"))
+            conn.row_factory = sqlite3.Row
+            return conn
+
+        with patch("src.processor.get_connection", side_effect=fresh_conn), \
+             patch("anthropic.Anthropic", return_value=mock_client), \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            process_articles([article])
+
+        # Verify via a fresh connection
+        conn2 = fresh_conn()
+        row = conn2.execute(
+            "SELECT impact_score, relevance_score FROM article_scores WHERE url = ?", (url,)
+        ).fetchone()
+        conn2.close()
+        assert row is not None
+        assert row["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
+        assert row["relevance_score"] == VALID_CLAUDE_RESPONSE["relevance_score"]
+
+    def test_expired_cache_entry_treated_as_miss(self, tmp_score_db):
+        url = "https://example.com/expired"
+        tmp_score_db.execute(
+            "INSERT INTO article_scores "
+            "(url, impact_score, authenticity_score, relevance_score, "
+            "impact_reason, authenticity_reason, relevance_reason, cached_at) "
+            "VALUES (?, 3, 3, 3, 'old', 'old', 'old', datetime('now', '-4 days'))",
+            (url,),
+        )
+        tmp_score_db.commit()
+
+        article = make_article(url=url)
+        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
+
+        with patch("src.processor.get_connection", return_value=tmp_score_db), \
+             patch("anthropic.Anthropic", return_value=mock_client), \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            results = process_articles([article])
+
+        mock_client.messages.create.assert_called_once()
+        assert results[0]["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]

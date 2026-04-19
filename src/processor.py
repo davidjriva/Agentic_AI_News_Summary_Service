@@ -151,8 +151,69 @@ def _write_failed(article: dict, reason: str, run_id: str | None) -> None:
         pass  # best-effort: a DB failure must not abort the rest of the pipeline
 
 
-def _process_one(article: dict, client, use_local: bool, run_id: str | None = None) -> dict | None:
+def _load_score_cache(conn) -> dict[str, dict]:
+    """Load all non-expired score cache entries keyed by URL. Caller owns the connection."""
+    ttl_modifier = f"-{_cfg.SCORE_CACHE_TTL_DAYS} days"
+    rows = conn.execute(
+        "SELECT url, impact_score, authenticity_score, relevance_score, "
+        "impact_reason, authenticity_reason, relevance_reason "
+        "FROM article_scores "
+        "WHERE cached_at >= datetime('now', ?)",
+        (ttl_modifier,),
+    ).fetchall()
+    return {
+        row["url"]: {
+            "impact_score": row["impact_score"],
+            "authenticity_score": row["authenticity_score"],
+            "relevance_score": row["relevance_score"],
+            "impact_reason": row["impact_reason"],
+            "authenticity_reason": row["authenticity_reason"],
+            "relevance_reason": row["relevance_reason"],
+        }
+        for row in rows
+    }
+
+
+def _write_score_cache(url: str, scores: dict) -> None:
+    """Persist computed scores to article_scores. Best-effort: never raises."""
+    try:
+        conn = get_connection()
+        try:
+            conn.execute(
+                "INSERT OR REPLACE INTO article_scores "
+                "(url, impact_score, authenticity_score, relevance_score, "
+                "impact_reason, authenticity_reason, relevance_reason, cached_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
+                (
+                    url,
+                    scores["impact_score"],
+                    scores["authenticity_score"],
+                    scores["relevance_score"],
+                    scores["impact_reason"],
+                    scores["authenticity_reason"],
+                    scores["relevance_reason"],
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+
+def _process_one(
+    article: dict,
+    client,
+    use_local: bool,
+    run_id: str | None = None,
+    score_cache: dict[str, dict] | None = None,
+) -> dict | None:
     """Process a single article with retry. Returns None on final failure (article dead-lettered)."""
+    url = article.get("url", "")
+
+    if score_cache and url in score_cache:
+        return {**article, **score_cache[url]}
+
     user_content = (
         f"Author: {article['author']}\n"
         f"Publication: {article['publication']}\n"
@@ -164,8 +225,7 @@ def _process_one(article: dict, client, use_local: bool, run_id: str | None = No
         try:
             response_text = _call_local_llm(user_content) if use_local else _call_anthropic(client, user_content)
             parsed = json.loads(response_text)
-            return {
-                **article,
+            scores = {
                 "impact_score": parsed["impact_score"],
                 "authenticity_score": parsed["authenticity_score"],
                 "relevance_score": parsed["relevance_score"],
@@ -173,6 +233,8 @@ def _process_one(article: dict, client, use_local: bool, run_id: str | None = No
                 "authenticity_reason": parsed["authenticity_reason"],
                 "relevance_reason": parsed["relevance_reason"],
             }
+            _write_score_cache(url, scores)
+            return {**article, **scores}
         except Exception as exc:
             last_exc = exc
             if attempt < _cfg.PROCESSOR_MAX_RETRIES:
@@ -183,17 +245,24 @@ def _process_one(article: dict, client, use_local: bool, run_id: str | None = No
 
 
 def process_articles(articles: list[dict], run_id: str | None = None) -> list[dict]:
-    """Process articles by calling the configured LLM to add summary and scores.
+    """Process articles by calling the configured LLM to add scores.
 
+    Checks article_scores cache before each LLM call; writes to cache on success.
     Articles that fail after all retries are written to failed_articles and excluded.
     """
     use_local = _cfg.LLM_PROVIDER == "local"
     client = None if use_local else anthropic.Anthropic()
 
+    conn = get_connection()
+    try:
+        score_cache = _load_score_cache(conn)
+    finally:
+        conn.close()
+
     results = []
     with tqdm(total=len(articles), desc="Articles", unit="art", leave=False) as bar:
         for article in articles:
-            result = _process_one(article, client, use_local, run_id)
+            result = _process_one(article, client, use_local, run_id, score_cache)
             if result is not None:
                 results.append(result)
             bar.update(1)

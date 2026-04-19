@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS filtered_articles (
 );
 """
 
+_CREATE_ARTICLE_SCORES = """
+CREATE TABLE IF NOT EXISTS article_scores (
+    url                 TEXT PRIMARY KEY,
+    impact_score        INTEGER,
+    authenticity_score  INTEGER,
+    relevance_score     INTEGER,
+    impact_reason       TEXT,
+    authenticity_reason TEXT,
+    relevance_reason    TEXT,
+    cached_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+"""
+
 
 def get_connection() -> sqlite3.Connection:
     """Return a fresh sqlite3 connection with row_factory set to sqlite3.Row.
@@ -74,6 +87,7 @@ def get_connection() -> sqlite3.Connection:
     conn.execute(_CREATE_RUN_ARTICLES)
     conn.execute(_CREATE_FAILED_ARTICLES)
     conn.execute(_CREATE_FILTERED_ARTICLES)
+    conn.execute(_CREATE_ARTICLE_SCORES)
     # Migrate existing runs table — safe to run repeatedly
     for col_sql in (
         "ALTER TABLE runs ADD COLUMN dropped_count INTEGER DEFAULT 0",

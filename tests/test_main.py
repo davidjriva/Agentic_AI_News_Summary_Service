@@ -398,3 +398,76 @@ class TestRunCountersUpdated:
 
         assert row[0] == 1  # dropped_count
         assert row[1] == 2  # failed_count
+
+
+# ---------------------------------------------------------------------------
+# Test: top-N URLs written to seen_articles after ranking
+# ---------------------------------------------------------------------------
+
+def test_top_n_urls_written_to_seen_articles(tmp_path):
+    """After ranking, exactly the top-N article URLs must be in seen_articles — no more, no less."""
+    import sqlite3
+    from unittest.mock import patch
+    from src.config import TOP_N
+    from src.main import run_pipeline
+
+    db_path = tmp_path / "state.db"
+
+    def _make_conn():
+        c = sqlite3.connect(str(db_path))
+        c.row_factory = sqlite3.Row
+        for ddl in [
+            "CREATE TABLE IF NOT EXISTS seen_articles (url TEXT PRIMARY KEY, seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, started_at TIMESTAMP, completed_at TIMESTAMP, status TEXT, article_count INTEGER, html TEXT, error TEXT, dropped_count INTEGER DEFAULT 0, failed_count INTEGER DEFAULT 0)",
+            "CREATE TABLE IF NOT EXISTS run_articles (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT, title TEXT, url TEXT, publication TEXT, published_at TEXT, rank_score REAL)",
+            "CREATE TABLE IF NOT EXISTS failed_articles (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT, url TEXT, title TEXT, publication TEXT, reason TEXT, failed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS filtered_articles (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT, url TEXT, title TEXT, publication TEXT, relevance_score INTEGER, relevance_reason TEXT)",
+            "CREATE TABLE IF NOT EXISTS article_scores (url TEXT PRIMARY KEY, impact_score INTEGER, authenticity_score INTEGER, relevance_score INTEGER, impact_reason TEXT, authenticity_reason TEXT, relevance_reason TEXT, cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+        ]:
+            c.execute(ddl)
+        c.commit()
+        return c
+
+    _make_conn().close()
+
+    # Seed TOP_N + 5 ranked articles so we can assert only TOP_N are written.
+    total = TOP_N + 5
+    all_urls = [f"https://example.com/article-{i}" for i in range(total)]
+
+    def _make_article(i, url):
+        return {
+            "url": url,
+            "title": f"Title {i}",
+            "publication": "example.com",
+            "published_at": "2026-04-18T10:00:00+00:00",
+            "rank_score": float(total - i),
+            "impact_score": 9,
+            "authenticity_score": 8,
+            "relevance_score": 9,
+            "summary": "A summary.",
+        }
+
+    ranked_articles = [_make_article(i, url) for i, url in enumerate(all_urls)]
+    top_articles = ranked_articles[:TOP_N]
+
+    with patch("src.main.fetch_articles", return_value=[]), \
+         patch("src.main.process_articles", return_value=ranked_articles), \
+         patch("src.main.filter_articles", return_value=(ranked_articles, [])), \
+         patch("src.main.rank_articles", return_value=ranked_articles), \
+         patch("src.main.summarize_articles", return_value=top_articles), \
+         patch("src.main.render_newsletter", return_value=("<html/>", "plain")), \
+         patch("src.main.send_newsletter"), \
+         patch("src.main.get_connection", side_effect=_make_conn):
+        run_pipeline(dry_run=True, run_id="test-run-id")
+
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute("SELECT url FROM seen_articles").fetchall()
+    seen = {row["url"] for row in rows}
+    conn.close()
+
+    expected = {a["url"] for a in ranked_articles[:TOP_N]}
+    unexpected = {a["url"] for a in ranked_articles[TOP_N:]}
+
+    assert seen == expected, f"seen_articles must contain exactly top-{TOP_N} URLs"
+    assert not seen & unexpected, "Articles beyond TOP_N must not be in seen_articles"
