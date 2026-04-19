@@ -14,11 +14,12 @@ FEED_URLS = [
     "https://huggingface.co/blog/feed.xml",                               # replaces stale VentureBeat (verified A1: 200, 764 entries)
     "https://news.google.com/rss/search?q=agentic+AI",
     "https://hn.algolia.com/api/v1/search?tags=story&query=AI+agent",    # JSON, not RSS ("agentic AI" query returned months-old results)
+    "https://www.langchain.com/blog",                                    # HTML scrape; no RSS feed available
 ]
 
-# The last URL (HN Algolia) is a JSON API, not an RSS feed.
-# The fetcher must handle it separately.
+# Non-RSS sources — the fetcher dispatches these to dedicated processors.
 HN_ALGOLIA_URL = "https://hn.algolia.com/api/v1/search?tags=story&query=AI+agent"
+LANGCHAIN_BLOG_URL = "https://www.langchain.com/blog"
 
 _recipients_env = os.getenv("EMAIL_RECIPIENTS", "")
 RECIPIENTS: list[str] = [r.strip() for r in _recipients_env.split(",") if r.strip()]

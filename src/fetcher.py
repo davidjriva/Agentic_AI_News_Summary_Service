@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import feedparser
 import requests
 
-from src.config import FEED_URLS, HN_ALGOLIA_URL, LOOKBACK_HOURS, MAX_ARTICLES_PER_SOURCE, SCORE_CACHE_TTL_DAYS
+from src.config import FEED_URLS, HN_ALGOLIA_URL, LANGCHAIN_BLOG_URL, LOOKBACK_HOURS, MAX_ARTICLES_PER_SOURCE, SCORE_CACHE_TTL_DAYS
 from src.db import get_connection
 
 # ---------------------------------------------------------------------------
@@ -119,6 +119,8 @@ def _dispatch_feed(
 ) -> list[dict]:
     if feed_url == HN_ALGOLIA_URL:
         return _process_hn(feed_url, now, cutoff, seen_urls)
+    if feed_url == LANGCHAIN_BLOG_URL:
+        return _process_langchain(feed_url, now, cutoff, seen_urls)
     return _process_rss(feed_url, cutoff, seen_urls)
 
 
@@ -226,6 +228,77 @@ def _process_hn(
             "publication": publication,
             "published_at": published_at,
         })
+
+    return articles
+
+
+def _process_langchain(
+    blog_url: str,
+    now: datetime,
+    cutoff: datetime,
+    seen_urls: set[str],
+) -> list[dict]:
+    """Scrape the LangChain blog listing page and return qualifying articles.
+
+    LangChain's blog is a Webflow site with no RSS feed. We scrape the HTML
+    listing page, which always shows the most recent ~18 posts with dates.
+    """
+    articles: list[dict] = []
+
+    try:
+        from bs4 import BeautifulSoup  # soft import — not in base requirements
+
+        resp = requests.get(blog_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+    except Exception:
+        return articles
+
+    seen_in_call: set[str] = set()
+
+    for h2 in soup.find_all("h2", class_="t-heading-6-rg"):
+        title = h2.get_text(strip=True)
+        card = h2.parent
+        for _ in range(6):
+            link = card.find("a", href=lambda h: h and h.startswith("/blog/"))
+            if link:
+                break
+            card = card.parent
+
+        if not link:
+            continue
+
+        url = "https://www.langchain.com" + link["href"]
+        if url in seen_urls or url in seen_in_call:
+            continue
+
+        date_el = card.find(class_="date-color")
+        date_str = date_el.get_text(strip=True) if date_el else ""
+        published_at: datetime | None = None
+        if date_str:
+            try:
+                published_at = datetime.strptime(date_str, "%B %d, %Y").replace(tzinfo=timezone.utc)
+            except ValueError:
+                pass
+
+        if not _is_recent(published_at, cutoff):
+            continue
+
+        author_els = card.find_all(class_="text-c-blue-light-500")
+        author = ", ".join(a.get_text(strip=True) for a in author_els) if author_els else ""
+
+        seen_in_call.add(url)
+        articles.append({
+            "title": title,
+            "url": url,
+            "description": "",
+            "author": author,
+            "publication": "www.langchain.com",
+            "published_at": published_at,
+        })
+
+        if len(articles) >= MAX_ARTICLES_PER_SOURCE:
+            break
 
     return articles
 
