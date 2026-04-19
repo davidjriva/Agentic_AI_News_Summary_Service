@@ -31,6 +31,18 @@ def tmp_db(tmp_path):
             html TEXT
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS article_scores (
+            url                 TEXT PRIMARY KEY,
+            impact_score        INTEGER,
+            authenticity_score  INTEGER,
+            relevance_score     INTEGER,
+            impact_reason       TEXT,
+            authenticity_reason TEXT,
+            relevance_reason    TEXT,
+            cached_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     yield conn
     conn.close()
@@ -147,11 +159,11 @@ def test_seen_articles_skipped(tmp_db):
 
 
 # ---------------------------------------------------------------------------
-# (c) New article URLs are inserted into seen_articles
+# (c) fetch_articles does NOT insert into seen_articles; prunes article_scores
 # ---------------------------------------------------------------------------
 
-def test_new_urls_inserted_into_seen_articles(tmp_db):
-    """After fetch_articles(), new URLs must be present in seen_articles."""
+def test_fetcher_does_not_insert_seen_articles(tmp_db):
+    """fetch_articles() must not write to seen_articles — that is main.py's responsibility."""
     from src.fetcher import fetch_articles
 
     new_url = "https://example.com/new-article"
@@ -170,7 +182,47 @@ def test_new_urls_inserted_into_seen_articles(tmp_db):
     row = tmp_db.execute(
         "SELECT url FROM seen_articles WHERE url = ?", (new_url,)
     ).fetchone()
-    assert row is not None, "New URL should be inserted into seen_articles"
+    assert row is None, "fetch_articles() must not insert into seen_articles"
+
+
+def test_fetcher_prunes_article_scores(tmp_db):
+    """fetch_articles() must delete article_scores rows older than 3 days."""
+    from src.fetcher import fetch_articles
+
+    stale_url = "https://example.com/stale"
+    fresh_url = "https://example.com/fresh"
+
+    tmp_db.execute(
+        "INSERT INTO article_scores (url, impact_score, authenticity_score, relevance_score, "
+        "impact_reason, authenticity_reason, relevance_reason, cached_at) "
+        "VALUES (?, 5, 5, 5, 'r', 'r', 'r', datetime('now', '-4 days'))",
+        (stale_url,),
+    )
+    tmp_db.execute(
+        "INSERT INTO article_scores (url, impact_score, authenticity_score, relevance_score, "
+        "impact_reason, authenticity_reason, relevance_reason, cached_at) "
+        "VALUES (?, 8, 7, 9, 'r', 'r', 'r', datetime('now'))",
+        (fresh_url,),
+    )
+    tmp_db.commit()
+
+    with patch("src.fetcher.feedparser.parse", return_value=_make_feed([])), \
+         patch("src.fetcher.requests.get") as mock_get, \
+         patch("src.fetcher.get_connection", return_value=tmp_db), \
+         patch("src.fetcher.FEED_URLS", ["https://example.com/feed"]), \
+         patch("src.fetcher.HN_ALGOLIA_URL", "https://hn.algolia.com/not-used"):
+
+        mock_get.return_value.json.return_value = {"hits": []}
+        fetch_articles()
+
+    stale_row = tmp_db.execute(
+        "SELECT url FROM article_scores WHERE url = ?", (stale_url,)
+    ).fetchone()
+    fresh_row = tmp_db.execute(
+        "SELECT url FROM article_scores WHERE url = ?", (fresh_url,)
+    ).fetchone()
+    assert stale_row is None, "Stale cache entry (>3 days) must be pruned"
+    assert fresh_row is not None, "Fresh cache entry must be kept"
 
 
 # ---------------------------------------------------------------------------
