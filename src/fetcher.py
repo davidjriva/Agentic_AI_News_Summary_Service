@@ -258,8 +258,11 @@ def _process_langchain(
 
     for h2 in soup.find_all("h2", class_="t-heading-6-rg"):
         title = h2.get_text(strip=True)
+        link = None
         card = h2.parent
         for _ in range(6):
+            if card is None:
+                break
             link = card.find("a", href=lambda h: h and h.startswith("/blog/"))
             if link:
                 break

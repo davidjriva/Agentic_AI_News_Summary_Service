@@ -380,3 +380,33 @@ def test_article_dict_has_all_required_keys(tmp_db):
     assert len(articles) == 1
     required_keys = {"title", "url", "description", "author", "publication", "published_at"}
     assert required_keys.issubset(articles[0].keys())
+
+
+# ---------------------------------------------------------------------------
+# _process_langchain — crash safety: h2 with no /blog/ ancestor link
+# ---------------------------------------------------------------------------
+
+def test_langchain_no_blog_link_returns_empty():
+    """_process_langchain must return [] when an h2 has no /blog/ ancestor link."""
+    from src.fetcher import _process_langchain
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock, patch
+
+    # Shallow HTML: h2 is a direct child of body — only 2 parent levels before document root
+    html = """
+    <html><body>
+      <h2 class="t-heading-6-rg">Orphan Title</h2>
+    </body></html>
+    """
+
+    mock_resp = MagicMock()
+    mock_resp.text = html
+    mock_resp.raise_for_status.return_value = None
+
+    now = datetime.now(timezone.utc)
+    cutoff = now  # nothing passes recency anyway
+
+    with patch("src.fetcher.requests.get", return_value=mock_resp):
+        result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
+
+    assert result == []
