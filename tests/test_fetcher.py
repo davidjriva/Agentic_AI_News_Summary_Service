@@ -505,3 +505,36 @@ def test_langchain_seen_url_skipped():
         )
 
     assert result == []
+
+
+def test_langchain_http_error_returns_empty():
+    """_process_langchain must return [] when the HTTP request fails."""
+    from src.fetcher import _process_langchain
+    import requests as req_lib
+
+    now = datetime(2026, 4, 18, tzinfo=timezone.utc)
+    cutoff = now - timedelta(hours=72)
+
+    with patch("src.fetcher.requests.get", side_effect=req_lib.RequestException("timeout")):
+        result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
+
+    assert result == []
+
+
+def test_langchain_missing_html_structure_returns_empty():
+    """_process_langchain must return [] when the page has no expected h2 elements."""
+    from src.fetcher import _process_langchain
+
+    html = "<html><body><p>Nothing here.</p></body></html>"
+
+    mock_resp = MagicMock()
+    mock_resp.text = html
+    mock_resp.raise_for_status.return_value = None
+
+    now = datetime(2026, 4, 18, tzinfo=timezone.utc)
+    cutoff = now - timedelta(hours=72)
+
+    with patch("src.fetcher.requests.get", return_value=mock_resp):
+        result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
+
+    assert result == []
