@@ -431,8 +431,7 @@ def test_langchain_happy_path_returns_article():
     mock_resp.text = html
     mock_resp.raise_for_status.return_value = None
 
-    now = datetime(2026, 4, 18, tzinfo=timezone.utc)
-    cutoff = now - timedelta(hours=72)
+    cutoff = datetime(2026, 4, 18, tzinfo=timezone.utc) - timedelta(hours=72)
 
     with patch("src.fetcher.requests.get", return_value=mock_resp):
         result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
@@ -466,8 +465,7 @@ def test_langchain_old_article_filtered():
     mock_resp.text = html
     mock_resp.raise_for_status.return_value = None
 
-    now = datetime(2026, 4, 18, tzinfo=timezone.utc)
-    cutoff = now - timedelta(hours=72)
+    cutoff = datetime(2026, 4, 18, tzinfo=timezone.utc) - timedelta(hours=72)
 
     with patch("src.fetcher.requests.get", return_value=mock_resp):
         result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
@@ -496,8 +494,7 @@ def test_langchain_seen_url_skipped():
     mock_resp.text = html
     mock_resp.raise_for_status.return_value = None
 
-    now = datetime(2026, 4, 18, tzinfo=timezone.utc)
-    cutoff = now - timedelta(hours=72)
+    cutoff = datetime(2026, 4, 18, tzinfo=timezone.utc) - timedelta(hours=72)
 
     with patch("src.fetcher.requests.get", return_value=mock_resp):
         result = _process_langchain(
@@ -512,8 +509,7 @@ def test_langchain_http_error_returns_empty():
     from src.fetcher import _process_langchain
     import requests as req_lib
 
-    now = datetime(2026, 4, 18, tzinfo=timezone.utc)
-    cutoff = now - timedelta(hours=72)
+    cutoff = datetime(2026, 4, 18, tzinfo=timezone.utc) - timedelta(hours=72)
 
     with patch("src.fetcher.requests.get", side_effect=req_lib.RequestException("timeout")):
         result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
@@ -531,8 +527,7 @@ def test_langchain_missing_html_structure_returns_empty():
     mock_resp.text = html
     mock_resp.raise_for_status.return_value = None
 
-    now = datetime(2026, 4, 18, tzinfo=timezone.utc)
-    cutoff = now - timedelta(hours=72)
+    cutoff = datetime(2026, 4, 18, tzinfo=timezone.utc) - timedelta(hours=72)
 
     with patch("src.fetcher.requests.get", return_value=mock_resp):
         result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
