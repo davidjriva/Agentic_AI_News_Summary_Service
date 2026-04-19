@@ -95,6 +95,15 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             tqdm.write(f"[{run_id}] Ranked {len(articles)} articles")
             bar.update(1)
 
+            now_iso = datetime.now(timezone.utc).isoformat()
+            conn = get_connection()
+            conn.executemany(
+                "INSERT OR IGNORE INTO seen_articles (url, seen_at) VALUES (?, ?)",
+                [(a["url"], now_iso) for a in articles],
+            )
+            conn.commit()
+            conn.close()
+
             bar.set_description("Generating summaries")
             articles = summarize_articles(articles, run_id=run_id)
             tqdm.write(f"[{run_id}] Summaries generated for {len(articles)} articles")
