@@ -407,7 +407,7 @@ def test_langchain_no_blog_link_returns_empty():
     cutoff = now  # nothing passes recency anyway
 
     with patch("src.fetcher.requests.get", return_value=mock_resp):
-        result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
+        result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
 
     assert result == []
 
@@ -435,7 +435,7 @@ def test_langchain_happy_path_returns_article():
     cutoff = now - timedelta(hours=72)
 
     with patch("src.fetcher.requests.get", return_value=mock_resp):
-        result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
+        result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
 
     assert len(result) == 1
     article = result[0]
@@ -470,7 +470,7 @@ def test_langchain_old_article_filtered():
     cutoff = now - timedelta(hours=72)
 
     with patch("src.fetcher.requests.get", return_value=mock_resp):
-        result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
+        result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
 
     assert result == []
 
@@ -501,7 +501,7 @@ def test_langchain_seen_url_skipped():
 
     with patch("src.fetcher.requests.get", return_value=mock_resp):
         result = _process_langchain(
-            "https://www.langchain.com/blog", now, cutoff, {url}
+            "https://www.langchain.com/blog", cutoff, {url}
         )
 
     assert result == []
@@ -516,7 +516,7 @@ def test_langchain_http_error_returns_empty():
     cutoff = now - timedelta(hours=72)
 
     with patch("src.fetcher.requests.get", side_effect=req_lib.RequestException("timeout")):
-        result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
+        result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
 
     assert result == []
 
@@ -535,6 +535,6 @@ def test_langchain_missing_html_structure_returns_empty():
     cutoff = now - timedelta(hours=72)
 
     with patch("src.fetcher.requests.get", return_value=mock_resp):
-        result = _process_langchain("https://www.langchain.com/blog", now, cutoff, set())
+        result = _process_langchain("https://www.langchain.com/blog", cutoff, set())
 
     assert result == []

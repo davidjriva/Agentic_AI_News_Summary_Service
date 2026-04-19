@@ -119,9 +119,9 @@ def _dispatch_feed(
     seen_urls: set[str],
 ) -> list[dict]:
     if feed_url == HN_ALGOLIA_URL:
-        return _process_hn(feed_url, now, cutoff, seen_urls)
+        return _process_hn(feed_url, cutoff, seen_urls)
     if feed_url == LANGCHAIN_BLOG_URL:
-        return _process_langchain(feed_url, now, cutoff, seen_urls)
+        return _process_langchain(feed_url, cutoff, seen_urls)
     return _process_rss(feed_url, cutoff, seen_urls)
 
 
@@ -194,7 +194,6 @@ def _process_rss(
 
 def _process_hn(
     hn_url: str,
-    now: datetime,
     cutoff: datetime,
     seen_urls: set[str],
 ) -> list[dict]:
@@ -235,7 +234,6 @@ def _process_hn(
 
 def _process_langchain(
     blog_url: str,
-    now: datetime,
     cutoff: datetime,
     seen_urls: set[str],
 ) -> list[dict]:
