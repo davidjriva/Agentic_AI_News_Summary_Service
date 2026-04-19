@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 
 import feedparser
 import requests
+from bs4 import BeautifulSoup
 
 from src.config import FEED_URLS, HN_ALGOLIA_URL, LANGCHAIN_BLOG_URL, LOOKBACK_HOURS, MAX_ARTICLES_PER_SOURCE, SCORE_CACHE_TTL_DAYS
 from src.db import get_connection
@@ -246,8 +247,6 @@ def _process_langchain(
     articles: list[dict] = []
 
     try:
-        from bs4 import BeautifulSoup  # soft import — not in base requirements
-
         resp = requests.get(blog_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
@@ -296,7 +295,7 @@ def _process_langchain(
             "url": url,
             "description": "",
             "author": author,
-            "publication": "www.langchain.com",
+            "publication": _domain(blog_url),
             "published_at": published_at,
         })
 
