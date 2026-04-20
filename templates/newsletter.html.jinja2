@@ -497,7 +497,7 @@
                 </h2>
 
                 <!-- Byline -->
-                <p class="article-byline">By {{ article.author }}</p>
+                {% if article.author %}<p class="article-byline">By {{ article.author }}</p>{% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
