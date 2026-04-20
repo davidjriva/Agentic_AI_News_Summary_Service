@@ -48,3 +48,25 @@ Notes:
   - `LOCAL_LLM_URL=...`
   - `LOCAL_LLM_MODEL=...` (match what your server expects)
 
+---
+
+## Subagent tasks (implementation-ready)
+
+### Task DEP1 — Document your llama.cpp server invocation (repo-local)
+
+- **Deliverable**: a short section added to this doc with:
+  - the exact command you use to start llama.cpp server (binary + flags)
+  - where the GGUF lives (path convention)
+  - what you set `LOCAL_LLM_MODEL` to (string your server expects)
+
+### Task DEP2 — Add a “smoke test” script against the local server
+
+- **Deliverable**: `fine-tune/smoke_test_llamacpp.py`
+- **Work**:
+  - Call `${LOCAL_LLM_URL}/v1/chat/completions` with a minimal prompt asking for the strict JSON output schema
+  - Validate:
+    - response parses as JSON
+    - keys `summary` and `author` exist
+- **Acceptance**:
+  - Exits non-zero on failure; prints the first error encountered
+

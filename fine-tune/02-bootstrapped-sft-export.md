@@ -68,3 +68,48 @@ For each `(url, output)` pair extracted from the newsletter:
 
 Use a deterministic split based on a URL hash so successive exports are comparable.
 
+---
+
+## Subagent tasks (implementation-ready)
+
+### Task EX1 — Implement `fine-tune/export_sft_dataset.py` (MVP: newsletter-only)
+
+- **Where**: new file `fine-tune/export_sft_dataset.py`
+- **Inputs**:
+  - SQLite DB at `data/state.db`
+  - `runs` table: `id`, `started_at`, `status`, `html`
+- **Work**:
+  - Select successful runs: `SELECT id, started_at, html FROM runs WHERE status='success' ORDER BY started_at DESC`
+  - Parse `html` to extract:
+    - article URL (`<a href="...">` in the newsletter template)
+    - summary text (the paragraph that contains `article.summary`)
+  - Write JSONL lines with:
+    - `instruction` (constant)
+    - `input` (MVP can be a structured metadata string; full-text reconstruction can be added in EX2)
+    - `output` as `{"summary": extracted_summary, "author": ""}` (author blank for MVP unless you also parse byline)
+- **Acceptance**:
+  - Running the script produces non-empty `fine-tune/data/sft.train.jsonl` and `fine-tune/data/sft.eval.jsonl`
+  - All lines are valid JSON
+  - `output` is always an object with keys `summary` and `author`
+
+### Task EX2 — Add input reconstruction via URL fetch + main-text extraction
+
+- **Where**: extend `fine-tune/export_sft_dataset.py`
+- **Work**:
+  - Fetch each `url` (respect timeouts and user-agent)
+  - Extract main content (best-effort). If extraction fails, fall back to a metadata-only input.
+  - Add flags:
+    - `--max-input-chars`
+    - `--require-input-source fulltext|any`
+- **Acceptance**:
+  - For a sample of URLs, `input` contains substantive article text (not nav chrome)
+  - Script completes without crashing on a single bad URL
+
+### Task EX3 — Deterministic split + de-dupe
+
+- **Work**:
+  - De-dupe by URL across runs (keep newest output)
+  - Stable split by hashing URL (e.g. first byte < threshold → eval)
+- **Acceptance**:
+  - Re-running export yields identical train/eval membership for the same URLs
+

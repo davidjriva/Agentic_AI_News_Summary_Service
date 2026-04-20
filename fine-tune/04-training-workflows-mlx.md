@@ -60,3 +60,29 @@ Run DPO using the MLX tooling you choose next (exact command depends on dataset 
   - no bullets / no line breaks if that’s the requirement
   - summaries are specific and non-boilerplate
 
+---
+
+## Subagent tasks (implementation-ready)
+
+### Task TR1 — Define a reproducible “golden eval set”
+
+- **Deliverable**: `fine-tune/data/eval_urls.txt` (or similar) listing ~20 stable URLs
+- **Work**:
+  - Pick URLs from recent runs that represent:
+    - arXiv abstracts
+    - company blogs
+    - journalism
+    - HN discussions
+  - Store expected output format checks (JSON validity, required keys)
+
+### Task TR2 — Add an automated eval runner
+
+- **Deliverable**: `fine-tune/eval.py` (or a Makefile target) that:
+  - loads the current llama.cpp model endpoint
+  - runs the eval URLs through the summarization prompt
+  - validates strict JSON and required keys
+- **Acceptance**:
+  - Fails fast if any response is non-JSON or missing keys
+  - Produces a small report file for before/after comparisons
+
+
