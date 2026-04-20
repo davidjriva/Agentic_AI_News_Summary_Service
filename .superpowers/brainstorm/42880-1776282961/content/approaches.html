@@ -1,0 +1,44 @@
+<h2>Three approaches for <code>/metrics</code></h2>
+<p class="subtitle">How the page gets its data and renders charts</p>
+
+<div class="options">
+
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Server-rendered (recommended)</h3>
+      <p>FastAPI queries DB and RECIPIENTS at request time, passes all data as JSON into the Jinja2 template. Chart.js reads it from inline <code>&lt;script&gt;</code> tags. No client-side fetch, no extra endpoint.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Matches existing dashboard pattern exactly</li><li>Single request loads the full page</li><li>Simple — one new route + one new template</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>No standalone API to call from other tools</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>API + thin shell</h3>
+      <p><code>GET /api/metrics</code> returns JSON. <code>GET /metrics</code> is a bare HTML shell that <code>fetch()</code>es it on load and renders charts dynamically.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>JSON endpoint is independently testable</li><li>Easy to call from scripts or other UIs</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Extra moving part (two routes, fetch logic, loading state)</li><li>Diverges from how the rest of the server works</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Hybrid — server-rendered + JSON endpoint</h3>
+      <p>Add both <code>GET /metrics</code> (full HTML, data baked in) <em>and</em> <code>GET /api/metrics</code> (JSON only). The HTML page uses the same inline-data approach as Option A; the JSON endpoint is a bonus for tooling.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Best of both: fast page load + testable API</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Two routes instead of one; slightly more code to maintain</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:24px;">My recommendation: <strong>A</strong> — keeps the codebase consistent, covers all the metrics you asked for, and adds zero complexity. A JSON endpoint can always be added later if needed.</p>
