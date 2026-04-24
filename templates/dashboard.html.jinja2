@@ -83,7 +83,7 @@
     .topbar {
       background: var(--black);
       border-top: 1px solid #222;
-      border-bottom: 3px solid var(--red);
+      border-bottom: 1px solid #222;
     }
 
     .topbar-inner {
@@ -105,7 +105,7 @@
     /* ── NAV ────────────────────────────────────────── */
     .nav {
       background: var(--black);
-      border-bottom: 1px solid #222;
+      border-bottom: 3px solid var(--red);
     }
 
     .nav-inner {
@@ -445,7 +445,10 @@
     </div>
   </header>
 
-  <!-- ── TOP BAR ───────────────────────────────────────── -->
+  <!-- ── MASTHEAD RED RULE ──────────────────────────────── -->
+  <div style="height:3px;background:#C41230;"></div>
+
+  <!-- ── TOP BAR ───────────────────────────────────────────  -->
   <div class="topbar">
     <div class="topbar-inner">
       <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
@@ -592,7 +595,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p><a href="/">Pipeline Dashboard</a></p>
     </div>
   </footer>
 
