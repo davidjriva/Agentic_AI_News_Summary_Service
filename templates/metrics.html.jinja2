@@ -39,7 +39,7 @@
     .masthead-inner {
       max-width: 900px;
       margin: 0 auto;
-      padding: 28px 20px 20px;
+      padding: 20px 20px 16px;
     }
 
     .masthead-eyebrow {
@@ -52,16 +52,9 @@
       margin-bottom: 10px;
     }
 
-    .masthead-rule {
-      border: none;
-      border-top: 1px solid #3a3a3a;
-      margin: 10px auto 14px;
-      width: 300px;
-    }
-
     .masthead-title {
       font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 48px;
+      font-size: 38px;
       font-weight: 700;
       color: #FFFFFF;
       letter-spacing: -1px;
@@ -219,7 +212,7 @@
       padding: 24px;
     }
 
-    .chart-box-title {
+    .chart-box-title, .chart-full-title {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 10px;
       font-weight: 700;
@@ -238,26 +231,6 @@
       border-top: 3px solid var(--black);
       padding: 24px;
       margin-bottom: 36px;
-    }
-
-    .chart-full-title {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--gray-dark);
-      margin: 0 0 18px 0;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .chart-full-subtitle {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
-      color: var(--gray-mid);
-      margin: -14px 0 18px 0;
-      font-style: italic;
     }
 
     /* ── FOOTER ─────────────────────────────────────── */
@@ -299,9 +272,7 @@
   <header class="masthead">
     <div class="masthead-inner">
       <div class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</div>
-      <hr class="masthead-rule" />
       <h1 class="masthead-title">The Agentic Times</h1>
-      <hr class="masthead-rule" />
       <div class="masthead-tagline">AI News &amp; Analysis &nbsp;&middot;&nbsp; Lifetime Metrics</div>
     </div>
   </header>
@@ -374,6 +345,7 @@
 
     <div class="chart-full">
       <h3 class="chart-full-title">Volume Across Last 20 Successful Runs</h3>
+      <p style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;color:#888888;margin:-14px 0 18px 0;font-style:italic;">Total articles included in each edition, ordered chronologically</p>
       <canvas id="runTrendChart"></canvas>
     </div>
 

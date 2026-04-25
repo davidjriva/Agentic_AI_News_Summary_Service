@@ -39,7 +39,7 @@
     .masthead-inner {
       max-width: 900px;
       margin: 0 auto;
-      padding: 28px 20px 20px;
+      padding: 20px 20px 16px;
     }
 
     .masthead-eyebrow {
@@ -52,16 +52,9 @@
       margin-bottom: 10px;
     }
 
-    .masthead-rule {
-      border: none;
-      border-top: 1px solid #3a3a3a;
-      margin: 10px auto 14px;
-      width: 300px;
-    }
-
     .masthead-title {
       font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 48px;
+      font-size: 38px;
       font-weight: 700;
       color: #FFFFFF;
       letter-spacing: -1px;
@@ -438,9 +431,7 @@
   <header class="masthead">
     <div class="masthead-inner">
       <div class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</div>
-      <hr class="masthead-rule" />
       <h1 class="masthead-title">The Agentic Times</h1>
-      <hr class="masthead-rule" />
       <div class="masthead-tagline">AI News &amp; Analysis &nbsp;&middot;&nbsp; Pipeline Dashboard</div>
     </div>
   </header>
@@ -521,7 +512,25 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td>
+              <span class="ts">
+                {% if run.started_at %}
+                  {% set dt_parts = run.started_at.replace('T', ' ').split(' ') %}
+                  {% set date_part = dt_parts[0] %}
+                  {% set time_raw = dt_parts[1].split('.')[0] if dt_parts|length > 1 else '' %}
+                  {% set time_parts = time_raw.split(':') %}
+                  {% set hour = time_parts[0]|int if time_parts|length > 0 else 0 %}
+                  {% set minute = time_parts[1] if time_parts|length > 1 else '00' %}
+                  {% set ampm = 'AM' if hour < 12 else 'PM' %}
+                  {% set hour12 = hour % 12 %}
+                  {% set hour12 = 12 if hour12 == 0 else hour12 %}
+                  <span style="display:block;font-weight:600;color:#121212;">{{ date_part }}</span>
+                  <span style="font-size:11px;color:#888;">{{ hour12 }}:{{ minute }} {{ ampm }} UTC</span>
+                {% else %}
+                  &mdash;
+                {% endif %}
+              </span>
+            </td>
 
             <td>
               {% if run.status == 'success' %}
@@ -668,6 +677,16 @@
       if (pollingInterval !== null) { clearInterval(pollingInterval); pollingInterval = null; }
     }
 
+    function formatTs(iso) {
+      if (!iso) return '&mdash;';
+      const [datePart, timePart] = iso.split('T');
+      if (!timePart) return `<span style="display:block;font-weight:600;color:#121212;">${datePart}</span>`;
+      const [h, m] = timePart.split('.')[0].split(':').map(Number);
+      const ampm = h < 12 ? 'AM' : 'PM';
+      const h12 = h % 12 || 12;
+      return `<span style="display:block;font-weight:600;color:#121212;">${datePart}</span><span style="font-size:11px;color:#888;">${h12}:${String(m).padStart(2,'0')} ${ampm} UTC</span>`;
+    }
+
     function renderRuns(runs) {
       const tbody = document.querySelector('.runs-table tbody');
       if (!tbody) return;
@@ -677,7 +696,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts">${formatTs(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
