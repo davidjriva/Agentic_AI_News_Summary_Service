@@ -383,7 +383,18 @@
           <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
         </div>
         {% if started_at %}
-        <span class="masthead-ts">{{ started_at }}</span>
+        <span class="masthead-ts">
+          {% set dt_parts = started_at.replace('T', ' ').split(' ') %}
+          {% set date_part = dt_parts[0] %}
+          {% set time_raw = dt_parts[1].split('.')[0] if dt_parts|length > 1 else '' %}
+          {% set time_parts = time_raw.split(':') %}
+          {% set hour = time_parts[0]|int if time_parts|length > 0 else 0 %}
+          {% set minute = time_parts[1] if time_parts|length > 1 else '00' %}
+          {% set ampm = 'AM' if hour < 12 else 'PM' %}
+          {% set hour12 = hour % 12 %}
+          {% set hour12 = 12 if hour12 == 0 else hour12 %}
+          {{ date_part }} &middot; {{ hour12 }}:{{ minute }} {{ ampm }} UTC
+        </span>
         {% endif %}
       </div>
     </header>
@@ -510,12 +521,18 @@
       fetch(`/runs/${RUN_ID}/filtered`)
         .then(r => r.json())
         .then(data => renderFiltered(data.filtered))
-        .catch(() => renderFiltered([]));
+        .catch(() => {
+          document.getElementById('filtered-list').innerHTML =
+            '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:#888;font-style:italic;">Could not load.</li>';
+        });
 
       fetch(`/runs/${RUN_ID}/failed`)
         .then(r => r.json())
         .then(data => renderFailed(data.failed))
-        .catch(() => renderFailed([]));
+        .catch(() => {
+          document.getElementById('failed-list').innerHTML =
+            '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:#888;font-style:italic;">Could not load.</li>';
+        });
     });
     {% endif %}
   </script>
