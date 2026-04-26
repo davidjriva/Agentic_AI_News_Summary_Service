@@ -377,6 +377,13 @@
 
     .view-link:hover { border-bottom-color: var(--red); }
 
+    .row-error {
+      background: #FFF5F5;
+    }
+    .row-error:hover {
+      background: #FEECEC;
+    }
+
     /* ── EMPTY STATE ────────────────────────────────── */
     .empty-state {
       padding: 60px 20px;
@@ -448,7 +455,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
+      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Run History' }}</span>
       {% if running %}
       <div class="running-badge">
         <div class="running-dot"></div>
@@ -520,8 +527,13 @@
         </thead>
         <tbody>
           {% for run in runs %}
-          <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+          <tr{% if run.status == 'error' %} class="row-error"{% endif %}>
+            <td>
+              {% if loop.first %}
+              <span style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;background:#121212;color:#fff;padding:2px 6px;margin-right:6px;vertical-align:middle;">Latest</span>
+              {% endif %}
+              <span class="ts">{{ run.started_at }}</span>
+            </td>
 
             <td>
               {% if run.status == 'success' %}
@@ -675,9 +687,11 @@
 
       runs.forEach(run => {
         const row = document.createElement('tr');
+        if (run.status === 'error') row.classList.add('row-error');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        const isFirst = runs.indexOf(run) === 0;
+        startedTd.innerHTML = (isFirst ? '<span style="font-family:\'Helvetica Neue\',Helvetica,Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;background:#121212;color:#fff;padding:2px 6px;margin-right:6px;vertical-align:middle;">Latest</span>' : '') + `<span class="ts">${run.started_at}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
