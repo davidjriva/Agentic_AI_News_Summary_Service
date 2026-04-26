@@ -399,15 +399,28 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script>
-    const EDITORIAL_RED   = '#C41230';
-    const EDITORIAL_BLACK = '#121212';
-    const EDITORIAL_GRAY  = '#888888';
-    const EDITORIAL_LIGHT = '#DEDEDE';
+  const EDITORIAL_RED   = '#C41230';
+  const EDITORIAL_BLACK = '#121212';
+  const EDITORIAL_GRAY  = '#888888';
+  const EDITORIAL_LIGHT = '#DEDEDE';
 
-    Chart.defaults.font.family = "'Helvetica Neue', Helvetica, Arial, sans-serif";
-    Chart.defaults.color = EDITORIAL_GRAY;
+  Chart.defaults.font.family = "'Helvetica Neue', Helvetica, Arial, sans-serif";
+  Chart.defaults.color = EDITORIAL_GRAY;
 
-    // Horizontal bar — Articles by Source
+  function showEmptyState(canvasId, message) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const wrapper = canvas.parentElement;
+    canvas.style.display = 'none';
+    const msg = document.createElement('div');
+    msg.style.cssText = 'text-align:center;padding:40px 20px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:13px;color:#888;font-style:italic;';
+    msg.textContent = message;
+    wrapper.appendChild(msg);
+  }
+
+  if (!SOURCES_DATA || SOURCES_DATA.length === 0) {
+    showEmptyState('sourcesChart', 'No article data yet.');
+  } else {
     new Chart(document.getElementById('sourcesChart'), {
       type: 'bar',
       data: {
@@ -422,9 +435,7 @@
       options: {
         indexAxis: 'y',
         responsive: true,
-        plugins: {
-          legend: { display: false }
-        },
+        plugins: { legend: { display: false } },
         scales: {
           x: {
             beginAtZero: true,
@@ -438,8 +449,11 @@
         }
       }
     });
+  }
 
-    // Doughnut — Run Success Rate
+  if (!STATUS_DATA || STATUS_DATA.length === 0) {
+    showEmptyState('statusChart', 'No run data yet.');
+  } else {
     new Chart(document.getElementById('statusChart'), {
       type: 'doughnut',
       data: {
@@ -464,8 +478,11 @@
         }
       }
     });
+  }
 
-    // Line — Articles per Run
+  if (!RUN_COUNTS || RUN_COUNTS.length === 0) {
+    showEmptyState('runTrendChart', 'No run history to display yet.');
+  } else {
     new Chart(document.getElementById('runTrendChart'), {
       type: 'line',
       data: {
@@ -499,6 +516,7 @@
         }
       }
     });
-  </script>
+  }
+</script>
 </body>
 </html>

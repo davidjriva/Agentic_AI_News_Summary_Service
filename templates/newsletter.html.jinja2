@@ -351,11 +351,28 @@
       border-bottom-color: #C41230;
     }
 
-    /* Section break between articles */
-    .article-separator {
-      width: 100%;
-      height: 1px;
-      background: #DEDEDE;
+    /* ── FEATURED ARTICLE (Top Story) ──────────────── */
+    .article-card-featured {
+      border-left: 4px solid #C41230;
+    }
+    .article-card-featured .article-headline {
+      font-size: 24px;
+    }
+
+    /* ── SCORE PROGRESS BARS ────────────────────────── */
+    .score-bar-track {
+      width: 48px;
+      height: 4px;
+      background: #EEEEEE;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 4px;
+      position: relative;
+    }
+    .score-bar-fill {
+      position: absolute;
+      top: 0; left: 0;
+      height: 100%;
     }
 
     /* ── FOOTER ─────────────────────────────────────── */
@@ -466,8 +483,8 @@
           <td>
             <div class="intro-row">
               <span class="intro-count">
-                <strong>{{ article_count }}</strong>
-                article{{ 's' if article_count != 1 else '' }} curated &amp; ranked for you today
+                Today's top <strong>{{ article_count }}</strong>
+                article{{ 's' if article_count != 1 else '' }} in agentic AI &mdash; curated, scored, and ranked by relevance, impact &amp; credibility.
               </span>
             </div>
           </td>
@@ -477,11 +494,14 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.index == 1 %} article-card-featured{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
+                  {% if loop.index == 1 %}
+                  <span style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:8px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;background:#C41230;color:#fff;padding:3px 7px;margin-right:4px;white-space:nowrap;">Top Story</span>
+                  {% endif %}
                   <div>
                     <span class="article-rank">#{{ loop.index }}</span>
                     <span class="article-rank-label">Rank</span>
@@ -507,14 +527,17 @@
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
                     <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-bar-track"><span class="score-bar-fill" style="width:{{ ((article.relevance_score or 0) / 10 * 100)|int }}%;background:#1A3D7A;"></span></span>
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
                     <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-bar-track"><span class="score-bar-fill" style="width:{{ ((article.impact_score or 0) / 10 * 100)|int }}%;background:#1A5C1A;"></span></span>
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
                     <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-bar-track"><span class="score-bar-fill" style="width:{{ ((article.authenticity_score or 0) / 10 * 100)|int }}%;background:#7B5B00;"></span></span>
                   </div>
                 </div>
 
@@ -526,9 +549,6 @@
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
@@ -542,9 +562,6 @@
                     <hr class="footer-rule" />
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
-                    <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
-                    </span>
                   </div>
                 </td>
               </tr>
