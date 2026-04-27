@@ -335,28 +335,21 @@
       display: block;
     }
 
-    .article-readmore a {
+    .btn-readmore {
+      display: inline-block;
+      background-color: #C41230;
+      color: #FFFFFF !important;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: #C41230;
-      text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
+      padding: 10px 22px;
+      text-decoration: none !important;
+      border-bottom: none !important;
+      transition: background-color 0.15s;
     }
-
-    .article-readmore a:hover {
-      border-bottom-color: #C41230;
-    }
-
-    /* Section break between articles */
-    .article-separator {
-      width: 100%;
-      height: 1px;
-      background: #DEDEDE;
-    }
+    .btn-readmore:hover { background-color: #9c0e24 !important; }
 
     /* ── FOOTER ─────────────────────────────────────── */
     .footer-table {
@@ -467,7 +460,7 @@
             <div class="intro-row">
               <span class="intro-count">
                 <strong>{{ article_count }}</strong>
-                article{{ 's' if article_count != 1 else '' }} curated &amp; ranked for you today
+                article{{ 's' if article_count != 1 else '' }} curated &amp; ranked for this edition
               </span>
             </div>
           </td>
@@ -497,7 +490,9 @@
                 </h2>
 
                 <!-- Byline -->
+                {% if article.author %}
                 <p class="article-byline">By {{ article.author }}</p>
+                {% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
@@ -519,16 +514,13 @@
                 </div>
 
                 <div class="article-readmore">
-                  <a href="{{ article.url }}">Read Full Article &rarr;</a>
+                  <a href="{{ article.url }}" class="btn-readmore">Read Full Article &rarr;</a>
                 </div>
 
               </div>
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
