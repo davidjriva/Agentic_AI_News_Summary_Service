@@ -248,6 +248,10 @@
       text-decoration: none;
       border-bottom: 1px solid transparent;
       transition: border-color 0.15s, color 0.15s;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .article-list a:hover {
@@ -346,15 +350,29 @@
 
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
-      background: #FFF3CD;
-      border-bottom: 1px solid #FFECB5;
-      color: #856404;
+      background: #FFF5F5;
+      border-bottom: 1px solid #F0C0C8;
+      color: #921818;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 12px;
       font-weight: 600;
       text-align: center;
       padding: 6px 20px;
       letter-spacing: 0.3px;
+    }
+
+    @keyframes loadingPulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
+    }
+
+    .loading-text {
+      animation: loadingPulse 1.4s ease-in-out infinite;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+      text-align: center;
     }
 
     .newsletter-placeholder {
@@ -383,7 +401,7 @@
           <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
         </div>
         {% if started_at %}
-        <span class="masthead-ts">{{ started_at }}</span>
+        <span class="masthead-ts" id="masthead-ts">{{ started_at }}</span>
         {% endif %}
       </div>
     </header>
@@ -451,7 +469,7 @@
           <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li><span class="loading-text">Loading&hellip;</span></li>
         </ul>
 
         <!-- Failed articles section -->
@@ -459,7 +477,7 @@
           <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li><span class="loading-text">Loading&hellip;</span></li>
         </ul>
       </aside>
 
@@ -518,6 +536,22 @@
         .catch(() => renderFailed([]));
     });
     {% endif %}
+
+    // Format the masthead timestamp to human-readable
+    (function() {
+      const el = document.getElementById('masthead-ts');
+      if (!el) return;
+      const raw = el.textContent.trim();
+      if (!raw) return;
+      try {
+        const d = new Date(raw);
+        el.textContent = d.toLocaleDateString('en-US', {
+          weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
+        });
+        el.setAttribute('title', raw);
+      } catch(e) {}
+    })();
   </script>
 </body>
 </html>

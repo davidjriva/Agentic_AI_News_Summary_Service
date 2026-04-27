@@ -496,6 +496,20 @@
         </div>
         {% endif %}
       </div>
+      {% set ns = namespace(latest_run=none) %}
+      {% for run in runs %}
+        {% if run.status == 'success' and ns.latest_run is none %}
+          {% set ns.latest_run = run %}
+        {% endif %}
+      {% endfor %}
+      {% if ns.latest_run %}
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+        <a href="/runs/{{ ns.latest_run.id }}" class="view-link" style="font-size:12px;">
+          View Latest Edition &rarr;
+        </a>
+        <span style="font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);margin-left:8px;">{{ ns.latest_run.started_at }}</span>
+      </div>
+      {% endif %}
     </div>
 
     <!-- Run History -->
@@ -521,7 +535,7 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts" title="{{ run.started_at }}">{{ run.started_at }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -570,6 +584,8 @@
             <td>
               {% if run.status == 'success' %}
                 <a class="view-link" href="/runs/{{ run.id }}">View Edition &rarr;</a>
+              {% elif run.status == 'running' %}
+                <span style="font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Generating&hellip;</span>
               {% else %}
                 &mdash;
               {% endif %}
@@ -581,7 +597,7 @@
       {% else %}
       <div class="empty-state">
         <div class="empty-state-headline">No Editions Yet</div>
-        <div class="empty-state-body">Click <strong>Run Now</strong> to generate your first newsletter.</div>
+        <div class="empty-state-body">Use <strong>Run Now</strong> above to fetch, rank, and deliver your first AI news digest. Each run takes 1&ndash;3 minutes to complete.</div>
       </div>
       {% endif %}
     </div>
@@ -597,6 +613,20 @@
   </footer>
 
   <script>
+    function relativeTime(iso) {
+      if (!iso) return '—';
+      const diff = Date.now() - new Date(iso).getTime();
+      const s = Math.floor(diff / 1000);
+      const m = Math.floor(s / 60);
+      const h = Math.floor(m / 60);
+      const d = Math.floor(h / 24);
+      if (s < 60)  return 'just now';
+      if (m < 60)  return `${m}m ago`;
+      if (h < 24)  return `${h}h ago`;
+      if (d === 1) return 'yesterday';
+      return `${d}d ago`;
+    }
+
     let pollingInterval = null;
     let activeRunId = null;
 
@@ -677,7 +707,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts" title="${run.started_at}">${relativeTime(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -720,9 +750,13 @@
         row.appendChild(durTd);
 
         const linkTd = document.createElement('td');
-        linkTd.innerHTML = run.status === 'success'
-          ? `<a class="view-link" href="/runs/${run.id}">View Edition &rarr;</a>`
-          : '&mdash;';
+        if (run.status === 'success') {
+          linkTd.innerHTML = `<a class="view-link" href="/runs/${run.id}">View Edition &rarr;</a>`;
+        } else if (run.status === 'running') {
+          linkTd.innerHTML = `<span style="font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Generating…</span>`;
+        } else {
+          linkTd.innerHTML = '&mdash;';
+        }
         row.appendChild(linkTd);
 
         tbody.appendChild(row);
@@ -748,6 +782,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.ts[title]').forEach(el => {
+        const rel = relativeTime(el.getAttribute('title'));
+        if (rel !== '—') el.textContent = rel;
+      });
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
     });
