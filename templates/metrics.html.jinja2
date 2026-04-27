@@ -443,7 +443,7 @@
     new Chart(document.getElementById('statusChart'), {
       type: 'doughnut',
       data: {
-        labels: STATUS_LABELS,
+        labels: STATUS_LABELS.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
         datasets: [{
           data: STATUS_DATA,
           backgroundColor: STATUS_LABELS.map(label => {
