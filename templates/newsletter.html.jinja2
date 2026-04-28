@@ -266,18 +266,61 @@
       margin-bottom: 18px;
     }
 
+    /* Featured top story */
+    .article-card--featured {
+      border-left: 4px solid #C41230;
+      background-color: #FFFDF8;
+    }
+
+    .article-card--featured .article-headline {
+      font-size: 24px;
+    }
+
     /* Scores */
     .article-scores {
-      display: flex;
-      gap: 20px;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
     }
 
-    .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+    .score-row {
+      display: table;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    .score-row:last-child { margin-bottom: 0; }
+
+    .score-row-label {
+      display: table-cell;
+      width: 88px;
+      vertical-align: middle;
+    }
+
+    .score-row-bar-wrap {
+      display: table-cell;
+      vertical-align: middle;
+      padding: 0 10px;
+    }
+
+    .score-row-bar-track {
+      height: 4px;
+      background: #F0F0F0;
+      width: 100%;
+    }
+
+    .score-row-bar-fill {
+      height: 4px;
+      display: block;
+    }
+
+    .score-row-num {
+      display: table-cell;
+      width: 36px;
+      text-align: right;
+      vertical-align: middle;
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 13px;
+      font-weight: 700;
     }
 
     .score-label {
@@ -287,22 +330,8 @@
       letter-spacing: 1.5px;
       text-transform: uppercase;
       color: #888;
-    }
-
-    .score-value {
-      font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 15px;
-      font-weight: 700;
-    }
-
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
-
-    /* Score label tooltips (browser only; email clients use title attr) */
-    .score-label {
-      position: relative;
       cursor: help;
+      position: relative;
     }
 
     .score-label::after {
@@ -343,12 +372,15 @@
       text-transform: uppercase;
       color: #C41230;
       text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
+      display: inline-block;
+      border: 1.5px solid #C41230;
+      padding: 7px 16px;
+      transition: background 0.15s, color 0.15s;
     }
 
     .article-readmore a:hover {
-      border-bottom-color: #C41230;
+      background: #C41230;
+      color: #fff;
     }
 
     /* Section break between articles */
@@ -473,15 +505,34 @@
           </td>
         </tr>
 
+        <!-- ── TABLE OF CONTENTS ────────────────────────────────────── -->
+        <tr>
+          <td>
+            <div style="background:#FFFFFF;border-bottom:1px solid #DEDEDE;padding:16px 32px 20px;">
+              <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888888;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #F0F0F0;">In This Edition</div>
+              {% for article in articles %}
+              <div style="display:table;width:100%;margin-bottom:{% if not loop.last %}8px{% else %}0{% endif %};">
+                <span style="display:table-cell;width:28px;font-family:Georgia,'Times New Roman',Times,serif;font-size:12px;font-weight:700;color:#C41230;vertical-align:top;">{{ loop.index }}.</span>
+                <span style="display:table-cell;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;color:#333333;line-height:1.4;vertical-align:top;padding-right:12px;">{{ article.title }}</span>
+                <span style="display:table-cell;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:10px;color:#888888;white-space:nowrap;vertical-align:top;text-align:right;">{{ article.publication }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </td>
+        </tr>
+
         <!-- ── ARTICLES ──────────────────────────────── -->
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.index == 1 %} article-card--featured{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
+                  {% if loop.index == 1 %}
+                  <span style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;background:#C41230;color:#fff;padding:3px 8px;margin-right:6px;white-space:nowrap;flex-shrink:0;">Top Story</span>
+                  {% endif %}
                   <div>
                     <span class="article-rank">#{{ loop.index }}</span>
                     <span class="article-rank-label">Rank</span>
@@ -504,17 +555,38 @@
 
                 <!-- Scores + Read More -->
                 <div class="article-scores">
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
-                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  <div class="score-row">
+                    <div class="score-row-label">
+                      <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML.">Relevance</span>
+                    </div>
+                    <div class="score-row-bar-wrap">
+                      <div class="score-row-bar-track">
+                        <span class="score-row-bar-fill" style="width:{{ ((article.relevance_score / 10 * 100) | int) if article.relevance_score is not none else 0 }}%;background:#1A3D7A;"></span>
+                      </div>
+                    </div>
+                    <div class="score-row-num" style="color:#1A3D7A;">{{ article.relevance_score if article.relevance_score is not none else '?' }}</div>
                   </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
-                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  <div class="score-row">
+                    <div class="score-row-label">
+                      <span class="score-label" title="LLM-scored 1–10. Significance and potential impact. Weighted 60% in rank." data-tooltip="LLM-scored 1–10. Significance and impact on the AI field. Weighted 60% in rank.">Impact</span>
+                    </div>
+                    <div class="score-row-bar-wrap">
+                      <div class="score-row-bar-track">
+                        <span class="score-row-bar-fill" style="width:{{ (article.impact_score / 10 * 100) | int }}%;background:#1A5C1A;"></span>
+                      </div>
+                    </div>
+                    <div class="score-row-num" style="color:#1A5C1A;">{{ article.impact_score }}</div>
                   </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
-                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  <div class="score-row">
+                    <div class="score-row-label">
+                      <span class="score-label" title="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
+                    </div>
+                    <div class="score-row-bar-wrap">
+                      <div class="score-row-bar-track">
+                        <span class="score-row-bar-fill" style="width:{{ (article.authenticity_score / 10 * 100) | int }}%;background:#7B5B00;"></span>
+                      </div>
+                    </div>
+                    <div class="score-row-num" style="color:#7B5B00;">{{ article.authenticity_score }}</div>
                   </div>
                 </div>
 

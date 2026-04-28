@@ -79,29 +79,6 @@
       margin-top: 14px;
     }
 
-    /* ── TOP BAR ────────────────────────────────────── */
-    .topbar {
-      background: var(--black);
-      border-top: 1px solid #222;
-      border-bottom: 3px solid var(--red);
-    }
-
-    .topbar-inner {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 8px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .topbar-date {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      color: #AAAAAA;
-      font-style: italic;
-    }
-
     /* ── NAV ────────────────────────────────────────── */
     .nav {
       background: var(--black);
@@ -363,6 +340,9 @@
       color: var(--black);
     }
 
+    .article-count--warn  { color: #856404; }
+    .article-count--error { color: #921818; }
+
     .view-link {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
@@ -428,7 +408,12 @@
       .controls-card { padding: 20px; }
       .controls-actions { flex-direction: column; align-items: stretch; }
       .btn-primary, .btn-secondary { width: 100%; text-align: center; }
-      .topbar-inner { flex-wrap: wrap; gap: 6px; }
+      .runs-table th:nth-child(4),
+      .runs-table td:nth-child(4),
+      .runs-table th:nth-child(5),
+      .runs-table td:nth-child(5) { display: none; }
+      .runs-table td { font-size: 11px; padding: 12px 12px; }
+      .runs-table thead th { padding: 10px 12px; }
     }
   </style>
 </head>
@@ -444,19 +429,6 @@
       <div class="masthead-tagline">AI News &amp; Analysis &nbsp;&middot;&nbsp; Pipeline Dashboard</div>
     </div>
   </header>
-
-  <!-- ── TOP BAR ───────────────────────────────────────── -->
-  <div class="topbar">
-    <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
-      {% if running %}
-      <div class="running-badge">
-        <div class="running-dot"></div>
-        Run in Progress
-      </div>
-      {% endif %}
-    </div>
-  </div>
 
   <!-- ── NAV ───────────────────────────────────────────── -->
   <nav class="nav">
@@ -543,11 +515,11 @@
             </td>
 
             <td>
-              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
+              <span class="article-count{% if run.dropped_count and run.dropped_count > 0 %} article-count--warn{% endif %}">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
             </td>
 
             <td>
-              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
+              <span class="article-count{% if run.failed_count and run.failed_count > 0 %} article-count--error{% endif %}">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
             </td>
 
             <td>
@@ -697,11 +669,13 @@
         row.appendChild(artTd);
 
         const droppedTd = document.createElement('td');
-        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
+        const droppedVal = run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0;
+        droppedTd.innerHTML = `<span class="article-count${droppedVal > 0 ? ' article-count--warn' : ''}">${droppedVal}</span>`;
         row.appendChild(droppedTd);
 
         const failedTd = document.createElement('td');
-        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
+        const failedVal = run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0;
+        failedTd.innerHTML = `<span class="article-count${failedVal > 0 ? ' article-count--error' : ''}">${failedVal}</span>`;
         row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
