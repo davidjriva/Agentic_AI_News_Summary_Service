@@ -66,8 +66,9 @@
     .masthead-back:hover { color: #ccc; }
 
     .masthead-sep {
-      color: #444;
-      font-size: 14px;
+      color: #555;
+      font-size: 12px;
+      margin: 0 2px;
     }
 
     .masthead-brand {
@@ -265,23 +266,56 @@
       font-style: italic;
     }
 
-    /* ── FILTER/FAIL SECTIONS ───────────────────────── */
-    .sidebar-section-header {
+    /* ── SIDEBAR TABS ───────────────────────────────── */
+    .sidebar-tabs {
+      display: flex;
       background: var(--bg-section);
-      padding: 12px 20px 10px;
-      border-top: 2px solid var(--border);
       border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 61px;
+      z-index: 1;
     }
 
-    .sidebar-section-title {
+    .sidebar-tab-btn {
+      flex: 1;
+      padding: 9px 4px 8px;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 10px;
       font-weight: 700;
-      letter-spacing: 1.5px;
+      letter-spacing: 0.8px;
       text-transform: uppercase;
-      color: var(--gray-dark);
-      margin: 0;
+      color: var(--gray-mid);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.15s;
+      white-space: nowrap;
     }
+
+    .sidebar-tab-btn:hover { color: var(--charcoal); }
+
+    .sidebar-tab-btn.active {
+      color: var(--black);
+      border-bottom-color: var(--red);
+      background: var(--bg);
+    }
+
+    .sidebar-tab-badge {
+      display: inline-block;
+      background: var(--red);
+      color: #fff;
+      font-size: 8px;
+      font-weight: 700;
+      padding: 1px 5px;
+      margin-left: 4px;
+      vertical-align: middle;
+      line-height: 1.4;
+    }
+
+    /* ── SIDEBAR PANELS ─────────────────────────────── */
+    .sidebar-panel { display: none; }
+    .sidebar-panel.active { display: block; }
 
     .filtered-list,
     .failed-list {
@@ -378,9 +412,9 @@
       <div class="masthead-inner">
         <div class="masthead-left">
           <a class="masthead-back" href="/">&larr; Dashboard</a>
-          <span class="masthead-sep">/</span>
+          <span class="masthead-sep">›</span>
           <span class="masthead-brand">The Agentic Times</span>
-          <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          <span class="masthead-edition">Edition {{ run_id[:8] }}</span>
         </div>
         {% if started_at %}
         <span class="masthead-ts">{{ started_at }}</span>
@@ -423,44 +457,58 @@
           </p>
         </div>
 
-        <div class="sidebar-body">
-          {% if sources %}
-            {% for publication, articles in sources.items() %}
-            <div class="source-group">
-              <h3 class="source-name">
-                <span>{{ publication }}</span>
-                <span class="source-count">{{ articles | length }}</span>
-              </h3>
-              <ul class="article-list">
-                {% for article in articles %}
-                <li>
-                  {% if article.rank_score is not none %}<span class="article-score">{{ "%.1f"|format(article.rank_score) }}</span>{% endif %}
-                  <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.title }}</a>
-                </li>
-                {% endfor %}
-              </ul>
-            </div>
-            {% endfor %}
-          {% else %}
-            <div class="empty-state">No article data for this edition.</div>
-          {% endif %}
+        <!-- Tab navigation -->
+        <div class="sidebar-tabs">
+          <button class="sidebar-tab-btn active" data-tab="articles" onclick="switchTab('articles')">
+            Articles <span class="sidebar-tab-badge" id="tab-badge-articles">{{ sources.values() | map('length') | sum }}</span>
+          </button>
+          <button class="sidebar-tab-btn" data-tab="dropped" onclick="switchTab('dropped')">
+            Dropped <span class="sidebar-tab-badge" id="tab-badge-dropped">0</span>
+          </button>
+          <button class="sidebar-tab-btn" data-tab="failed" onclick="switchTab('failed')">
+            Failed <span class="sidebar-tab-badge" id="tab-badge-failed">0</span>
+          </button>
         </div>
 
-        <!-- Filtered (dropped) articles section -->
-        <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
+        <!-- Articles panel -->
+        <div class="sidebar-panel active" data-panel="articles">
+          <div class="sidebar-body">
+            {% if sources %}
+              {% for publication, articles in sources.items() %}
+              <div class="source-group">
+                <h3 class="source-name">
+                  <span>{{ publication }}</span>
+                  <span class="source-count">{{ articles | length }}</span>
+                </h3>
+                <ul class="article-list">
+                  {% for article in articles %}
+                  <li>
+                    {% if article.rank_score is not none %}<span class="article-score">{{ "%.1f"|format(article.rank_score) }}</span>{% endif %}
+                    <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.title }}</a>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">No article data for this edition.</div>
+            {% endif %}
+          </div>
         </div>
-        <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
-        </ul>
 
-        <!-- Failed articles section -->
-        <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
+        <!-- Dropped panel -->
+        <div class="sidebar-panel" data-panel="dropped">
+          <ul class="filtered-list" id="filtered-list">
+            <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          </ul>
         </div>
-        <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
-        </ul>
+
+        <!-- Failed panel -->
+        <div class="sidebar-panel" data-panel="failed">
+          <ul class="failed-list" id="failed-list">
+            <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          </ul>
+        </div>
       </aside>
 
     </div>
@@ -468,6 +516,15 @@
 
   <script>
     const RUN_ID = "{{ run_id }}";
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.sidebar-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+      document.querySelectorAll('.sidebar-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.dataset.panel === tabName);
+      });
+    }
 
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
@@ -485,6 +542,7 @@
           ${a.relevance_reason ? `<div class="filter-meta">${a.relevance_reason}</div>` : ''}
         </li>
       `).join('');
+      document.getElementById('tab-badge-dropped').textContent = items ? items.length : 0;
     }
 
     function renderFailed(items) {
@@ -500,6 +558,7 @@
           ${a.reason ? `<div class="fail-reason">${a.reason}</div>` : ''}
         </li>
       `).join('');
+      document.getElementById('tab-badge-failed').textContent = items ? items.length : 0;
     }
 
     {% if preview %}

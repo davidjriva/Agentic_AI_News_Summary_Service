@@ -355,10 +355,15 @@ def metrics(request: Request) -> HTMLResponse:
         "ORDER BY started_at ASC LIMIT 20"
     ).fetchall()
 
+    avg_row = conn.execute(
+        "SELECT AVG(article_count) FROM runs WHERE status='success' AND article_count IS NOT NULL"
+    ).fetchone()
+
     conn.close()
 
     subscribers = len(_cfg.RECIPIENTS)
     emails_delivered = successful_runs * subscribers
+    avg_articles_per_run = round(avg_row[0]) if avg_row[0] is not None else "—"
 
     return templates.TemplateResponse(
         request,
@@ -367,6 +372,8 @@ def metrics(request: Request) -> HTMLResponse:
             "subscribers": subscribers,
             "emails_delivered": emails_delivered,
             "total_runs": total_runs,
+            "successful_runs": successful_runs,
+            "avg_articles_per_run": avg_articles_per_run,
             "articles_seen": articles_seen,
             "sources_labels_json": json.dumps(
                 [row["publication"] for row in source_rows]

@@ -79,26 +79,6 @@
       margin-top: 14px;
     }
 
-    /* ── TOP BAR ────────────────────────────────────── */
-    .topbar {
-      background: var(--black);
-      border-top: 1px solid #222;
-      border-bottom: 3px solid var(--red);
-    }
-
-    .topbar-inner {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 8px 20px;
-    }
-
-    .topbar-label {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      color: #AAAAAA;
-      font-style: italic;
-    }
-
     /* ── NAV ────────────────────────────────────────── */
     .nav {
       background: var(--black);
@@ -173,7 +153,7 @@
     /* ── STAT GRID ──────────────────────────────────── */
     .stat-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
       margin-bottom: 36px;
     }
@@ -306,13 +286,6 @@
     </div>
   </header>
 
-  <!-- ── TOP BAR ───────────────────────────────────────── -->
-  <div class="topbar">
-    <div class="topbar-inner">
-      <span class="topbar-label">Pipeline &amp; Content Analytics</span>
-    </div>
-  </div>
-
   <!-- ── NAV ───────────────────────────────────────────── -->
   <nav class="nav">
     <div class="nav-inner">
@@ -323,6 +296,13 @@
 
   <!-- ── CONTENT ───────────────────────────────────────── -->
   <main class="page-wrapper">
+
+    {% if total_runs == 0 %}
+    <div style="text-align:center;padding:80px 20px;">
+      <div style="font-family:Georgia,'Times New Roman',Times,serif;font-size:22px;font-weight:700;color:#333333;margin-bottom:12px;">No Data Yet</div>
+      <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;color:#888888;">Run the pipeline from the <a href="/" style="color:#C41230;">Dashboard</a> to start collecting metrics.</div>
+    </div>
+    {% else %}
 
     <!-- Lifetime Stats -->
     <h2 class="section-label">
@@ -346,6 +326,14 @@
       <div class="stat-card">
         <div class="stat-value">{{ articles_seen }}</div>
         <div class="stat-label">Articles Seen</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ ((successful_runs / total_runs * 100) | round | int) if total_runs > 0 else 0 }}%</div>
+        <div class="stat-label">Success Rate</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">{{ avg_articles_per_run | default('—') }}</div>
+        <div class="stat-label">Avg Articles / Run</div>
       </div>
     </div>
 
@@ -373,9 +361,11 @@
     </h2>
 
     <div class="chart-full">
-      <h3 class="chart-full-title">Volume Across Last 20 Successful Runs</h3>
+      <h3 class="chart-full-title">Volume Across Last <span id="run-trend-count">20</span> Successful Runs</h3>
       <canvas id="runTrendChart"></canvas>
     </div>
+
+    {% endif %}
 
   </main>
 
@@ -399,6 +389,8 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script>
+    document.getElementById('run-trend-count').textContent = RUN_DATES.length;
+
     const EDITORIAL_RED   = '#C41230';
     const EDITORIAL_BLACK = '#121212';
     const EDITORIAL_GRAY  = '#888888';
