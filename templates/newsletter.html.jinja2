@@ -166,12 +166,30 @@
       border-bottom: 1px solid #DEDEDE;
     }
 
+    .article-card:first-of-type {
+      border-top: 3px solid #C41230;
+    }
+
     .article-card:first-of-type .article-inner {
-      padding-top: 28px;
+      padding-top: 20px;
     }
 
     .article-inner {
       padding: 24px 32px 28px;
+    }
+
+    /* Top Story label */
+    .top-story-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #fff;
+      background-color: #C41230;
+      display: inline-block;
+      padding: 3px 10px;
+      margin-bottom: 12px;
     }
 
     /* Rank + publication bar */
@@ -269,65 +287,51 @@
     /* Scores */
     .article-scores {
       display: flex;
-      gap: 20px;
+      gap: 10px;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
+      flex-wrap: wrap;
     }
 
-    .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+    .score-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 0;
     }
 
-    .score-label {
+    .score-pill-label {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 9px;
       font-weight: 700;
-      letter-spacing: 1.5px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
-      color: #888;
     }
 
-    .score-value {
+    .score-pill-value {
       font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 700;
     }
 
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
-
-    /* Score label tooltips (browser only; email clients use title attr) */
-    .score-label {
-      position: relative;
-      cursor: help;
+    .score-pill-relevance {
+      background: #EEF2FF;
     }
+    .score-pill-relevance .score-pill-label { color: #3730A3; }
+    .score-pill-relevance .score-pill-value { color: #1A3D7A; }
 
-    .score-label::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      width: 190px;
-      background: #121212;
-      color: #ddd;
-      font-size: 10px;
-      font-weight: 400;
-      letter-spacing: 0.3px;
-      text-transform: none;
-      white-space: normal;
-      text-align: center;
-      padding: 6px 10px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.15s;
-      z-index: 10;
+    .score-pill-impact {
+      background: #F0FDF4;
     }
+    .score-pill-impact .score-pill-label { color: #166534; }
+    .score-pill-impact .score-pill-value { color: #1A5C1A; }
 
-    .score-label:hover::after { opacity: 1; }
+    .score-pill-authenticity {
+      background: #FFFBEB;
+    }
+    .score-pill-authenticity .score-pill-label { color: #92400E; }
+    .score-pill-authenticity .score-pill-value { color: #7B5B00; }
 
     /* Read more link */
     .article-readmore {
@@ -343,19 +347,15 @@
       text-transform: uppercase;
       color: #C41230;
       text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
+      display: inline-block;
+      padding: 7px 14px;
+      border: 1.5px solid #C41230;
+      transition: background 0.15s, color 0.15s;
     }
 
     .article-readmore a:hover {
-      border-bottom-color: #C41230;
-    }
-
-    /* Section break between articles */
-    .article-separator {
-      width: 100%;
-      height: 1px;
-      background: #DEDEDE;
+      background: #C41230;
+      color: #fff;
     }
 
     /* ── FOOTER ─────────────────────────────────────── */
@@ -480,6 +480,10 @@
             <div class="article-card">
               <div class="article-inner">
 
+                {% if loop.index == 1 %}
+                <div class="top-story-label">Top Story</div>
+                {% endif %}
+
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
                   <div>
@@ -497,24 +501,26 @@
                 </h2>
 
                 <!-- Byline -->
+                {% if article.author %}
                 <p class="article-byline">By {{ article.author }}</p>
+                {% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
 
                 <!-- Scores + Read More -->
                 <div class="article-scores">
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
-                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  <div class="score-pill score-pill-relevance" title="Relevance: LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">
+                    <span class="score-pill-label">Relevance</span>
+                    <span class="score-pill-value">{{ article.relevance_score if article.relevance_score is not none else '?' }}/10</span>
                   </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
-                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  <div class="score-pill score-pill-impact" title="Impact: LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">
+                    <span class="score-pill-label">Impact</span>
+                    <span class="score-pill-value">{{ article.impact_score }}/10</span>
                   </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
-                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  <div class="score-pill score-pill-authenticity" title="Authenticity: LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">
+                    <span class="score-pill-label">Authenticity</span>
+                    <span class="score-pill-value">{{ article.authenticity_score }}/10</span>
                   </div>
                 </div>
 
@@ -526,9 +532,6 @@
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->

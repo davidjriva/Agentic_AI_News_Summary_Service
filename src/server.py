@@ -16,6 +16,24 @@ from src.db import get_connection
 from src.main import run_pipeline
 from src.renderer import render_newsletter
 
+
+def _format_duration(started_at: str | None, completed_at: str | None) -> str:
+    """Return human-readable duration string from ISO timestamp strings."""
+    if not started_at or not completed_at:
+        return ""
+    try:
+        from datetime import datetime
+        fmt = "%Y-%m-%dT%H:%M:%S.%f" if "." in started_at else "%Y-%m-%dT%H:%M:%S"
+        fmt2 = "%Y-%m-%dT%H:%M:%S.%f" if "." in completed_at else "%Y-%m-%dT%H:%M:%S"
+        s = datetime.fromisoformat(started_at.replace("Z", ""))
+        e = datetime.fromisoformat(completed_at.replace("Z", ""))
+        diff = max(0, int((e - s).total_seconds()))
+        if diff >= 60:
+            return f"{diff // 60}m {diff % 60}s"
+        return f"{diff}s"
+    except Exception:
+        return ""
+
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
@@ -160,6 +178,8 @@ def dashboard(request: Request) -> HTMLResponse:
     ).fetchall()
     conn.close()
     runs = [dict(row) for row in rows]
+    for run in runs:
+        run["duration_str"] = _format_duration(run.get("started_at"), run.get("completed_at"))
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
@@ -237,7 +257,12 @@ def list_runs() -> list[dict]:
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    result = []
+    for row in rows:
+        d = dict(row)
+        d["duration_str"] = _format_duration(d.get("started_at"), d.get("completed_at"))
+        result.append(d)
+    return result
 
 
 @app.get("/runs/{run_id}/newsletter", response_class=HTMLResponse)
