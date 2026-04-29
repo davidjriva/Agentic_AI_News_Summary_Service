@@ -266,11 +266,29 @@
     }
 
     /* ── FILTER/FAIL SECTIONS ───────────────────────── */
+    .sidebar-section-details {
+      border-top: 2px solid var(--border);
+    }
+
     .sidebar-section-header {
       background: var(--bg-section);
       padding: 12px 20px 10px;
-      border-top: 2px solid var(--border);
       border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-section-summary {
+      list-style: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+
+    .sidebar-section-summary::-webkit-details-marker { display: none; }
+
+    .sidebar-section-summary:hover {
+      background: #EFEFEF;
     }
 
     .sidebar-section-title {
@@ -281,6 +299,35 @@
       text-transform: uppercase;
       color: var(--gray-dark);
       margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-section-count {
+      background: var(--gray-light);
+      color: var(--gray-dark);
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 6px;
+      letter-spacing: 0.5px;
+      border-radius: 0;
+    }
+
+    .sidebar-section-count.has-items {
+      background: #FDE8E8;
+      color: #921818;
+    }
+
+    .sidebar-section-chevron {
+      font-size: 10px;
+      color: var(--gray-mid);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    details[open] .sidebar-section-chevron {
+      transform: rotate(180deg);
     }
 
     .filtered-list,
@@ -344,6 +391,45 @@
       font-style: italic;
     }
 
+    /* ── IFRAME LOADER ──────────────────────────────── */
+    .iframe-loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-section);
+      z-index: 2;
+    }
+
+    .iframe-loader-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .iframe-spinner {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--border);
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .iframe-loader-text {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+      letter-spacing: 0.3px;
+    }
+
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
       background: #FFF3CD;
@@ -404,11 +490,17 @@
     <div class="layout">
 
       <!-- Newsletter iframe -->
-      <div class="newsletter-pane">
+      <div class="newsletter-pane" style="position: relative;">
+        <div class="iframe-loader" id="iframe-loader">
+          <div class="iframe-loader-inner">
+            <div class="iframe-spinner"></div>
+            <span class="iframe-loader-text">Loading edition&hellip;</span>
+          </div>
+        </div>
         {% if preview %}
-        <iframe src="/preview/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/preview/newsletter" title="Newsletter Edition" onload="document.getElementById('iframe-loader').style.display='none';"></iframe>
         {% else %}
-        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition" onload="document.getElementById('iframe-loader').style.display='none';"></iframe>
         {% endif %}
       </div>
 
@@ -447,20 +539,32 @@
         </div>
 
         <!-- Filtered (dropped) articles section -->
-        <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
-        </div>
-        <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
-        </ul>
+        <details class="sidebar-section-details" id="dropped-details">
+          <summary class="sidebar-section-header sidebar-section-summary">
+            <h3 class="sidebar-section-title">
+              Dropped &mdash; Low Relevance
+              <span class="sidebar-section-count" id="dropped-count"></span>
+            </h3>
+            <span class="sidebar-section-chevron">&#9660;</span>
+          </summary>
+          <ul class="filtered-list" id="filtered-list">
+            <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          </ul>
+        </details>
 
         <!-- Failed articles section -->
-        <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
-        </div>
-        <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
-        </ul>
+        <details class="sidebar-section-details" id="failed-details">
+          <summary class="sidebar-section-header sidebar-section-summary">
+            <h3 class="sidebar-section-title">
+              Failed &mdash; Processing Errors
+              <span class="sidebar-section-count" id="failed-count"></span>
+            </h3>
+            <span class="sidebar-section-chevron">&#9660;</span>
+          </summary>
+          <ul class="failed-list" id="failed-list">
+            <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          </ul>
+        </details>
       </aside>
 
     </div>
@@ -471,9 +575,16 @@
 
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
+      const countEl = document.getElementById('dropped-count');
+      const details = document.getElementById('dropped-details');
       if (!items || items.length === 0) {
         list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">None dropped this run.</li>';
+        if (countEl) { countEl.textContent = '0'; }
         return;
+      }
+      if (countEl) {
+        countEl.textContent = items.length;
+        countEl.classList.add('has-items');
       }
       list.innerHTML = items.map(a => `
         <li>
@@ -489,9 +600,15 @@
 
     function renderFailed(items) {
       const list = document.getElementById('failed-list');
+      const countEl = document.getElementById('failed-count');
       if (!items || items.length === 0) {
         list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">No failures this run.</li>';
+        if (countEl) { countEl.textContent = '0'; }
         return;
+      }
+      if (countEl) {
+        countEl.textContent = items.length;
+        countEl.classList.add('has-items');
       }
       list.innerHTML = items.map(a => `
         <li>

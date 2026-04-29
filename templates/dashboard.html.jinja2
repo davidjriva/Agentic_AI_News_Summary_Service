@@ -448,7 +448,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
+      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Operations Dashboard' }}</span>
       {% if running %}
       <div class="running-badge">
         <div class="running-dot"></div>
@@ -506,6 +506,7 @@
 
     <div class="history-card">
       {% if runs %}
+      <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
       <table class="runs-table">
         <thead>
           <tr>
@@ -551,20 +552,7 @@
             </td>
 
             <td>
-              <span class="duration">
-                {% if run.started_at and run.completed_at %}
-                  {% set start_parts = run.started_at.replace('T', ' ').split(' ') %}
-                  {% set end_parts = run.completed_at.replace('T', ' ').split(' ') %}
-                  {% set start_time = start_parts[1].split('.')[0].split(':') %}
-                  {% set end_time = end_parts[1].split('.')[0].split(':') %}
-                  {% set start_secs = start_time[0]|int * 3600 + start_time[1]|int * 60 + start_time[2]|int %}
-                  {% set end_secs = end_time[0]|int * 3600 + end_time[1]|int * 60 + end_time[2]|int %}
-                  {% set diff = end_secs - start_secs %}
-                  {% if diff < 0 %}{% set diff = diff + 86400 %}{% endif %}
-                  {% if diff >= 60 %}{{ (diff // 60)|int }}m {{ (diff % 60)|int }}s
-                  {% else %}{{ diff }}s{% endif %}
-                {% else %}&mdash;{% endif %}
-              </span>
+              <span class="duration">{{ run.duration_str if run.duration_str else '&mdash;' }}</span>
             </td>
 
             <td>
@@ -578,10 +566,12 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
       {% else %}
       <div class="empty-state">
         <div class="empty-state-headline">No Editions Yet</div>
-        <div class="empty-state-body">Click <strong>Run Now</strong> to generate your first newsletter.</div>
+        <div class="empty-state-body">Click <strong>Run Now</strong> above to fetch, rank, and deliver the latest AI news.</div>
+        <div class="empty-state-body" style="margin-top: 6px;">Use <strong>Clean Run</strong> to bypass the deduplication cache and fetch all recent articles fresh.</div>
       </div>
       {% endif %}
     </div>
@@ -592,7 +582,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p>Pipeline Dashboard &middot; AI News &amp; Analysis</p>
     </div>
   </footer>
 
@@ -705,18 +695,7 @@
         row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
-        let dur = '&mdash;';
-        if (run.started_at && run.completed_at) {
-          const sp = run.started_at.replace('T',' ').split(' ');
-          const ep = run.completed_at.replace('T',' ').split(' ');
-          const st = sp[1].split('.')[0].split(':');
-          const et = ep[1].split('.')[0].split(':');
-          const ss = +st[0]*3600 + +st[1]*60 + +st[2];
-          const es = +et[0]*3600 + +et[1]*60 + +et[2];
-          let d = es - ss; if (d < 0) d += 86400;
-          dur = d >= 60 ? `${Math.floor(d/60)}m ${d%60}s` : `${d}s`;
-        }
-        durTd.innerHTML = `<span class="duration">${dur}</span>`;
+        durTd.innerHTML = `<span class="duration">${run.duration_str || '&mdash;'}</span>`;
         row.appendChild(durTd);
 
         const linkTd = document.createElement('td');
