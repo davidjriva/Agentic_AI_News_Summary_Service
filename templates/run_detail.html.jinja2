@@ -152,7 +152,7 @@
 
     /* ── SIDEBAR ────────────────────────────────────── */
     .sidebar {
-      width: 272px;
+      width: 300px;
       flex-shrink: 0;
       background: var(--bg);
       border-left: 1px solid var(--border);
@@ -383,7 +383,7 @@
           <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
         </div>
         {% if started_at %}
-        <span class="masthead-ts">{{ started_at }}</span>
+        <span class="masthead-ts" id="masthead-ts" data-ts="{{ started_at }}">{{ started_at }}</span>
         {% endif %}
       </div>
     </header>
@@ -391,7 +391,7 @@
     <!-- ── NAV ─────────────────────────────────────── -->
     <nav class="nav">
       <div class="nav-inner">
-        <a class="nav-tab" href="/">Run History</a>
+        <a class="nav-tab active" href="/">Run History</a>
         <a class="nav-tab" href="/metrics">Metrics</a>
       </div>
     </nav>
@@ -518,6 +518,15 @@
         .catch(() => renderFailed([]));
     });
     {% endif %}
+    (function() {
+      const el = document.getElementById('masthead-ts');
+      if (el && el.dataset.ts) {
+        const d = new Date(el.dataset.ts.replace(' ', 'T'));
+        if (!isNaN(d)) {
+          el.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+      }
+    })();
   </script>
 </body>
 </html>

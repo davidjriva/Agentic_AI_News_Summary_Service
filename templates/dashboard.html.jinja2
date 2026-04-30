@@ -363,6 +363,12 @@
       color: var(--black);
     }
 
+    .dropped-count {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: var(--gray-mid);
+    }
+
     .view-link {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
@@ -448,7 +454,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
+      <span class="topbar-date" id="topbar-date">Dashboard</span>
       {% if running %}
       <div class="running-badge">
         <div class="running-dot"></div>
@@ -521,7 +527,7 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts" data-ts="{{ run.started_at }}">{{ run.started_at }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -543,11 +549,11 @@
             </td>
 
             <td>
-              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
+              <span class="dropped-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
             </td>
 
             <td>
-              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
+              <span class="dropped-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
             </td>
 
             <td>
@@ -597,8 +603,31 @@
   </footer>
 
   <script>
+    (function() {
+      const el = document.getElementById('topbar-date');
+      if (el) {
+        const now = new Date();
+        el.textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      }
+    })();
+
     let pollingInterval = null;
     let activeRunId = null;
+
+    function formatTs(isoStr) {
+      if (!isoStr) return '&mdash;';
+      const d = new Date(isoStr.replace(' ', 'T'));
+      if (isNaN(d)) return isoStr;
+      const now = new Date();
+      const diffMs = now - d;
+      const diffMin = Math.floor(diffMs / 60000);
+      let rel = '';
+      if (diffMin < 1) rel = ' &middot; just now';
+      else if (diffMin < 60) rel = ` &middot; ${diffMin}m ago`;
+      else if (diffMin < 1440) rel = ` &middot; ${Math.floor(diffMin/60)}h ago`;
+      const opts = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+      return d.toLocaleDateString('en-US', opts).replace(',', ' at') + rel;
+    }
 
     function triggerRun(clean) {
       const url = clean ? '/run?clean=true' : '/run';
@@ -615,15 +644,35 @@
     }
 
     function insertOptimisticRow() {
-      const tbody = document.querySelector('.runs-table tbody');
-      if (!tbody) return;
+      let tbody = document.querySelector('.runs-table tbody');
+      if (!tbody) {
+        // Build the table from scratch, replacing the empty state
+        const historyCard = document.querySelector('.history-card');
+        if (!historyCard) return;
+        historyCard.innerHTML = `
+          <table class="runs-table">
+            <thead>
+              <tr>
+                <th>Started</th>
+                <th>Status</th>
+                <th>Articles</th>
+                <th>Dropped</th>
+                <th>Failed</th>
+                <th>Duration</th>
+                <th>Edition</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>`;
+        tbody = historyCard.querySelector('tbody');
+      }
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td><span class="ts">Just now\u2026</span></td>
+        <td><span class="ts">Just now&hellip;</span></td>
         <td><span class="badge badge-running">Running</span></td>
         <td><span class="article-count">&mdash;</span></td>
-        <td><span class="article-count">&mdash;</span></td>
-        <td><span class="article-count">&mdash;</span></td>
+        <td><span class="dropped-count">&mdash;</span></td>
+        <td><span class="dropped-count">&mdash;</span></td>
         <td><span class="duration">&mdash;</span></td>
         <td>&mdash;</td>
       `;
@@ -677,7 +726,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts">${formatTs(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -697,11 +746,11 @@
         row.appendChild(artTd);
 
         const droppedTd = document.createElement('td');
-        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
+        droppedTd.innerHTML = `<span class="dropped-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
         row.appendChild(droppedTd);
 
         const failedTd = document.createElement('td');
-        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
+        failedTd.innerHTML = `<span class="dropped-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
         row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
@@ -750,6 +799,10 @@
     document.addEventListener('DOMContentLoaded', () => {
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
+
+      document.querySelectorAll('.ts[data-ts]').forEach(el => {
+        el.innerHTML = formatTs(el.dataset.ts);
+      });
     });
   </script>
 </body>
