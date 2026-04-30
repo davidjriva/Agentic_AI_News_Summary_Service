@@ -82,6 +82,16 @@
       display: block;
     }
 
+    .masthead-date {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #AAAAAA;
+      font-style: italic;
+      text-align: center;
+      display: block;
+      padding: 4px 0 12px;
+    }
+
     .masthead-tagline {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 10px;
@@ -122,21 +132,6 @@
       font-style: italic;
       display: table-cell;
       vertical-align: middle;
-    }
-
-    .edition-number {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      background-color: #C41230;
-      color: #fff;
-      padding: 3px 9px;
-      display: table-cell;
-      vertical-align: middle;
-      text-align: right;
-      white-space: nowrap;
     }
 
     /* ── ARTICLE COUNT INTRO ────────────────────────── */
@@ -276,6 +271,18 @@
 
     .score-item {
       display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-left: 8px;
+      border-left: 2px solid #DEDEDE;
+    }
+
+    .score-item-relevance { border-left-color: #121212; }
+    .score-item-impact { border-left-color: #C41230; }
+    .score-item-authenticity { border-left-color: #888; }
+
+    .score-item-row {
+      display: flex;
       align-items: baseline;
       gap: 5px;
     }
@@ -293,11 +300,8 @@
       font-family: Georgia, 'Times New Roman', Times, serif;
       font-size: 15px;
       font-weight: 700;
+      color: #121212;
     }
-
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
 
     /* Score label tooltips (browser only; email clients use title attr) */
     .score-label {
@@ -329,6 +333,24 @@
 
     .score-label:hover::after { opacity: 1; }
 
+    /* Score progress bars */
+    .score-bar-track {
+      width: 48px;
+      height: 2px;
+      background: #EEEEEE;
+      margin-top: 4px;
+      display: block;
+    }
+
+    .score-bar-fill {
+      height: 2px;
+      display: block;
+    }
+
+    .score-item-relevance .score-bar-fill { background: #121212; }
+    .score-item-impact .score-bar-fill { background: #C41230; }
+    .score-item-authenticity .score-bar-fill { background: #888; }
+
     /* Read more link */
     .article-readmore {
       margin-top: 16px;
@@ -339,23 +361,19 @@
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 1px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
       color: #C41230;
       text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
+      display: inline-block;
+      border: 1.5px solid #C41230;
+      padding: 7px 16px;
+      transition: background 0.15s, color 0.15s;
     }
 
     .article-readmore a:hover {
-      border-bottom-color: #C41230;
-    }
-
-    /* Section break between articles */
-    .article-separator {
-      width: 100%;
-      height: 1px;
-      background: #DEDEDE;
+      background: #C41230;
+      color: #fff;
     }
 
     /* ── FOOTER ─────────────────────────────────────── */
@@ -441,6 +459,7 @@
               </tr>
               <tr>
                 <td align="center" style="padding: 0 24px 20px;">
+                  <span class="masthead-date">{{ run_time.strftime('%A, %B %-d, %Y') }}</span>
                   <span class="masthead-tagline">AI News &amp; Analysis</span>
                 </td>
               </tr>
@@ -455,7 +474,6 @@
             <div class="edition-bar">
               <div class="edition-bar-inner">
                 <span class="edition-date">{{ run_time.strftime('%A, %B %-d, %Y at %H:%M UTC') }}</span>
-                <span class="edition-number">Edition #{{ run_id[:6] if run_id else '000001' }}</span>
               </div>
             </div>
           </td>
@@ -504,17 +522,26 @@
 
                 <!-- Scores + Read More -->
                 <div class="article-scores">
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
-                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  <div class="score-item score-item-relevance">
+                    <div class="score-item-row">
+                      <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
+                      <span class="score-value">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    </div>
+                    <span class="score-bar-track"><span class="score-bar-fill" style="width: {{ ((article.relevance_score or 0) / 10 * 48)|int }}px;"></span></span>
                   </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
-                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  <div class="score-item score-item-impact">
+                    <div class="score-item-row">
+                      <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
+                      <span class="score-value">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    </div>
+                    <span class="score-bar-track"><span class="score-bar-fill" style="width: {{ ((article.impact_score or 0) / 10 * 48)|int }}px;"></span></span>
                   </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
-                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  <div class="score-item score-item-authenticity">
+                    <div class="score-item-row">
+                      <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
+                      <span class="score-value">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    </div>
+                    <span class="score-bar-track"><span class="score-bar-fill" style="width: {{ ((article.authenticity_score or 0) / 10 * 48)|int }}px;"></span></span>
                   </div>
                 </div>
 
@@ -526,9 +553,6 @@
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
