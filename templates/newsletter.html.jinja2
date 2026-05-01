@@ -141,10 +141,9 @@
 
     /* ── ARTICLE COUNT INTRO ────────────────────────── */
     .intro-row {
-      padding: 20px 24px 16px;
+      padding: 18px 24px 14px;
       text-align: center;
       background-color: #fff;
-      border-bottom: 1px solid #DEDEDE;
     }
 
     .intro-count {
@@ -164,6 +163,21 @@
       width: 100%;
       background-color: #FFFFFF;
       border-bottom: 1px solid #DEDEDE;
+    }
+
+    .article-card.lead-story {
+      border-top: 3px solid #C41230;
+    }
+
+    .top-story-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #C41230;
+      margin-bottom: 8px;
+      display: block;
     }
 
     .article-card:first-of-type .article-inner {
@@ -269,42 +283,46 @@
     /* Scores */
     .article-scores {
       display: flex;
-      gap: 20px;
-      padding-top: 14px;
+      flex-direction: row;
+      align-items: center;
+      gap: 0;
+      padding-top: 12px;
       border-top: 1px solid #F0F0F0;
     }
 
     .score-item {
-      display: flex;
+      display: inline-flex;
       align-items: baseline;
-      gap: 5px;
+      gap: 4px;
+    }
+
+    .score-item + .score-item::before {
+      content: '\00B7';
+      color: #CCCCCC;
+      font-size: 13px;
+      margin: 0 8px;
+      line-height: 1;
     }
 
     .score-label {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0;
+      text-transform: none;
       color: #888;
-    }
-
-    .score-value {
-      font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 15px;
-      font-weight: 700;
-    }
-
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
-
-    /* Score label tooltips (browser only; email clients use title attr) */
-    .score-label {
       position: relative;
       cursor: help;
     }
 
+    .score-value {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    /* Score label tooltips (browser only; email clients use title attr) */
     .score-label::after {
       content: attr(data-tooltip);
       position: absolute;
@@ -421,7 +439,7 @@
             <table class="masthead-table" cellpadding="0" cellspacing="0" width="100%">
               <tr>
                 <td align="center" style="padding: 20px 24px 0;">
-                  <span class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</span>
+                  <span class="masthead-eyebrow">Automated Edition &nbsp;&middot;&nbsp; AI News Digest</span>
                 </td>
               </tr>
               <tr>
@@ -477,8 +495,10 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.first %} lead-story{% endif %}">
               <div class="article-inner">
+
+                {% if loop.first %}<div class="top-story-label">Top Story</div>{% endif %}
 
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
@@ -497,7 +517,9 @@
                 </h2>
 
                 <!-- Byline -->
+                {% if article.author and article.author != 'None' %}
                 <p class="article-byline">By {{ article.author }}</p>
+                {% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
@@ -505,16 +527,16 @@
                 <!-- Scores + Read More -->
                 <div class="article-scores">
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
-                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
-                  </div>
-                  <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
-                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-value">{{ article.impact_score }}</span>
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
-                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-value">{{ article.authenticity_score }}</span>
+                  </div>
+                  <div class="score-item">
+                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
+                    <span class="score-value">{{ article.relevance_score if article.relevance_score is not none else '?' }}</span>
                   </div>
                 </div>
 
@@ -543,7 +565,7 @@
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
                     <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
+                      <a href="{{ dashboard_url | default('http://localhost:8000') }}">View Dashboard</a>
                     </span>
                   </div>
                 </td>

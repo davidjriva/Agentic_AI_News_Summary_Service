@@ -243,6 +243,13 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .rank-indicator {
+      color: #1A5C1A;
+      font-size: 8px;
+      flex-shrink: 0;
+      line-height: 1.4;
+    }
+
     .article-list a {
       color: var(--charcoal);
       text-decoration: none;
@@ -419,7 +426,7 @@
           <p class="sidebar-header-meta">
             {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
             &mdash;
-            {{ sources.values() | map('length') | sum }} fetched
+            {{ sources.values() | map('length') | sum }} article{{ 's' if sources.values() | map('length') | sum != 1 else '' }} fetched
           </p>
         </div>
 
@@ -434,7 +441,10 @@
               <ul class="article-list">
                 {% for article in articles %}
                 <li>
-                  {% if article.rank_score is not none %}<span class="article-score">{{ "%.1f"|format(article.rank_score) }}</span>{% endif %}
+                  {% if article.rank_score is not none %}
+                  <span class="rank-indicator" title="Included in newsletter">&#9679;</span>
+                  <span class="article-score">{{ "%.1f"|format(article.rank_score) }}</span>
+                  {% endif %}
                   <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.title }}</a>
                 </li>
                 {% endfor %}
