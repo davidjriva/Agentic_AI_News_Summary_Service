@@ -246,6 +246,30 @@
       cursor: not-allowed;
     }
 
+    .btn-caution {
+      background: transparent;
+      color: #856404;
+      border: 1.5px solid #856404;
+      padding: 10px 28px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .btn-caution:hover:not(:disabled) {
+      background: #856404;
+      color: #fff;
+    }
+    .btn-caution:disabled {
+      border-color: var(--gray-light);
+      color: var(--gray-light);
+      cursor: not-allowed;
+    }
+
     /* ── RUNNING BADGE ──────────────────────────────── */
     .running-badge {
       display: inline-flex;
@@ -427,7 +451,7 @@
       .page-wrapper { padding: 20px 16px 40px; }
       .controls-card { padding: 20px; }
       .controls-actions { flex-direction: column; align-items: stretch; }
-      .btn-primary, .btn-secondary { width: 100%; text-align: center; }
+      .btn-primary, .btn-secondary, .btn-caution { width: 100%; text-align: center; }
       .topbar-inner { flex-wrap: wrap; gap: 6px; }
     }
   </style>
@@ -437,7 +461,7 @@
   <!-- ── MASTHEAD ─────────────────────────────────────── -->
   <header class="masthead">
     <div class="masthead-inner">
-      <div class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</div>
+      <div class="masthead-eyebrow">Automated Edition &nbsp;&middot;&nbsp; AI News Digest</div>
       <hr class="masthead-rule" />
       <h1 class="masthead-title">The Agentic Times</h1>
       <hr class="masthead-rule" />
@@ -484,7 +508,7 @@
         >&#9654;&nbsp; Run Now</button>
         <button
           type="button"
-          class="btn-secondary"
+          class="btn-caution"
           title="Clears articles seen in the last 12 hours from the dedup cache, then runs the pipeline"
           onclick="triggerRun(true)"
           {% if running %}disabled{% endif %}
@@ -521,7 +545,7 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts" data-iso="{{ run.started_at }}">{{ run.started_at }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -592,7 +616,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p><a href="/">Dashboard</a></p>
     </div>
   </footer>
 
@@ -639,11 +663,11 @@
     }
 
     function disableButtons() {
-      document.querySelectorAll('.btn-primary, .btn-secondary').forEach(btn => btn.disabled = true);
+      document.querySelectorAll('.btn-primary, .btn-secondary, .btn-caution').forEach(btn => btn.disabled = true);
     }
 
     function enableButtons() {
-      document.querySelectorAll('.btn-primary, .btn-secondary').forEach(btn => btn.disabled = false);
+      document.querySelectorAll('.btn-primary, .btn-secondary, .btn-caution').forEach(btn => btn.disabled = false);
     }
 
     function startPolling() {
@@ -668,6 +692,14 @@
       if (pollingInterval !== null) { clearInterval(pollingInterval); pollingInterval = null; }
     }
 
+    function formatTs(isoStr) {
+      if (!isoStr) return '—';
+      try {
+        const d = new Date(isoStr.replace(' ', 'T'));
+        return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+      } catch(e) { return isoStr; }
+    }
+
     function renderRuns(runs) {
       const tbody = document.querySelector('.runs-table tbody');
       if (!tbody) return;
@@ -677,7 +709,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts">${formatTs(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -750,6 +782,10 @@
     document.addEventListener('DOMContentLoaded', () => {
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
+
+      document.querySelectorAll('.ts[data-iso]').forEach(el => {
+        el.textContent = formatTs(el.dataset.iso);
+      });
     });
   </script>
 </body>

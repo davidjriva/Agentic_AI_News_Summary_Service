@@ -204,6 +204,10 @@
       color: var(--gray-dark);
     }
 
+    .stat-card--hero {
+      border-top-color: var(--red);
+    }
+
     /* ── CHART ROW ──────────────────────────────────── */
     .chart-row {
       display: grid;
@@ -298,7 +302,7 @@
   <!-- ── MASTHEAD ─────────────────────────────────────── -->
   <header class="masthead">
     <div class="masthead-inner">
-      <div class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</div>
+      <div class="masthead-eyebrow">Automated Edition &nbsp;&middot;&nbsp; AI News Digest</div>
       <hr class="masthead-rule" />
       <h1 class="masthead-title">The Agentic Times</h1>
       <hr class="masthead-rule" />
@@ -331,7 +335,7 @@
     </h2>
 
     <div class="stat-grid">
-      <div class="stat-card">
+      <div class="stat-card stat-card--hero">
         <div class="stat-value">{{ emails_delivered }}</div>
         <div class="stat-label">Emails Delivered</div>
       </div>
@@ -383,7 +387,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p><a href="/">Dashboard</a></p>
     </div>
   </footer>
 
