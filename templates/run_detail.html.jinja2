@@ -238,9 +238,10 @@
     .article-score {
       flex-shrink: 0;
       font-size: 10px;
-      font-weight: 600;
-      color: var(--gray-mid);
+      font-weight: 700;
+      color: #C41230;
       font-variant-numeric: tabular-nums;
+      min-width: 24px;
     }
 
     .article-list a {
@@ -368,6 +369,26 @@
       font-size: 13px;
       font-style: italic;
     }
+
+    .loading-indicator {
+      text-align: center;
+      padding: 16px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      color: var(--gray-mid);
+    }
+
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.2s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%   { content: ''; }
+      25%  { content: '.'; }
+      50%  { content: '..'; }
+      75%  { content: '...'; }
+    }
   </style>
 </head>
 <body>
@@ -380,7 +401,8 @@
           <a class="masthead-back" href="/">&larr; Dashboard</a>
           <span class="masthead-sep">/</span>
           <span class="masthead-brand">The Agentic Times</span>
-          <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          <span class="masthead-edition">Edition</span>
+          <span style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:10px;color:#666;letter-spacing:0.5px;font-family:monospace;">{{ run_id[:8] }}</span>
         </div>
         {% if started_at %}
         <span class="masthead-ts">{{ started_at }}</span>
@@ -391,7 +413,7 @@
     <!-- ── NAV ─────────────────────────────────────── -->
     <nav class="nav">
       <div class="nav-inner">
-        <a class="nav-tab" href="/">Run History</a>
+        <a class="nav-tab active" href="/">Run History</a>
         <a class="nav-tab" href="/metrics">Metrics</a>
       </div>
     </nav>
@@ -434,7 +456,11 @@
               <ul class="article-list">
                 {% for article in articles %}
                 <li>
-                  {% if article.rank_score is not none %}<span class="article-score">{{ "%.1f"|format(article.rank_score) }}</span>{% endif %}
+                  {% if article.rank is defined and article.rank is not none %}
+                  <span class="article-score">#{{ article.rank }}</span>
+                  {% elif article.rank_score is not none %}
+                  <span class="article-score">{{ "%.1f"|format(article.rank_score) }}</span>
+                  {% endif %}
                   <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.title }}</a>
                 </li>
                 {% endfor %}
@@ -448,18 +474,18 @@
 
         <!-- Filtered (dropped) articles section -->
         <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
+          <h3 class="sidebar-section-title" id="filtered-header">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="loading-indicator"><span class="loading-dots">Loading</span></li>
         </ul>
 
         <!-- Failed articles section -->
         <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
+          <h3 class="sidebar-section-title" id="failed-header">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="loading-indicator"><span class="loading-dots">Loading</span></li>
         </ul>
       </aside>
 
@@ -471,8 +497,13 @@
 
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
+      const header = document.getElementById('filtered-header');
       if (!items || items.length === 0) {
         list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">None dropped this run.</li>';
+        if (header) {
+          const count = items ? items.length : 0;
+          header.textContent = count > 0 ? `Dropped — Low Relevance (${count})` : 'Dropped — Low Relevance';
+        }
         return;
       }
       list.innerHTML = items.map(a => `
@@ -485,12 +516,21 @@
           ${a.relevance_reason ? `<div class="filter-meta">${a.relevance_reason}</div>` : ''}
         </li>
       `).join('');
+      if (header) {
+        const count = items ? items.length : 0;
+        header.textContent = count > 0 ? `Dropped — Low Relevance (${count})` : 'Dropped — Low Relevance';
+      }
     }
 
     function renderFailed(items) {
       const list = document.getElementById('failed-list');
+      const header = document.getElementById('failed-header');
       if (!items || items.length === 0) {
         list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">No failures this run.</li>';
+        if (header) {
+          const count = items ? items.length : 0;
+          header.textContent = count > 0 ? `Failed — Processing Errors (${count})` : 'Failed — Processing Errors';
+        }
         return;
       }
       list.innerHTML = items.map(a => `
@@ -500,6 +540,10 @@
           ${a.reason ? `<div class="fail-reason">${a.reason}</div>` : ''}
         </li>
       `).join('');
+      if (header) {
+        const count = items ? items.length : 0;
+        header.textContent = count > 0 ? `Failed — Processing Errors (${count})` : 'Failed — Processing Errors';
+      }
     }
 
     {% if preview %}
