@@ -379,15 +379,14 @@
     }
 
     .loading-dots::after {
-      content: '';
-      animation: dots 1.2s steps(4, end) infinite;
+      content: '...';
+      display: inline-block;
+      animation: loading-fade 1.2s ease-in-out infinite;
     }
 
-    @keyframes dots {
-      0%   { content: ''; }
-      25%  { content: '.'; }
-      50%  { content: '..'; }
-      75%  { content: '...'; }
+    @keyframes loading-fade {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
     }
   </style>
 </head>
