@@ -39,7 +39,7 @@
     .masthead-inner {
       max-width: 900px;
       margin: 0 auto;
-      padding: 28px 20px 20px;
+      padding: 16px 20px 12px;
     }
 
     .masthead-eyebrow {
@@ -55,13 +55,13 @@
     .masthead-rule {
       border: none;
       border-top: 1px solid #3a3a3a;
-      margin: 10px auto 14px;
+      margin: 6px auto 10px;
       width: 300px;
     }
 
     .masthead-title {
       font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 48px;
+      font-size: 32px;
       font-weight: 700;
       color: #FFFFFF;
       letter-spacing: -1px;
@@ -71,12 +71,12 @@
 
     .masthead-tagline {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 400;
       letter-spacing: 1.5px;
       text-transform: uppercase;
       color: #999;
-      margin-top: 14px;
+      margin-top: 8px;
     }
 
     /* ── TOP BAR ────────────────────────────────────── */
@@ -440,7 +440,6 @@
       <div class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</div>
       <hr class="masthead-rule" />
       <h1 class="masthead-title">The Agentic Times</h1>
-      <hr class="masthead-rule" />
       <div class="masthead-tagline">AI News &amp; Analysis &nbsp;&middot;&nbsp; Pipeline Dashboard</div>
     </div>
   </header>
@@ -463,6 +462,7 @@
     <div class="nav-inner">
       <a class="nav-tab {% if active == 'dashboard' %}active{% endif %}" href="/">Run History</a>
       <a class="nav-tab {% if active == 'metrics' %}active{% endif %}" href="/metrics">Metrics</a>
+      <a class="nav-tab" href="/preview">Preview</a>
     </div>
   </nav>
 
@@ -521,7 +521,7 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts" data-iso="{{ run.started_at }}">{{ run.started_at }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -592,11 +592,34 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p>Pipeline Dashboard</p>
     </div>
   </footer>
 
   <script>
+    function formatISODate(iso) {
+      if (!iso) return '&mdash;';
+      try {
+        const d = new Date(iso.replace(' ', 'T'));
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          + ' at '
+          + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      } catch(e) { return iso; }
+    }
+
+    function formatTimestamps() {
+      document.querySelectorAll('.ts[data-iso]').forEach(el => {
+        const iso = el.getAttribute('data-iso');
+        if (!iso) return;
+        try {
+          const d = new Date(iso.replace(' ', 'T'));
+          el.textContent = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            + ' at '
+            + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        } catch(e) {}
+      });
+    }
+
     let pollingInterval = null;
     let activeRunId = null;
 
@@ -677,7 +700,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts">${formatISODate(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -750,6 +773,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
+      formatTimestamps();
     });
   </script>
 </body>
