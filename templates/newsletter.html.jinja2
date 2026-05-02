@@ -175,15 +175,6 @@
     }
 
     /* Rank + publication bar */
-    .article-topbar {
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      border-bottom: 1px solid #DEDEDE;
-      padding-bottom: 12px;
-    }
-
     .article-rank {
       font-family: Georgia, 'Times New Roman', Times, serif;
       font-size: 28px;
@@ -203,13 +194,6 @@
       display: block;
     }
 
-    .article-topbar-divider {
-      width: 1px;
-      height: 32px;
-      background: #DEDEDE;
-      flex-shrink: 0;
-    }
-
     .article-publication {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
@@ -217,7 +201,6 @@
       letter-spacing: 1px;
       text-transform: uppercase;
       color: #121212;
-      flex: 1;
     }
 
     .article-pub-date {
@@ -268,16 +251,18 @@
 
     /* Scores */
     .article-scores {
-      display: flex;
-      gap: 20px;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
     }
 
     .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+      display: inline-block;
+      margin-right: 16px;
+      vertical-align: top;
+      text-align: center;
+      padding: 6px 10px;
+      background: #F7F7F5;
+      border: 1px solid #EBEBEB;
     }
 
     .score-label {
@@ -295,9 +280,9 @@
       font-weight: 700;
     }
 
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
+    .score-relevance     { color: #C41230; }
+    .score-impact        { color: #121212; }
+    .score-authenticity  { color: #555555; }
 
     /* Score label tooltips (browser only; email clients use title attr) */
     .score-label {
@@ -336,26 +321,22 @@
     }
 
     .article-readmore a {
+      display: inline-block;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 1px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
-      color: #C41230;
+      color: #FFFFFF;
+      background: #C41230;
       text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
+      padding: 9px 20px;
+      border: none;
+      transition: background 0.15s;
     }
 
     .article-readmore a:hover {
-      border-bottom-color: #C41230;
-    }
-
-    /* Section break between articles */
-    .article-separator {
-      width: 100%;
-      height: 1px;
-      background: #DEDEDE;
+      background: #9c0e24;
     }
 
     /* ── FOOTER ─────────────────────────────────────── */
@@ -406,7 +387,6 @@
       .article-headline { font-size: 19px !important; }
       .article-summary { font-size: 13px !important; }
       .article-rank { font-size: 22px !important; }
-      .article-topbar { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -481,15 +461,26 @@
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
-                <div class="article-topbar">
-                  <div>
-                    <span class="article-rank">#{{ loop.index }}</span>
-                    <span class="article-rank-label">Rank</span>
-                  </div>
-                  <div class="article-topbar-divider"></div>
-                  <span class="article-publication">{{ article.publication }}</span>
-                  <span class="article-pub-date">{{ article.published_at.strftime('%b %-d, %Y') }}</span>
-                </div>
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px;border-bottom:1px solid #DEDEDE;padding-bottom:12px;">
+                  <tr>
+                    <td style="width:48px;vertical-align:middle;">
+                      <span class="article-rank">#{{ loop.index }}</span>
+                      <span class="article-rank-label">Rank</span>
+                    </td>
+                    <td style="width:1px;vertical-align:middle;padding:0 12px;">
+                      <div style="width:1px;height:32px;background:#DEDEDE;"></div>
+                    </td>
+                    <td style="vertical-align:middle;">
+                      <span class="article-publication">{{ article.publication }}</span>
+                    </td>
+                    <td style="vertical-align:middle;text-align:right;white-space:nowrap;">
+                      <span class="article-pub-date">{{ article.published_at.strftime('%b %-d, %Y') }}</span>
+                      {% if article.rank_score is defined and article.rank_score is not none %}
+                      <span style="display:block;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#C41230;margin-top:2px;">Score {{ "%.1f"|format(article.rank_score) }}</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                </table>
 
                 <!-- Headline -->
                 <h2 class="article-headline">
@@ -505,15 +496,15 @@
                 <!-- Scores + Read More -->
                 <div class="article-scores">
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
+                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span><br>
                     <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
+                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span><br>
                     <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
+                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span><br>
                     <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                 </div>
@@ -526,9 +517,6 @@
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
@@ -543,7 +531,7 @@
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
                     <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
+                      View Dashboard
                     </span>
                   </div>
                 </td>
