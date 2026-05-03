@@ -139,24 +139,90 @@
       white-space: nowrap;
     }
 
-    /* ── ARTICLE COUNT INTRO ────────────────────────── */
+    /* ── INTRO ──────────────────────────────────────── */
     .intro-row {
-      padding: 20px 24px 16px;
-      text-align: center;
+      padding: 18px 32px 16px;
       background-color: #fff;
       border-bottom: 1px solid #DEDEDE;
     }
-
-    .intro-count {
+    .intro-date-label {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      color: #555;
-      letter-spacing: 0.3px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #C41230;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .intro-headline {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 14px;
+      color: #333;
+      line-height: 1.5;
+    }
+    .intro-headline strong {
+      color: #121212;
     }
 
-    .intro-count strong {
-      color: #121212;
+    /* ── TABLE OF CONTENTS ─────────────────────── */
+    .toc-section {
+      background-color: #FAFAF8;
+      border-bottom: 2px solid #DEDEDE;
+      padding: 20px 32px 24px;
+    }
+    .toc-header {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
       font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #DEDEDE;
+    }
+    .toc-item {
+      padding: 7px 0;
+      border-bottom: 1px solid #F0F0F0;
+      display: table;
+      width: 100%;
+    }
+    .toc-item:last-child {
+      border-bottom: none;
+    }
+    .toc-rank {
+      display: table-cell;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      color: #C41230;
+      width: 28px;
+      vertical-align: top;
+      padding-top: 2px;
+    }
+    .toc-title {
+      display: table-cell;
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #121212;
+      vertical-align: top;
+    }
+    .toc-title a {
+      color: #121212;
+      text-decoration: none;
+    }
+    .toc-pub {
+      display: table-cell;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      color: #888;
+      white-space: nowrap;
+      vertical-align: top;
+      padding-top: 2px;
+      padding-left: 12px;
+      text-align: right;
     }
 
     /* ── ARTICLE CARD ───────────────────────────────── */
@@ -174,14 +240,58 @@
       padding: 24px 32px 28px;
     }
 
+    /* Featured top story */
+    .article-card-featured {
+      width: 100%;
+      background-color: #FFFFFF;
+      border-bottom: 1px solid #DEDEDE;
+      border-left: 4px solid #C41230;
+    }
+    .article-card-featured .article-headline {
+      font-size: 26px;
+    }
+    .top-story-badge {
+      display: inline-block;
+      background-color: #C41230;
+      color: #ffffff;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      margin-bottom: 12px;
+    }
+
     /* Rank + publication bar */
     .article-topbar {
       margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
       border-bottom: 1px solid #DEDEDE;
       padding-bottom: 12px;
+      width: 100%;
+    }
+    .article-topbar-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .article-topbar-rank-cell {
+      vertical-align: middle;
+      white-space: nowrap;
+      padding-right: 10px;
+      width: 1%;
+    }
+    .article-topbar-divider-cell {
+      vertical-align: middle;
+      width: 1px;
+      padding: 0 10px 0 0;
+    }
+    .article-topbar-pub-cell {
+      vertical-align: middle;
+    }
+    .article-topbar-date-cell {
+      vertical-align: middle;
+      white-space: nowrap;
+      text-align: right;
     }
 
     .article-rank {
@@ -207,7 +317,6 @@
       width: 1px;
       height: 32px;
       background: #DEDEDE;
-      flex-shrink: 0;
     }
 
     .article-publication {
@@ -217,7 +326,6 @@
       letter-spacing: 1px;
       text-transform: uppercase;
       color: #121212;
-      flex: 1;
     }
 
     .article-pub-date {
@@ -241,7 +349,6 @@
       color: #121212;
       text-decoration: none;
       border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
     }
 
     .article-headline a:hover {
@@ -268,16 +375,16 @@
 
     /* Scores */
     .article-scores {
-      display: flex;
-      gap: 20px;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
+      font-size: 0; /* collapse whitespace between inline-blocks */
     }
 
     .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+      display: inline-block;
+      vertical-align: top;
+      margin-right: 24px;
+      font-size: 14px; /* reset font-size */
     }
 
     .score-label {
@@ -298,36 +405,7 @@
     .score-relevance     { color: #1A3D7A; }
     .score-impact        { color: #1A5C1A; }
     .score-authenticity  { color: #7B5B00; }
-
-    /* Score label tooltips (browser only; email clients use title attr) */
-    .score-label {
-      position: relative;
-      cursor: help;
-    }
-
-    .score-label::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      width: 190px;
-      background: #121212;
-      color: #ddd;
-      font-size: 10px;
-      font-weight: 400;
-      letter-spacing: 0.3px;
-      text-transform: none;
-      white-space: normal;
-      text-align: center;
-      padding: 6px 10px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.15s;
-      z-index: 10;
-    }
-
-    .score-label:hover::after { opacity: 1; }
+    .score-rankscore     { color: #4A1D7A; }
 
     /* Read more link */
     .article-readmore {
@@ -344,7 +422,6 @@
       color: #C41230;
       text-decoration: none;
       border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
     }
 
     .article-readmore a:hover {
@@ -402,11 +479,14 @@
     @media only screen and (max-width: 620px) {
       .main { width: 100% !important; }
       .masthead-title { font-size: 30px !important; }
-      .article-inner { padding: 20px !important; }
+      .article-inner { padding: 16px !important; }
+      .toc-section { padding: 16px !important; }
       .article-headline { font-size: 19px !important; }
+      .article-card-featured .article-headline { font-size: 22px !important; }
       .article-summary { font-size: 13px !important; }
       .article-rank { font-size: 22px !important; }
-      .article-topbar { flex-wrap: wrap; }
+      .score-item { margin-right: 14px !important; }
+      .toc-pub { display: none !important; }
     }
   </style>
 </head>
@@ -465,10 +545,27 @@
         <tr>
           <td>
             <div class="intro-row">
-              <span class="intro-count">
-                <strong>{{ article_count }}</strong>
-                article{{ 's' if article_count != 1 else '' }} curated &amp; ranked for you today
+              <span class="intro-date-label">{{ run_time.strftime('%A, %B %-d, %Y') }}</span>
+              <span class="intro-headline">
+                Today's digest features <strong>{{ article_count }} article{{ 's' if article_count != 1 else '' }}</strong>
+                curated from across the AI landscape and ranked by impact and authenticity.
               </span>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ── TABLE OF CONTENTS ─────────────────────── -->
+        <tr>
+          <td>
+            <div class="toc-section">
+              <div class="toc-header">In This Edition</div>
+              {% for article in articles %}
+              <div class="toc-item">
+                <span class="toc-rank">{{ loop.index }}</span>
+                <span class="toc-title"><a href="{{ article.url }}">{{ article.title }}</a></span>
+                <span class="toc-pub">{{ article.publication }}</span>
+              </div>
+              {% endfor %}
             </div>
           </td>
         </tr>
@@ -477,18 +574,32 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="{% if loop.first %}article-card-featured{% else %}article-card{% endif %}">
               <div class="article-inner">
+
+                {% if loop.first %}
+                <div class="top-story-badge">Top Story</div>
+                {% endif %}
 
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
-                  <div>
-                    <span class="article-rank">#{{ loop.index }}</span>
-                    <span class="article-rank-label">Rank</span>
-                  </div>
-                  <div class="article-topbar-divider"></div>
-                  <span class="article-publication">{{ article.publication }}</span>
-                  <span class="article-pub-date">{{ article.published_at.strftime('%b %-d, %Y') }}</span>
+                  <table class="article-topbar-table" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td class="article-topbar-rank-cell">
+                        <span class="article-rank">#{{ loop.index }}</span>
+                        <span class="article-rank-label">Rank</span>
+                      </td>
+                      <td class="article-topbar-divider-cell">
+                        <div class="article-topbar-divider"></div>
+                      </td>
+                      <td class="article-topbar-pub-cell">
+                        <span class="article-publication">{{ article.publication }}</span>
+                      </td>
+                      <td class="article-topbar-date-cell">
+                        <span class="article-pub-date">{% if article.published_at %}{{ article.published_at.strftime('%b %-d, %Y') }}{% endif %}</span>
+                      </td>
+                    </tr>
+                  </table>
                 </div>
 
                 <!-- Headline -->
@@ -497,7 +608,9 @@
                 </h2>
 
                 <!-- Byline -->
+                {% if article.author %}
                 <p class="article-byline">By {{ article.author }}</p>
+                {% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
@@ -505,16 +618,20 @@
                 <!-- Scores + Read More -->
                 <div class="article-scores">
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
+                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking.">Relevance</span>
                     <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
+                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score.">Impact</span>
                     <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
+                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score.">Authenticity</span>
                     <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  </div>
+                  <div class="score-item">
+                    <span class="score-label" title="Composite ranking score: (Impact × 0.6) + (Authenticity × 0.4)">Rank Score</span>
+                    <span class="score-value score-rankscore">{{ "%.1f"|format(article.rank_score) if article.rank_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                 </div>
 
@@ -542,8 +659,11 @@
                     <hr class="footer-rule" />
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
-                    <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
+                    <span class="footer-meta" style="margin-top:8px; color:#555;">
+                      This digest is automatically generated by The Agentic Times pipeline.
+                    </span>
+                    <span class="footer-meta" style="margin-top:12px; font-size:10px; color:#444;">
+                      You received this because you are subscribed to The Agentic Times.
                     </span>
                   </div>
                 </td>
