@@ -419,7 +419,7 @@
           <p class="sidebar-header-meta">
             {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
             &mdash;
-            {{ sources.values() | map('length') | sum }} fetched
+            {{ sources.values() | map('length') | sum }} included
           </p>
         </div>
 

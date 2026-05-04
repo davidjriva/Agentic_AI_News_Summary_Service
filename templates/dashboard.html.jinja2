@@ -521,7 +521,7 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts" data-raw="{{ run.started_at }}">{{ run.started_at.replace('T', ' ').split('.')[0] if run.started_at else '—' }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -592,11 +592,23 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p>Pipeline Dashboard</p>
     </div>
   </footer>
 
   <script>
+    function formatTs(raw) {
+      if (!raw) return '—';
+      // Parse ISO string safely
+      const s = raw.replace('T', ' ').replace(/\.\d+$/, '');
+      const d = new Date(s.replace(' ', 'T') + 'Z');
+      if (isNaN(d.getTime())) return raw;
+      return d.toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZone: 'UTC', timeZoneName: 'short'
+      });
+    }
+
     let pollingInterval = null;
     let activeRunId = null;
 
@@ -677,7 +689,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts">${formatTs(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -748,6 +760,10 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Format server-rendered timestamps
+      document.querySelectorAll('.ts[data-raw]').forEach(el => {
+        el.textContent = formatTs(el.dataset.raw);
+      });
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
     });
