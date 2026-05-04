@@ -166,6 +166,11 @@
       border-bottom: 1px solid #DEDEDE;
     }
 
+    .article-card-featured {
+      border-left: 4px solid #C41230;
+      background-color: #FFFAF7;
+    }
+
     .article-card:first-of-type .article-inner {
       padding-top: 28px;
     }
@@ -351,13 +356,6 @@
       border-bottom-color: #C41230;
     }
 
-    /* Section break between articles */
-    .article-separator {
-      width: 100%;
-      height: 1px;
-      background: #DEDEDE;
-    }
-
     /* ── FOOTER ─────────────────────────────────────── */
     .footer-table {
       width: 100%;
@@ -477,7 +475,7 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.index == 1 %} article-card-featured{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
@@ -486,6 +484,12 @@
                     <span class="article-rank">#{{ loop.index }}</span>
                     <span class="article-rank-label">Rank</span>
                   </div>
+                  {% if article.rank_score is defined and article.rank_score is not none %}
+                  <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;text-align:center;">
+                    <span style="font-family:Georgia,'Times New Roman',Times,serif;font-size:15px;font-weight:700;color:#121212;">{{ "%.1f"|format(article.rank_score) }}</span>
+                    <span style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#888;display:block;">Score</span>
+                  </div>
+                  {% endif %}
                   <div class="article-topbar-divider"></div>
                   <span class="article-publication">{{ article.publication }}</span>
                   <span class="article-pub-date">{{ article.published_at.strftime('%b %-d, %Y') }}</span>
@@ -497,7 +501,7 @@
                 </h2>
 
                 <!-- Byline -->
-                <p class="article-byline">By {{ article.author }}</p>
+                {% if article.author %}<p class="article-byline">By {{ article.author }}</p>{% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
@@ -526,9 +530,6 @@
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
@@ -542,9 +543,7 @@
                     <hr class="footer-rule" />
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
-                    <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
-                    </span>
+                    <span class="footer-meta" style="margin-top:8px;">Curated by AI &mdash; The Agentic Times</span>
                   </div>
                 </td>
               </tr>
