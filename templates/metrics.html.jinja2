@@ -186,6 +186,11 @@
       text-align: center;
     }
 
+    .stat-card--emails  { border-top-color: #C41230; }
+    .stat-card--subs    { border-top-color: #1A3D7A; }
+    .stat-card--runs    { border-top-color: #1A5C1A; }
+    .stat-card--articles{ border-top-color: #7B5B00; }
+
     .stat-value {
       font-family: Georgia, 'Times New Roman', Times, serif;
       font-size: 36px;
@@ -331,19 +336,19 @@
     </h2>
 
     <div class="stat-grid">
-      <div class="stat-card">
+      <div class="stat-card stat-card--emails">
         <div class="stat-value">{{ emails_delivered }}</div>
         <div class="stat-label">Emails Delivered</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card--subs">
         <div class="stat-value">{{ subscribers }}</div>
         <div class="stat-label">Subscribers</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card--runs">
         <div class="stat-value">{{ total_runs }}</div>
         <div class="stat-label">Total Runs</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card--articles">
         <div class="stat-value">{{ articles_seen }}</div>
         <div class="stat-label">Articles Seen</div>
       </div>
@@ -383,7 +388,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p>AI-generated digest &mdash; curated and ranked by machine learning</p>
     </div>
   </footer>
 
@@ -407,98 +412,121 @@
     Chart.defaults.font.family = "'Helvetica Neue', Helvetica, Arial, sans-serif";
     Chart.defaults.color = EDITORIAL_GRAY;
 
+    function showNoData(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const parent = canvas.parentNode;
+      canvas.style.display = 'none';
+      const msg = document.createElement('div');
+      msg.style.cssText = 'text-align:center;padding:40px 16px;font-family:"Helvetica Neue",sans-serif;font-size:13px;color:#888;font-style:italic;';
+      msg.textContent = 'No data yet — run the pipeline to see analytics.';
+      parent.appendChild(msg);
+    }
+
     // Horizontal bar — Articles by Source
-    new Chart(document.getElementById('sourcesChart'), {
-      type: 'bar',
-      data: {
-        labels: SOURCES_LABELS,
-        datasets: [{
-          label: 'Articles',
-          data: SOURCES_DATA,
-          backgroundColor: EDITORIAL_BLACK,
-          borderRadius: 0,
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        plugins: {
-          legend: { display: false }
+    if (SOURCES_DATA.length === 0) {
+      showNoData('sourcesChart');
+    } else {
+      new Chart(document.getElementById('sourcesChart'), {
+        type: 'bar',
+        data: {
+          labels: SOURCES_LABELS,
+          datasets: [{
+            label: 'Articles',
+            data: SOURCES_DATA,
+            backgroundColor: EDITORIAL_BLACK,
+            borderRadius: 0,
+          }]
         },
-        scales: {
-          x: {
-            beginAtZero: true,
-            ticks: { precision: 0, color: EDITORIAL_GRAY, font: { size: 11 } },
-            grid: { color: EDITORIAL_LIGHT }
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {
+            legend: { display: false }
           },
-          y: {
-            ticks: { color: EDITORIAL_BLACK, font: { size: 11, weight: '600' } },
-            grid: { display: false }
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { precision: 0, color: EDITORIAL_GRAY, font: { size: 11 } },
+              grid: { color: EDITORIAL_LIGHT }
+            },
+            y: {
+              ticks: { color: EDITORIAL_BLACK, font: { size: 11, weight: '600' } },
+              grid: { display: false }
+            }
           }
         }
-      }
-    });
+      });
+    }
 
     // Doughnut — Run Success Rate
-    new Chart(document.getElementById('statusChart'), {
-      type: 'doughnut',
-      data: {
-        labels: STATUS_LABELS,
-        datasets: [{
-          data: STATUS_DATA,
-          backgroundColor: STATUS_LABELS.map(label => {
-            if (label === 'success') return '#1A5C1A';
-            if (label === 'error')   return EDITORIAL_RED;
-            return '#856404';
-          }),
-          borderWidth: 0,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { padding: 16, font: { size: 11 }, color: EDITORIAL_BLACK }
+    if (STATUS_DATA.length === 0 || STATUS_DATA.every(v => v === 0)) {
+      showNoData('statusChart');
+    } else {
+      new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+          labels: STATUS_LABELS,
+          datasets: [{
+            data: STATUS_DATA,
+            backgroundColor: STATUS_LABELS.map(label => {
+              if (label === 'success') return '#1A5C1A';
+              if (label === 'error')   return EDITORIAL_RED;
+              return '#856404';
+            }),
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { padding: 16, font: { size: 11 }, color: EDITORIAL_BLACK }
+            }
           }
         }
-      }
-    });
+      });
+    }
 
     // Line — Articles per Run
-    new Chart(document.getElementById('runTrendChart'), {
-      type: 'line',
-      data: {
-        labels: RUN_DATES,
-        datasets: [{
-          label: 'Articles',
-          data: RUN_COUNTS,
-          borderColor: EDITORIAL_BLACK,
-          backgroundColor: 'rgba(18,18,18,0.06)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 4,
-          pointBackgroundColor: EDITORIAL_RED,
-          pointBorderColor: EDITORIAL_BLACK,
-          pointBorderWidth: 1,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { precision: 0, color: EDITORIAL_GRAY, font: { size: 11 } },
-            grid: { color: EDITORIAL_LIGHT }
-          },
-          x: {
-            ticks: { color: EDITORIAL_GRAY, font: { size: 10 }, maxRotation: 45 },
-            grid: { display: false }
+    if (RUN_COUNTS.length === 0) {
+      showNoData('runTrendChart');
+    } else {
+      new Chart(document.getElementById('runTrendChart'), {
+        type: 'line',
+        data: {
+          labels: RUN_DATES,
+          datasets: [{
+            label: 'Articles',
+            data: RUN_COUNTS,
+            borderColor: EDITORIAL_BLACK,
+            backgroundColor: 'rgba(18,18,18,0.06)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: EDITORIAL_RED,
+            pointBorderColor: EDITORIAL_BLACK,
+            pointBorderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0, color: EDITORIAL_GRAY, font: { size: 11 } },
+              grid: { color: EDITORIAL_LIGHT }
+            },
+            x: {
+              ticks: { color: EDITORIAL_GRAY, font: { size: 10 }, maxRotation: 45 },
+              grid: { display: false }
+            }
           }
         }
-      }
-    });
+      });
+    }
   </script>
 </body>
 </html>

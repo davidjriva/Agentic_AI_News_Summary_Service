@@ -363,6 +363,31 @@
       color: var(--black);
     }
 
+    .article-substats {
+      margin-top: 4px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .substat-dropped {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      color: #555;
+      background: #F0F0F0;
+      padding: 1px 5px;
+      letter-spacing: 0.3px;
+    }
+
+    .substat-failed {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      color: #921818;
+      background: #FDE8E8;
+      padding: 1px 5px;
+      letter-spacing: 0.3px;
+    }
+
     .view-link {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
@@ -395,6 +420,13 @@
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 13px;
       color: var(--gray-mid);
+    }
+
+    .empty-state-rule {
+      width: 48px;
+      height: 2px;
+      background: var(--red);
+      margin: 16px auto;
     }
 
     /* ── FOOTER ─────────────────────────────────────── */
@@ -448,7 +480,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
+      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Pipeline Dashboard' }}</span>
       {% if running %}
       <div class="running-badge">
         <div class="running-dot"></div>
@@ -481,14 +513,14 @@
           title="Fetch new articles not seen before and send the newsletter"
           onclick="triggerRun(false)"
           {% if running %}disabled{% endif %}
-        >&#9654;&nbsp; Run Now</button>
+        >Run Now</button>
         <button
           type="button"
           class="btn-secondary"
           title="Clears articles seen in the last 12 hours from the dedup cache, then runs the pipeline"
           onclick="triggerRun(true)"
           {% if running %}disabled{% endif %}
-        >&#8635;&nbsp; Clean Run</button>
+        >Clean Run</button>
         {% if running %}
         <div class="running-badge">
           <div class="running-dot"></div>
@@ -512,8 +544,6 @@
             <th>Started</th>
             <th>Status</th>
             <th>Articles</th>
-            <th>Dropped</th>
-            <th>Failed</th>
             <th>Duration</th>
             <th>Edition</th>
           </tr>
@@ -540,14 +570,12 @@
               <span class="article-count">
                 {% if run.article_count is not none %}{{ run.article_count }}{% else %}&mdash;{% endif %}
               </span>
-            </td>
-
-            <td>
-              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
-            </td>
-
-            <td>
-              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
+              {% if (run.dropped_count and run.dropped_count > 0) or (run.failed_count and run.failed_count > 0) %}
+              <div class="article-substats">
+                {% if run.dropped_count and run.dropped_count > 0 %}<span class="substat-dropped">{{ run.dropped_count }} dropped</span>{% endif %}
+                {% if run.failed_count and run.failed_count > 0 %}<span class="substat-failed">{{ run.failed_count }} failed</span>{% endif %}
+              </div>
+              {% endif %}
             </td>
 
             <td>
@@ -580,8 +608,10 @@
       </table>
       {% else %}
       <div class="empty-state">
+        <div class="empty-state-rule"></div>
         <div class="empty-state-headline">No Editions Yet</div>
-        <div class="empty-state-body">Click <strong>Run Now</strong> to generate your first newsletter.</div>
+        <div class="empty-state-body">Click <strong>Run Now</strong> above to fetch, rank, and deliver your first AI digest.</div>
+        <div class="empty-state-rule"></div>
       </div>
       {% endif %}
     </div>
@@ -592,7 +622,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p>AI-generated digest &mdash; curated and ranked by machine learning</p>
     </div>
   </footer>
 
@@ -621,8 +651,6 @@
       row.innerHTML = `
         <td><span class="ts">Just now\u2026</span></td>
         <td><span class="badge badge-running">Running</span></td>
-        <td><span class="article-count">&mdash;</span></td>
-        <td><span class="article-count">&mdash;</span></td>
         <td><span class="article-count">&mdash;</span></td>
         <td><span class="duration">&mdash;</span></td>
         <td>&mdash;</td>
@@ -693,16 +721,17 @@
         row.appendChild(statusTd);
 
         const artTd = document.createElement('td');
-        artTd.innerHTML = `<span class="article-count">${run.article_count !== null ? run.article_count : '&mdash;'}</span>`;
+        const dropped = run.dropped_count || 0;
+        const failed = run.failed_count || 0;
+        let subStats = '';
+        if (dropped > 0 || failed > 0) {
+          subStats = '<div class="article-substats">';
+          if (dropped > 0) subStats += `<span class="substat-dropped">${dropped} dropped</span>`;
+          if (failed > 0) subStats += `<span class="substat-failed">${failed} failed</span>`;
+          subStats += '</div>';
+        }
+        artTd.innerHTML = `<span class="article-count">${run.article_count !== null ? run.article_count : '&mdash;'}</span>${subStats}`;
         row.appendChild(artTd);
-
-        const droppedTd = document.createElement('td');
-        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
-        row.appendChild(droppedTd);
-
-        const failedTd = document.createElement('td');
-        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
-        row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
         let dur = '&mdash;';
