@@ -141,6 +141,7 @@
     .newsletter-pane {
       flex: 1 1 0;
       min-width: 0;
+      position: relative;
     }
 
     .newsletter-pane iframe {
@@ -150,9 +151,29 @@
       display: block;
     }
 
+    .iframe-loading {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 300px;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-section);
+      z-index: 2;
+    }
+
+    .iframe-loading-text {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: var(--gray-mid);
+      font-style: italic;
+    }
+
     /* ── SIDEBAR ────────────────────────────────────── */
     .sidebar {
-      width: 272px;
+      width: 300px;
       flex-shrink: 0;
       background: var(--bg);
       border-left: 1px solid var(--border);
@@ -346,15 +367,16 @@
 
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
-      background: #FFF3CD;
-      border-bottom: 1px solid #FFECB5;
-      color: #856404;
+      background: #2a2a2a;
+      border-bottom: 2px solid #C41230;
+      color: #CCCCCC;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
       text-align: center;
-      padding: 6px 20px;
-      letter-spacing: 0.3px;
+      padding: 7px 20px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
     }
 
     .newsletter-placeholder {
@@ -380,7 +402,7 @@
           <a class="masthead-back" href="/">&larr; Dashboard</a>
           <span class="masthead-sep">/</span>
           <span class="masthead-brand">The Agentic Times</span>
-          <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          <span class="masthead-edition">Edition {{ run_id[:8] }}</span>
         </div>
         {% if started_at %}
         <span class="masthead-ts">{{ started_at }}</span>
@@ -405,10 +427,13 @@
 
       <!-- Newsletter iframe -->
       <div class="newsletter-pane">
+        <div class="iframe-loading" id="iframe-loading">
+          <span class="iframe-loading-text">Loading edition&hellip;</span>
+        </div>
         {% if preview %}
-        <iframe src="/preview/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/preview/newsletter" title="Newsletter Edition" id="newsletter-frame" onload="document.getElementById('iframe-loading').style.display='none'"></iframe>
         {% else %}
-        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition" id="newsletter-frame" onload="document.getElementById('iframe-loading').style.display='none'"></iframe>
         {% endif %}
       </div>
 
