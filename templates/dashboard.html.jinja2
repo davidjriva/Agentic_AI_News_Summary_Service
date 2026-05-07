@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>The Agentic Times &mdash; Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23121212'/><text x='50%25' y='55%25' font-family='Georgia,serif' font-size='20' font-weight='700' fill='%23C41230' text-anchor='middle' dominant-baseline='middle'>T</text></svg>" />
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -377,6 +378,23 @@
 
     .view-link:hover { border-bottom-color: var(--red); }
 
+    .drop-count {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: var(--gray-dark);
+    }
+
+    .fail-count {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: var(--gray-dark);
+    }
+
+    .fail-count.nonzero {
+      color: #921818;
+      font-weight: 700;
+    }
+
     /* ── EMPTY STATE ────────────────────────────────── */
     .empty-state {
       padding: 60px 20px;
@@ -521,7 +539,7 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts" data-ts="{{ run.started_at }}">{{ run.started_at }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -543,11 +561,12 @@
             </td>
 
             <td>
-              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
+              <span class="drop-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
             </td>
 
             <td>
-              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
+              {% set failed_n = run.failed_count if run.failed_count is not none else 0 %}
+              <span class="fail-count {% if failed_n > 0 %}nonzero{% endif %}">{{ failed_n }}</span>
             </td>
 
             <td>
@@ -592,7 +611,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p><a href="/">Dashboard</a></p>
     </div>
   </footer>
 
@@ -622,8 +641,8 @@
         <td><span class="ts">Just now\u2026</span></td>
         <td><span class="badge badge-running">Running</span></td>
         <td><span class="article-count">&mdash;</span></td>
-        <td><span class="article-count">&mdash;</span></td>
-        <td><span class="article-count">&mdash;</span></td>
+        <td><span class="drop-count">&mdash;</span></td>
+        <td><span class="fail-count">&mdash;</span></td>
         <td><span class="duration">&mdash;</span></td>
         <td>&mdash;</td>
       `;
@@ -677,7 +696,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts" data-ts="${run.started_at}" title="${run.started_at}">${formatRelativeTime(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -697,11 +716,12 @@
         row.appendChild(artTd);
 
         const droppedTd = document.createElement('td');
-        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
+        droppedTd.innerHTML = `<span class="drop-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
         row.appendChild(droppedTd);
 
         const failedTd = document.createElement('td');
-        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
+        const failedN = run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0;
+        failedTd.innerHTML = `<span class="fail-count${failedN > 0 ? ' nonzero' : ''}">${failedN}</span>`;
         row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
@@ -747,7 +767,30 @@
       }
     }
 
+    function formatRelativeTime(isoString) {
+      const date = new Date(isoString.replace(' ', 'T'));
+      if (isNaN(date.getTime())) return isoString;
+      const diffMs = Date.now() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function applyRelativeTimes() {
+      document.querySelectorAll('.ts[data-ts]').forEach(el => {
+        const full = el.dataset.ts;
+        el.textContent = formatRelativeTime(full);
+        el.title = full; // show full timestamp on hover
+      });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      applyRelativeTimes();
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
     });

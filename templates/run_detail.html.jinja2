@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Edition {{ run_id[:8] }} &mdash; The Agentic Times</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23121212'/><text x='50%25' y='55%25' font-family='Georgia,serif' font-size='20' font-weight='700' fill='%23C41230' text-anchor='middle' dominant-baseline='middle'>T</text></svg>" />
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -152,7 +153,7 @@
 
     /* ── SIDEBAR ────────────────────────────────────── */
     .sidebar {
-      width: 272px;
+      width: 320px;
       flex-shrink: 0;
       background: var(--bg);
       border-left: 1px solid var(--border);
@@ -344,6 +345,31 @@
       font-style: italic;
     }
 
+    .sidebar-section-header.failed-header {
+      background: #FDE8E8;
+      border-top-color: #921818;
+    }
+
+    .sidebar-section-header.failed-header .sidebar-section-title {
+      color: #921818;
+    }
+
+    .loading-item {
+      text-align: center;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+      padding: 8px 0;
+      animation: fadeInOut 1.5s ease-in-out infinite;
+      list-style: none;
+    }
+
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
       background: #FFF3CD;
@@ -380,11 +406,15 @@
           <a class="masthead-back" href="/">&larr; Dashboard</a>
           <span class="masthead-sep">/</span>
           <span class="masthead-brand">The Agentic Times</span>
-          <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          <span class="masthead-edition">
+            {% if started_at %}
+              {{ started_at }}
+            {% else %}
+              Edition {{ run_id[:8] }}&hellip;
+            {% endif %}
+          </span>
         </div>
-        {% if started_at %}
-        <span class="masthead-ts">{{ started_at }}</span>
-        {% endif %}
+        <span class="masthead-ts">Edition Detail</span>
       </div>
     </header>
 
@@ -451,15 +481,15 @@
           <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="loading-item">Fetching articles&hellip;</li>
         </ul>
 
         <!-- Failed articles section -->
-        <div class="sidebar-section-header">
+        <div class="sidebar-section-header failed-header">
           <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="loading-item">Fetching articles&hellip;</li>
         </ul>
       </aside>
 
