@@ -472,20 +472,20 @@
     <!-- Operations Desk -->
     <div class="controls-card">
       <h2 class="controls-title">Operations Desk</h2>
-      <p class="controls-subtitle">Trigger a new pipeline run to fetch, rank, and deliver the latest AI news.</p>
+      <p class="controls-subtitle">Fetch the latest agentic AI articles, score and rank them by impact, and deliver the newsletter to subscribers.</p>
       <hr class="controls-rule" />
       <div class="controls-actions">
         <button
           type="button"
           class="btn-primary"
-          title="Fetch new articles not seen before and send the newsletter"
+          title="Fetch new articles, rank by impact, and send the newsletter to all subscribers"
           onclick="triggerRun(false)"
           {% if running %}disabled{% endif %}
         >&#9654;&nbsp; Run Now</button>
         <button
           type="button"
           class="btn-secondary"
-          title="Clears articles seen in the last 12 hours from the dedup cache, then runs the pipeline"
+          title="Reset the recent-articles cache and re-run — useful when you want to re-surface recent stories"
           onclick="triggerRun(true)"
           {% if running %}disabled{% endif %}
         >&#8635;&nbsp; Clean Run</button>
@@ -552,18 +552,7 @@
 
             <td>
               <span class="duration">
-                {% if run.started_at and run.completed_at %}
-                  {% set start_parts = run.started_at.replace('T', ' ').split(' ') %}
-                  {% set end_parts = run.completed_at.replace('T', ' ').split(' ') %}
-                  {% set start_time = start_parts[1].split('.')[0].split(':') %}
-                  {% set end_time = end_parts[1].split('.')[0].split(':') %}
-                  {% set start_secs = start_time[0]|int * 3600 + start_time[1]|int * 60 + start_time[2]|int %}
-                  {% set end_secs = end_time[0]|int * 3600 + end_time[1]|int * 60 + end_time[2]|int %}
-                  {% set diff = end_secs - start_secs %}
-                  {% if diff < 0 %}{% set diff = diff + 86400 %}{% endif %}
-                  {% if diff >= 60 %}{{ (diff // 60)|int }}m {{ (diff % 60)|int }}s
-                  {% else %}{{ diff }}s{% endif %}
-                {% else %}&mdash;{% endif %}
+                {% if run.duration_str %}{{ run.duration_str }}{% else %}&mdash;{% endif %}
               </span>
             </td>
 
@@ -592,7 +581,6 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
     </div>
   </footer>
 
@@ -705,18 +693,7 @@
         row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
-        let dur = '&mdash;';
-        if (run.started_at && run.completed_at) {
-          const sp = run.started_at.replace('T',' ').split(' ');
-          const ep = run.completed_at.replace('T',' ').split(' ');
-          const st = sp[1].split('.')[0].split(':');
-          const et = ep[1].split('.')[0].split(':');
-          const ss = +st[0]*3600 + +st[1]*60 + +st[2];
-          const es = +et[0]*3600 + +et[1]*60 + +et[2];
-          let d = es - ss; if (d < 0) d += 86400;
-          dur = d >= 60 ? `${Math.floor(d/60)}m ${d%60}s` : `${d}s`;
-        }
-        durTd.innerHTML = `<span class="duration">${dur}</span>`;
+        durTd.innerHTML = `<span class="duration">${run.duration_str || '&mdash;'}</span>`;
         row.appendChild(durTd);
 
         const linkTd = document.createElement('td');

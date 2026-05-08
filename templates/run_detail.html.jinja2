@@ -124,6 +124,12 @@
       border-bottom-color: var(--red);
     }
 
+    .nav-tab-edition {
+      color: #FFFFFF;
+      border-bottom-color: var(--red);
+      cursor: default;
+    }
+
     /* ── LAYOUT ─────────────────────────────────────── */
     .layout-wrapper {
       display: flex;
@@ -344,17 +350,28 @@
       font-style: italic;
     }
 
+    /* ── SIDEBAR LOADING ────────────────────────────── */
+    .sidebar-loading {
+      text-align: center;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+      padding: 8px 0;
+    }
+
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
-      background: #FFF3CD;
-      border-bottom: 1px solid #FFECB5;
-      color: #856404;
+      background: #1A1A1A;
+      border-bottom: 1px solid #333;
+      color: #CCCCCC;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      font-weight: 600;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
       text-align: center;
-      padding: 6px 20px;
-      letter-spacing: 0.3px;
+      padding: 8px 20px;
     }
 
     .newsletter-placeholder {
@@ -393,11 +410,12 @@
       <div class="nav-inner">
         <a class="nav-tab" href="/">Run History</a>
         <a class="nav-tab" href="/metrics">Metrics</a>
+        <span class="nav-tab nav-tab-edition">Edition {{ run_id[:8] }}&hellip;</span>
       </div>
     </nav>
 
     {% if preview %}
-    <div class="preview-banner">Preview Mode &mdash; fake data</div>
+    <div class="preview-banner">Preview Mode &middot; Sample Data</div>
     {% endif %}
 
     <!-- ── SPLIT LAYOUT ─────────────────────────────── -->
@@ -451,7 +469,7 @@
           <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="sidebar-loading">Loading&hellip;</li>
         </ul>
 
         <!-- Failed articles section -->
@@ -459,7 +477,7 @@
           <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="sidebar-loading">Loading&hellip;</li>
         </ul>
       </aside>
 
@@ -472,7 +490,7 @@
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">None dropped this run.</li>';
+        list.innerHTML = '<li class="sidebar-loading">None dropped this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `
