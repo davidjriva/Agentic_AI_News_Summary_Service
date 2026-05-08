@@ -508,7 +508,7 @@
     function renderFailed(items) {
       const list = document.getElementById('failed-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">No failures this run.</li>';
+        list.innerHTML = '<li class="sidebar-loading">No failures this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `

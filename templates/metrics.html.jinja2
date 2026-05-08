@@ -204,6 +204,14 @@
       color: var(--gray-dark);
     }
 
+    .stat-subtitle {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      color: var(--gray-mid);
+      margin-top: 4px;
+      letter-spacing: 0.3px;
+    }
+
     /* ── CHART ROW ──────────────────────────────────── */
     .chart-row {
       display: grid;
@@ -334,18 +342,22 @@
       <div class="stat-card">
         <div class="stat-value">{{ emails_delivered }}</div>
         <div class="stat-label">Emails Delivered</div>
+        <div class="stat-subtitle">successful runs &times; subscribers</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ subscribers }}</div>
         <div class="stat-label">Subscribers</div>
+        <div class="stat-subtitle">configured recipients</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ total_runs }}</div>
         <div class="stat-label">Total Runs</div>
+        <div class="stat-subtitle">pipeline executions</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ articles_seen }}</div>
         <div class="stat-label">Articles Seen</div>
+        <div class="stat-subtitle">unique URLs processed</div>
       </div>
     </div>
 
@@ -383,7 +395,6 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
     </div>
   </footer>
 
@@ -397,7 +408,12 @@
     const RUN_COUNTS     = {{ run_counts_json | safe }};
   </script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+    integrity="sha512-ZnR2wlLbSsbTDhXmMRfaGJCFTEkQAGPtlJhGDdKMrgfU4mRlFt9Km3xSRVCTHAPlO8TFqaGqtFyPiAtH4Jzg=="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"
+  ></script>
   <script>
     const EDITORIAL_RED   = '#C41230';
     const EDITORIAL_BLACK = '#121212';
