@@ -143,6 +143,27 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
     },
 ]
 
+def _duration_str(started_at: str | None, completed_at: str | None) -> str | None:
+    if not started_at or not completed_at:
+        return None
+    try:
+        for f in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
+            try:
+                s = datetime.strptime(started_at, f)
+                e = datetime.strptime(completed_at, f)
+                diff = int((e - s).total_seconds())
+                if diff < 0:
+                    diff = 0
+                if diff >= 60:
+                    return f"{diff // 60}m {diff % 60}s"
+                return f"{diff}s"
+            except ValueError:
+                continue
+        return None
+    except Exception:
+        return None
+
+
 app = FastAPI(title="Agentic AI News Dashboard")
 
 _running_lock = threading.Lock()
@@ -160,6 +181,8 @@ def dashboard(request: Request) -> HTMLResponse:
     ).fetchall()
     conn.close()
     runs = [dict(row) for row in rows]
+    for run in runs:
+        run["duration_str"] = _duration_str(run.get("started_at"), run.get("completed_at"))
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
@@ -237,7 +260,10 @@ def list_runs() -> list[dict]:
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    runs = [dict(row) for row in rows]
+    for run in runs:
+        run["duration_str"] = _duration_str(run.get("started_at"), run.get("completed_at"))
+    return runs
 
 
 @app.get("/runs/{run_id}/newsletter", response_class=HTMLResponse)
