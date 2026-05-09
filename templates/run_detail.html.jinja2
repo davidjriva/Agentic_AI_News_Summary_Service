@@ -368,6 +368,22 @@
       font-size: 13px;
       font-style: italic;
     }
+
+    /* ── SIDEBAR LOADING SKELETON ───────────────────── */
+    .sidebar-loading {
+      text-align: center;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+      padding: 16px 0;
+      list-style: none;
+      animation: fadeInOut 1.5s ease-in-out infinite;
+    }
+    @keyframes fadeInOut {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -380,7 +396,11 @@
           <a class="masthead-back" href="/">&larr; Dashboard</a>
           <span class="masthead-sep">/</span>
           <span class="masthead-brand">The Agentic Times</span>
-          <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          {% if started_at and started_at != 'Preview Mode' %}
+          <span class="masthead-edition">{{ started_at[:10] }}</span>
+          {% else %}
+          <span class="masthead-edition">Preview</span>
+          {% endif %}
         </div>
         {% if started_at %}
         <span class="masthead-ts">{{ started_at }}</span>
@@ -451,7 +471,7 @@
           <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="sidebar-loading">Fetching dropped articles&hellip;</li>
         </ul>
 
         <!-- Failed articles section -->
@@ -459,7 +479,7 @@
           <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="sidebar-loading">Fetching failed articles&hellip;</li>
         </ul>
       </aside>
 

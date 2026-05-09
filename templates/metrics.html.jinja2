@@ -284,6 +284,17 @@
     .footer a { color: #888; text-decoration: none; }
     .footer a:hover { color: #aaa; }
 
+    /* ── CHART EMPTY STATE ──────────────────────────── */
+    .chart-empty {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: var(--gray-mid);
+      text-align: center;
+      font-style: italic;
+      padding: 48px 16px;
+      margin: 0;
+    }
+
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media (max-width: 640px) {
       .masthead-title { font-size: 32px; }
@@ -374,6 +385,7 @@
 
     <div class="chart-full">
       <h3 class="chart-full-title">Volume Across Last 20 Successful Runs</h3>
+      <p class="chart-full-subtitle">Article count per successful run, most recent 20</p>
       <canvas id="runTrendChart"></canvas>
     </div>
 
@@ -397,7 +409,8 @@
     const RUN_COUNTS     = {{ run_counts_json | safe }};
   </script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+          onerror="document.querySelectorAll('canvas').forEach(c => { c.parentElement.innerHTML = '<p class=\'chart-empty\'>Charts unavailable — could not load Chart.js.</p>'; })"></script>
   <script>
     const EDITORIAL_RED   = '#C41230';
     const EDITORIAL_BLACK = '#121212';
@@ -408,6 +421,10 @@
     Chart.defaults.color = EDITORIAL_GRAY;
 
     // Horizontal bar — Articles by Source
+    if (SOURCES_LABELS.length === 0) {
+      const el = document.getElementById('sourcesChart');
+      el.parentElement.innerHTML = '<p class="chart-empty">No source data yet. Run the pipeline to see articles by source.</p>';
+    } else {
     new Chart(document.getElementById('sourcesChart'), {
       type: 'bar',
       data: {
@@ -438,8 +455,13 @@
         }
       }
     });
+    }
 
     // Doughnut — Run Success Rate
+    if (STATUS_LABELS.length === 0) {
+      const el = document.getElementById('statusChart');
+      el.parentElement.innerHTML = '<p class="chart-empty">No run data yet.</p>';
+    } else {
     new Chart(document.getElementById('statusChart'), {
       type: 'doughnut',
       data: {
@@ -464,8 +486,13 @@
         }
       }
     });
+    }
 
     // Line — Articles per Run
+    if (RUN_DATES.length === 0) {
+      const el = document.getElementById('runTrendChart');
+      el.parentElement.innerHTML = '<p class="chart-empty">No trend data yet. Complete a few pipeline runs to see the trend.</p>';
+    } else {
     new Chart(document.getElementById('runTrendChart'), {
       type: 'line',
       data: {
@@ -499,6 +526,7 @@
         }
       }
     });
+    }
   </script>
 </body>
 </html>

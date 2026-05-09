@@ -124,15 +124,13 @@
       vertical-align: middle;
     }
 
-    .edition-number {
+    .edition-label {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 9px;
       font-weight: 700;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      background-color: #C41230;
-      color: #fff;
-      padding: 3px 9px;
+      color: #888;
       display: table-cell;
       vertical-align: middle;
       text-align: right;
@@ -164,6 +162,22 @@
       width: 100%;
       background-color: #FFFFFF;
       border-bottom: 1px solid #DEDEDE;
+    }
+
+    .article-card-featured {
+      background-color: #FDF8F0;
+      border-left: 4px solid #C41230;
+    }
+
+    .top-story-badge {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #C41230;
+      display: block;
+      margin-bottom: 4px;
     }
 
     .article-card:first-of-type .article-inner {
@@ -276,8 +290,9 @@
 
     .score-item {
       display: flex;
-      align-items: baseline;
-      gap: 5px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
     }
 
     .score-label {
@@ -298,6 +313,17 @@
     .score-relevance     { color: #1A3D7A; }
     .score-impact        { color: #1A5C1A; }
     .score-authenticity  { color: #7B5B00; }
+
+    .score-bar-track {
+      width: 36px;
+      height: 2px;
+      background: #EEEEEE;
+      margin-top: 3px;
+    }
+
+    .score-bar-fill {
+      height: 2px;
+    }
 
     /* Score label tooltips (browser only; email clients use title attr) */
     .score-label {
@@ -398,6 +424,33 @@
       width: 200px;
     }
 
+    /* ── SECTION BREAK ──────────────────────────────── */
+    .section-break {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 32px;
+      background-color: #F7F7F5;
+      border-top: 1px solid #DEDEDE;
+      border-bottom: 1px solid #DEDEDE;
+    }
+
+    .section-break-line {
+      flex: 1;
+      height: 1px;
+      background: #DEDEDE;
+    }
+
+    .section-break-text {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #888;
+      white-space: nowrap;
+    }
+
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media only screen and (max-width: 620px) {
       .main { width: 100% !important; }
@@ -454,8 +507,8 @@
           <td>
             <div class="edition-bar">
               <div class="edition-bar-inner">
-                <span class="edition-date">{{ run_time.strftime('%A, %B %-d, %Y at %H:%M UTC') }}</span>
-                <span class="edition-number">Edition #{{ run_id[:6] if run_id else '000001' }}</span>
+                <span class="edition-date">{{ run_time.strftime('%B %-d, %Y') }}</span>
+                <span class="edition-label">Daily Edition</span>
               </div>
             </div>
           </td>
@@ -477,12 +530,13 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.index == 1 %} article-card-featured{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
                   <div>
+                    {% if loop.index == 1 %}<span class="top-story-badge">Top Story</span>{% endif %}
                     <span class="article-rank">#{{ loop.index }}</span>
                     <span class="article-rank-label">Rank</span>
                   </div>
@@ -507,14 +561,17 @@
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
                     <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {{ (article.relevance_score if article.relevance_score is not none else 0) * 10 }}%; background-color: #1A3D7A;"></div></div>
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
                     <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {{ article.impact_score * 10 }}%; background-color: #1A5C1A;"></div></div>
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
                     <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <div class="score-bar-track"><div class="score-bar-fill" style="width: {{ article.authenticity_score * 10 }}%; background-color: #7B5B00;"></div></div>
                   </div>
                 </div>
 
@@ -529,6 +586,17 @@
         {% if not loop.last %}
         <tr><td><div class="article-separator"></div></td></tr>
         {% endif %}
+        {% if loop.index == 3 and not loop.last and articles|length > 3 %}
+        <tr>
+          <td>
+            <div class="section-break">
+              <span class="section-break-line"></span>
+              <span class="section-break-text">Also In This Edition</span>
+              <span class="section-break-line"></span>
+            </div>
+          </td>
+        </tr>
+        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
@@ -542,8 +610,8 @@
                     <hr class="footer-rule" />
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
-                    <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
+                    <span class="footer-meta" style="margin-top:8px;color:#555;">
+                      To manage your subscription, reply to this email.
                     </span>
                   </div>
                 </td>
