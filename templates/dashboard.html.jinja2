@@ -421,6 +421,37 @@
     .footer a { color: #888; text-decoration: none; }
     .footer a:hover { color: #aaa; }
 
+    /* ── LAST RUN BAR ───────────────────────────────── */
+    .last-run-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 10px 0;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      color: var(--gray-mid);
+    }
+    .last-run-label {
+      font-weight: 700;
+      color: var(--gray-dark);
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 1px;
+    }
+    .last-run-value {
+      color: var(--black);
+      font-weight: 700;
+    }
+    .last-run-date {
+      color: var(--gray-mid);
+    }
+    .last-run-sep {
+      color: var(--gray-light);
+    }
+
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media (max-width: 620px) {
       .masthead-title { font-size: 32px; }
@@ -448,7 +479,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
+      <span class="topbar-date" id="topbar-date">Dashboard</span>
       {% if running %}
       <div class="running-badge">
         <div class="running-dot"></div>
@@ -498,6 +529,19 @@
       </div>
     </div>
 
+    {% if runs %}
+    {% set last = runs[0] %}
+    {% if last.status == 'success' %}
+    <div class="last-run-bar">
+      <span class="last-run-label">Latest edition:</span>
+      <span class="last-run-sep">&nbsp;&middot;&nbsp;</span>
+      <span class="last-run-value">{{ last.article_count }} articles</span>
+      <span class="last-run-sep">&nbsp;&middot;&nbsp;</span>
+      <span class="last-run-date">{{ last.started_at }}</span>
+    </div>
+    {% endif %}
+    {% endif %}
+
     <!-- Run History -->
     <h2 class="section-label">
       <span class="section-label-accent">Latest</span>
@@ -512,8 +556,8 @@
             <th>Started</th>
             <th>Status</th>
             <th>Articles</th>
-            <th>Dropped</th>
-            <th>Failed</th>
+            <th title="Articles filtered out due to low relevance score (< 6)" style="cursor:help;">Dropped</th>
+            <th title="Articles that failed LLM processing" style="cursor:help;">Failed</th>
             <th>Duration</th>
             <th>Edition</th>
           </tr>
@@ -521,7 +565,7 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts" title="{{ run.started_at }}">{{ run.started_at }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -552,18 +596,7 @@
 
             <td>
               <span class="duration">
-                {% if run.started_at and run.completed_at %}
-                  {% set start_parts = run.started_at.replace('T', ' ').split(' ') %}
-                  {% set end_parts = run.completed_at.replace('T', ' ').split(' ') %}
-                  {% set start_time = start_parts[1].split('.')[0].split(':') %}
-                  {% set end_time = end_parts[1].split('.')[0].split(':') %}
-                  {% set start_secs = start_time[0]|int * 3600 + start_time[1]|int * 60 + start_time[2]|int %}
-                  {% set end_secs = end_time[0]|int * 3600 + end_time[1]|int * 60 + end_time[2]|int %}
-                  {% set diff = end_secs - start_secs %}
-                  {% if diff < 0 %}{% set diff = diff + 86400 %}{% endif %}
-                  {% if diff >= 60 %}{{ (diff // 60)|int }}m {{ (diff % 60)|int }}s
-                  {% else %}{{ diff }}s{% endif %}
-                {% else %}&mdash;{% endif %}
+                {% if run.duration %}{{ run.duration }}{% else %}&mdash;{% endif %}
               </span>
             </td>
 
@@ -668,6 +701,23 @@
       if (pollingInterval !== null) { clearInterval(pollingInterval); pollingInterval = null; }
     }
 
+    function formatTimestamp(ts) {
+      if (!ts) return '&mdash;';
+      const raw = ts.includes('T') ? ts : ts.replace(' ', 'T');
+      const d = new Date(raw.endsWith('Z') ? raw : raw + 'Z');
+      if (isNaN(d.getTime())) return ts;
+      const now = new Date();
+      const diffMs = now - d;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffMins < 2) return 'Just now';
+      if (diffMins < 60) return diffMins + 'm ago';
+      if (diffHours < 24) return diffHours + 'h ago';
+      if (diffDays < 7) return diffDays + 'd ago';
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
     function renderRuns(runs) {
       const tbody = document.querySelector('.runs-table tbody');
       if (!tbody) return;
@@ -677,7 +727,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts" title="${run.started_at}">${formatTimestamp(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -705,18 +755,7 @@
         row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
-        let dur = '&mdash;';
-        if (run.started_at && run.completed_at) {
-          const sp = run.started_at.replace('T',' ').split(' ');
-          const ep = run.completed_at.replace('T',' ').split(' ');
-          const st = sp[1].split('.')[0].split(':');
-          const et = ep[1].split('.')[0].split(':');
-          const ss = +st[0]*3600 + +st[1]*60 + +st[2];
-          const es = +et[0]*3600 + +et[1]*60 + +et[2];
-          let d = es - ss; if (d < 0) d += 86400;
-          dur = d >= 60 ? `${Math.floor(d/60)}m ${d%60}s` : `${d}s`;
-        }
-        durTd.innerHTML = `<span class="duration">${dur}</span>`;
+        durTd.innerHTML = `<span class="duration">${run.duration || '&mdash;'}</span>`;
         row.appendChild(durTd);
 
         const linkTd = document.createElement('td');
@@ -748,6 +787,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      const dateEl = document.getElementById('topbar-date');
+      if (dateEl) {
+        const now = new Date();
+        dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      }
+
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
     });

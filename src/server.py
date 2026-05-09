@@ -160,6 +160,18 @@ def dashboard(request: Request) -> HTMLResponse:
     ).fetchall()
     conn.close()
     runs = [dict(row) for row in rows]
+    for run in runs:
+        run['duration'] = None
+        if run.get('started_at') and run.get('completed_at'):
+            try:
+                start = datetime.fromisoformat(run['started_at'])
+                end = datetime.fromisoformat(run['completed_at'])
+                diff = int((end - start).total_seconds())
+                if diff < 0:
+                    diff = 0
+                run['duration'] = f"{diff // 60}m {diff % 60}s" if diff >= 60 else f"{diff}s"
+            except (ValueError, TypeError):
+                pass
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
@@ -188,6 +200,7 @@ def preview_newsletter() -> HTMLResponse:
     html, _ = render_newsletter(
         _PREVIEW_NEWSLETTER_ARTICLES,
         datetime(2026, 4, 17, 7, 0, tzinfo=timezone.utc),
+        run_id="preview-2026-04-17",
     )
     return HTMLResponse(content=html)
 
@@ -237,7 +250,20 @@ def list_runs() -> list[dict]:
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    runs = [dict(row) for row in rows]
+    for run in runs:
+        run['duration'] = None
+        if run.get('started_at') and run.get('completed_at'):
+            try:
+                start = datetime.fromisoformat(run['started_at'])
+                end = datetime.fromisoformat(run['completed_at'])
+                diff = int((end - start).total_seconds())
+                if diff < 0:
+                    diff = 0
+                run['duration'] = f"{diff // 60}m {diff % 60}s" if diff >= 60 else f"{diff}s"
+            except (ValueError, TypeError):
+                pass
+    return runs
 
 
 @app.get("/runs/{run_id}/newsletter", response_class=HTMLResponse)
@@ -307,7 +333,7 @@ def get_run(request: Request, run_id: str) -> HTMLResponse:
         "SELECT status, started_at FROM runs WHERE id=?", (run_id,)
     ).fetchone()
     source_rows = conn.execute(
-        "SELECT publication, title, url, rank_score FROM run_articles WHERE run_id=? ORDER BY publication, title",
+        "SELECT publication, title, url, rank_score FROM run_articles WHERE run_id=? ORDER BY publication, rank_score DESC",
         (run_id,),
     ).fetchall()
     conn.close()
@@ -321,6 +347,7 @@ def get_run(request: Request, run_id: str) -> HTMLResponse:
     for r in source_rows:
         pub = r["publication"] or "Unknown"
         sources.setdefault(pub, []).append({"title": r["title"], "url": r["url"], "rank_score": r["rank_score"]})
+    sources = dict(sorted(sources.items(), key=lambda kv: len(kv[1]), reverse=True))
 
     return templates.TemplateResponse(
         request,
