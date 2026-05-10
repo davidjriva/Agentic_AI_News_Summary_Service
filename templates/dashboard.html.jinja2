@@ -304,6 +304,11 @@
       text-align: left;
     }
 
+    .runs-table thead th.col-num,
+    .runs-table tbody td.col-num {
+      text-align: right;
+    }
+
     .runs-table tbody tr {
       border-bottom: 1px solid var(--border);
       transition: background 0.1s;
@@ -361,6 +366,12 @@
       font-size: 16px;
       font-weight: 700;
       color: var(--black);
+    }
+
+    .secondary-count {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: var(--gray-mid);
     }
 
     .view-link {
@@ -472,7 +483,7 @@
     <!-- Operations Desk -->
     <div class="controls-card">
       <h2 class="controls-title">Operations Desk</h2>
-      <p class="controls-subtitle">Trigger a new pipeline run to fetch, rank, and deliver the latest AI news.</p>
+      <p class="controls-subtitle">Fetch, rank, and deliver the latest AI news to all subscribers.</p>
       <hr class="controls-rule" />
       <div class="controls-actions">
         <button
@@ -511,17 +522,17 @@
           <tr>
             <th>Started</th>
             <th>Status</th>
-            <th>Articles</th>
-            <th>Dropped</th>
-            <th>Failed</th>
-            <th>Duration</th>
+            <th class="col-num">Articles</th>
+            <th class="col-num">Dropped</th>
+            <th class="col-num">Failed</th>
+            <th class="col-num">Duration</th>
             <th>Edition</th>
           </tr>
         </thead>
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts" data-iso="{{ run.started_at }}">{{ run.started_at }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -536,21 +547,21 @@
               {% endif %}
             </td>
 
-            <td>
+            <td class="col-num">
               <span class="article-count">
                 {% if run.article_count is not none %}{{ run.article_count }}{% else %}&mdash;{% endif %}
               </span>
             </td>
 
-            <td>
-              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
+            <td class="col-num">
+              <span class="secondary-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
             </td>
 
-            <td>
-              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
+            <td class="col-num">
+              <span class="secondary-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
             </td>
 
-            <td>
+            <td class="col-num">
               <span class="duration">
                 {% if run.started_at and run.completed_at %}
                   {% set start_parts = run.started_at.replace('T', ' ').split(' ') %}
@@ -677,7 +688,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts">${formatISODate(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -693,15 +704,18 @@
         row.appendChild(statusTd);
 
         const artTd = document.createElement('td');
+        artTd.className = 'col-num';
         artTd.innerHTML = `<span class="article-count">${run.article_count !== null ? run.article_count : '&mdash;'}</span>`;
         row.appendChild(artTd);
 
         const droppedTd = document.createElement('td');
-        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
+        droppedTd.className = 'col-num';
+        droppedTd.innerHTML = `<span class="secondary-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
         row.appendChild(droppedTd);
 
         const failedTd = document.createElement('td');
-        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
+        failedTd.className = 'col-num';
+        failedTd.innerHTML = `<span class="secondary-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
         row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
@@ -716,6 +730,7 @@
           let d = es - ss; if (d < 0) d += 86400;
           dur = d >= 60 ? `${Math.floor(d/60)}m ${d%60}s` : `${d}s`;
         }
+        durTd.className = 'col-num';
         durTd.innerHTML = `<span class="duration">${dur}</span>`;
         row.appendChild(durTd);
 
@@ -747,7 +762,23 @@
       }
     }
 
+    function formatISODate(iso) {
+      if (!iso) return iso;
+      try {
+        const d = new Date(iso.replace(' ', 'T'));
+        if (isNaN(d)) return iso;
+        return d.toLocaleString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric',
+          hour: 'numeric', minute: '2-digit', hour12: true,
+          timeZone: 'UTC', timeZoneName: 'short'
+        });
+      } catch { return iso; }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.ts[data-iso]').forEach(el => {
+        el.textContent = formatISODate(el.dataset.iso);
+      });
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
     });

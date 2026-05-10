@@ -204,6 +204,14 @@
       color: var(--gray-dark);
     }
 
+    .stat-hint {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      color: var(--gray-mid);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
     /* ── CHART ROW ──────────────────────────────────── */
     .chart-row {
       display: grid;
@@ -229,6 +237,14 @@
       margin: 0 0 18px 0;
       padding-bottom: 10px;
       border-bottom: 1px solid var(--border);
+    }
+
+    .chart-box-subtitle {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      margin: -14px 0 18px 0;
+      font-style: italic;
     }
 
     /* ── FULL CHART ─────────────────────────────────── */
@@ -334,18 +350,22 @@
       <div class="stat-card">
         <div class="stat-value">{{ emails_delivered }}</div>
         <div class="stat-label">Emails Delivered</div>
+        <div class="stat-hint">subscribers &times; successful runs</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ subscribers }}</div>
         <div class="stat-label">Subscribers</div>
+        <div class="stat-hint">from EMAIL_RECIPIENTS</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ total_runs }}</div>
         <div class="stat-label">Total Runs</div>
+        <div class="stat-hint">pipeline executions</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ articles_seen }}</div>
         <div class="stat-label">Articles Seen</div>
+        <div class="stat-hint">in dedup cache (72hr window)</div>
       </div>
     </div>
 
@@ -358,10 +378,12 @@
     <div class="chart-row">
       <div class="chart-box">
         <h3 class="chart-box-title">Articles by Source</h3>
+        <p class="chart-box-subtitle">Top sources across all pipeline runs</p>
         <canvas id="sourcesChart"></canvas>
       </div>
       <div class="chart-box">
         <h3 class="chart-box-title">Run Success Rate</h3>
+        <p class="chart-box-subtitle">Breakdown of all pipeline executions</p>
         <canvas id="statusChart"></canvas>
       </div>
     </div>
@@ -374,6 +396,7 @@
 
     <div class="chart-full">
       <h3 class="chart-full-title">Volume Across Last 20 Successful Runs</h3>
+      <p class="chart-full-subtitle">Articles delivered per edition &mdash; tracking curator quality over time</p>
       <canvas id="runTrendChart"></canvas>
     </div>
 
@@ -383,7 +406,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p id="metrics-generated-ts"></p>
     </div>
   </footer>
 
@@ -499,6 +522,18 @@
         }
       }
     });
+  </script>
+  <script>
+    (function() {
+      const el = document.getElementById('metrics-generated-ts');
+      if (el) {
+        el.textContent = 'Page loaded ' + new Date().toLocaleString('en-US', {
+          month: 'short', day: 'numeric', year: 'numeric',
+          hour: 'numeric', minute: '2-digit', hour12: true,
+          timeZone: 'UTC', timeZoneName: 'short'
+        });
+      }
+    })();
   </script>
 </body>
 </html>

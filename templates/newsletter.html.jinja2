@@ -166,8 +166,16 @@
       border-bottom: 1px solid #DEDEDE;
     }
 
+    .article-card:first-of-type {
+      border-left: 4px solid #C41230;
+    }
+
     .article-card:first-of-type .article-inner {
       padding-top: 28px;
+    }
+
+    .article-card:first-of-type .article-headline {
+      font-size: 26px;
     }
 
     .article-inner {
@@ -191,16 +199,6 @@
       color: #C41230;
       line-height: 1;
       min-width: 32px;
-    }
-
-    .article-rank-label {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: #888;
-      display: block;
     }
 
     .article-topbar-divider {
@@ -269,40 +267,31 @@
     /* Scores */
     .article-scores {
       display: flex;
-      gap: 20px;
+      gap: 12px;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
     }
 
-    .score-item {
+    .score-chip {
       display: flex;
-      align-items: baseline;
-      gap: 5px;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 14px;
+      border: 1px solid #EBEBEB;
+      background: #FAFAFA;
+      min-width: 68px;
     }
 
     .score-label {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 700;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: #888;
-    }
-
-    .score-value {
-      font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 15px;
-      font-weight: 700;
-    }
-
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
-
-    /* Score label tooltips (browser only; email clients use title attr) */
-    .score-label {
-      position: relative;
+      color: #999;
+      margin-bottom: 4px;
       cursor: help;
+      position: relative;
     }
 
     .score-label::after {
@@ -328,6 +317,28 @@
     }
 
     .score-label:hover::after { opacity: 1; }
+
+    .score-value {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .score-denom {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      color: #AAAAAA;
+      font-weight: 400;
+    }
+
+    .score-relevance     { color: #1A3D7A; }
+    .score-impact        { color: #1A5C1A; }
+    .score-authenticity  { color: #7B5B00; }
+
+    .chip-relevance    { border-top: 3px solid #1A3D7A; }
+    .chip-impact       { border-top: 3px solid #1A5C1A; }
+    .chip-authenticity { border-top: 3px solid #7B5B00; }
 
     /* Read more link */
     .article-readmore {
@@ -473,6 +484,21 @@
           </td>
         </tr>
 
+        <!-- ── TABLE OF CONTENTS ─────────────────────── -->
+        <tr>
+          <td>
+            <div style="background:#FFFFFF;padding:16px 32px 20px;border-bottom:1px solid #DEDEDE;">
+              <div style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:10px;">In This Edition</div>
+              {% for article in articles %}
+              <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
+                <span style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;color:#C41230;min-width:20px;flex-shrink:0;">{{ loop.index }}.</span>
+                <a href="{{ article.url }}" style="font-family:Georgia,'Times New Roman',Times,serif;font-size:13px;color:#121212;text-decoration:none;line-height:1.4;">{{ article.title }}</a>
+              </div>
+              {% endfor %}
+            </div>
+          </td>
+        </tr>
+
         <!-- ── ARTICLES ──────────────────────────────── -->
         {% for article in articles %}
         <tr>
@@ -484,7 +510,6 @@
                 <div class="article-topbar">
                   <div>
                     <span class="article-rank">#{{ loop.index }}</span>
-                    <span class="article-rank-label">Rank</span>
                   </div>
                   <div class="article-topbar-divider"></div>
                   <span class="article-publication">{{ article.publication }}</span>
@@ -504,17 +529,17 @@
 
                 <!-- Scores + Read More -->
                 <div class="article-scores">
-                  <div class="score-item">
+                  <div class="score-chip chip-relevance">
                     <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
-                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span class="score-denom">/10</span></span>
                   </div>
-                  <div class="score-item">
+                  <div class="score-chip chip-impact">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
-                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-value score-impact">{{ article.impact_score }}<span class="score-denom">/10</span></span>
                   </div>
-                  <div class="score-item">
+                  <div class="score-chip chip-authenticity">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
-                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span class="score-denom">/10</span></span>
                   </div>
                 </div>
 
@@ -543,7 +568,7 @@
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
                     <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
+                      Powered by Claude &mdash; Automated AI News Digest
                     </span>
                   </div>
                 </td>
