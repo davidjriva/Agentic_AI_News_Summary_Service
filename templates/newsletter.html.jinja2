@@ -163,8 +163,12 @@
     .article-card {
       width: 100%;
       background-color: #FFFFFF;
-      border-bottom: 1px solid #DEDEDE;
     }
+
+    /* Rank accent left borders */
+    .article-card-rank-1 { border-left: 4px solid #C41230; }
+    .article-card-rank-2 { border-left: 4px solid #8B0D22; }
+    .article-card-rank-3 { border-left: 4px solid #555555; }
 
     .article-card:first-of-type .article-inner {
       padding-top: 28px;
@@ -268,16 +272,15 @@
 
     /* Scores */
     .article-scores {
-      display: flex;
-      gap: 20px;
+      display: block;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
     }
 
     .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+      display: inline-block;
+      margin-right: 20px;
+      vertical-align: middle;
     }
 
     .score-label {
@@ -298,6 +301,26 @@
     .score-relevance     { color: #1A3D7A; }
     .score-impact        { color: #1A5C1A; }
     .score-authenticity  { color: #7B5B00; }
+
+    /* Score bar tracks */
+    .score-bar-track {
+      display: inline-block;
+      width: 40px;
+      height: 3px;
+      background: #EEEEEE;
+      vertical-align: middle;
+      margin-left: 5px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      display: block;
+      height: 100%;
+      border-radius: 2px;
+    }
+    .score-bar-fill-relevance    { background: #1A3D7A; }
+    .score-bar-fill-impact       { background: #1A5C1A; }
+    .score-bar-fill-authenticity { background: #7B5B00; }
 
     /* Score label tooltips (browser only; email clients use title attr) */
     .score-label {
@@ -336,6 +359,7 @@
     }
 
     .article-readmore a {
+      display: inline-block;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
       font-weight: 700;
@@ -343,11 +367,13 @@
       text-transform: uppercase;
       color: #C41230;
       text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
+      border: 1.5px solid #C41230;
+      padding: 7px 16px;
+      transition: background 0.15s, color 0.15s;
     }
-
     .article-readmore a:hover {
+      background: #C41230;
+      color: #fff;
       border-bottom-color: #C41230;
     }
 
@@ -477,7 +503,7 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.index == 1 %} article-card-rank-1{% elif loop.index == 2 %} article-card-rank-2{% elif loop.index == 3 %} article-card-rank-3{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
@@ -497,7 +523,7 @@
                 </h2>
 
                 <!-- Byline -->
-                <p class="article-byline">By {{ article.author }}</p>
+                {% if article.author %}<p class="article-byline">By {{ article.author }}</p>{% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
@@ -507,14 +533,17 @@
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
                     <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-bar-track"><span class="score-bar-fill score-bar-fill-relevance" style="width:{{ ((article.relevance_score or 0) / 10 * 100) | int }}%"></span></span>
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
                     <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-bar-track"><span class="score-bar-fill score-bar-fill-impact" style="width:{{ ((article.impact_score or 0) / 10 * 100) | int }}%"></span></span>
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
                     <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-bar-track"><span class="score-bar-fill score-bar-fill-authenticity" style="width:{{ ((article.authenticity_score or 0) / 10 * 100) | int }}%"></span></span>
                   </div>
                 </div>
 

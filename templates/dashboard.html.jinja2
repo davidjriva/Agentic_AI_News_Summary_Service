@@ -421,6 +421,40 @@
     .footer a { color: #888; text-decoration: none; }
     .footer a:hover { color: #aaa; }
 
+    /* ── QUICK STATS STRIP ──────────────────────────────── */
+    .quick-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .quick-stat {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-top: 3px solid var(--black);
+      padding: 16px 20px;
+      text-align: center;
+    }
+
+    .quick-stat-value {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--black);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .quick-stat-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--gray-dark);
+    }
+
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media (max-width: 620px) {
       .masthead-title { font-size: 32px; }
@@ -429,6 +463,7 @@
       .controls-actions { flex-direction: column; align-items: stretch; }
       .btn-primary, .btn-secondary { width: 100%; text-align: center; }
       .topbar-inner { flex-wrap: wrap; gap: 6px; }
+      .quick-stats { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
@@ -448,7 +483,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
+      <span class="topbar-date">Pipeline Control &amp; Run History</span>
       {% if running %}
       <div class="running-badge">
         <div class="running-dot"></div>
@@ -498,6 +533,22 @@
       </div>
     </div>
 
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+      <div class="quick-stat">
+        <div class="quick-stat-value">{{ runs | length }}</div>
+        <div class="quick-stat-label">Total Editions</div>
+      </div>
+      <div class="quick-stat">
+        <div class="quick-stat-value">{% if runs %}{{ ((runs | selectattr('status', 'equalto', 'success') | list | length) / runs | length * 100) | round | int }}%{% else %}—{% endif %}</div>
+        <div class="quick-stat-label">Success Rate</div>
+      </div>
+      <div class="quick-stat">
+        <div class="quick-stat-value">{% if runs %}{{ (runs | selectattr('status', 'equalto', 'success') | list | length) }}{% else %}0{% endif %}</div>
+        <div class="quick-stat-label">Successful Runs</div>
+      </div>
+    </div>
+
     <!-- Run History -->
     <h2 class="section-label">
       <span class="section-label-accent">Latest</span>
@@ -512,8 +563,7 @@
             <th>Started</th>
             <th>Status</th>
             <th>Articles</th>
-            <th>Dropped</th>
-            <th>Failed</th>
+            <th>Filtered&thinsp;/&thinsp;Errors</th>
             <th>Duration</th>
             <th>Edition</th>
           </tr>
@@ -543,11 +593,7 @@
             </td>
 
             <td>
-              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
-            </td>
-
-            <td>
-              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
+              <span class="ts">{{ run.dropped_count if run.dropped_count is not none else 0 }}&thinsp;/&thinsp;{{ run.failed_count if run.failed_count is not none else 0 }}</span>
             </td>
 
             <td>
@@ -580,8 +626,9 @@
       </table>
       {% else %}
       <div class="empty-state">
+        <div class="empty-state-icon" aria-hidden="true" style="font-size:32px;margin-bottom:16px;opacity:0.3;">&#9889;</div>
         <div class="empty-state-headline">No Editions Yet</div>
-        <div class="empty-state-body">Click <strong>Run Now</strong> to generate your first newsletter.</div>
+        <div class="empty-state-body">Use the <strong>Operations Desk</strong> above to generate your first AI news digest.</div>
       </div>
       {% endif %}
     </div>
@@ -622,8 +669,7 @@
         <td><span class="ts">Just now\u2026</span></td>
         <td><span class="badge badge-running">Running</span></td>
         <td><span class="article-count">&mdash;</span></td>
-        <td><span class="article-count">&mdash;</span></td>
-        <td><span class="article-count">&mdash;</span></td>
+        <td><span class="ts">&mdash;&thinsp;/&thinsp;&mdash;</span></td>
         <td><span class="duration">&mdash;</span></td>
         <td>&mdash;</td>
       `;
@@ -696,13 +742,11 @@
         artTd.innerHTML = `<span class="article-count">${run.article_count !== null ? run.article_count : '&mdash;'}</span>`;
         row.appendChild(artTd);
 
-        const droppedTd = document.createElement('td');
-        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
-        row.appendChild(droppedTd);
-
-        const failedTd = document.createElement('td');
-        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
-        row.appendChild(failedTd);
+        const filteredTd = document.createElement('td');
+        const dropped = run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0;
+        const failed = run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0;
+        filteredTd.innerHTML = `<span class="ts">${dropped} / ${failed}</span>`;
+        row.appendChild(filteredTd);
 
         const durTd = document.createElement('td');
         let dur = '&mdash;';
