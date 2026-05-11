@@ -186,6 +186,11 @@
       text-align: center;
     }
 
+    .stat-card-red    { border-top-color: #C41230; }
+    .stat-card-blue   { border-top-color: #1A3D7A; }
+    .stat-card-green  { border-top-color: #1A5C1A; }
+    .stat-card-gold   { border-top-color: #7B5B00; }
+
     .stat-value {
       font-family: Georgia, 'Times New Roman', Times, serif;
       font-size: 36px;
@@ -260,6 +265,14 @@
       font-style: italic;
     }
 
+    .chart-box-subtitle {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      margin: -12px 0 16px 0;
+      font-style: italic;
+    }
+
     /* ── FOOTER ─────────────────────────────────────── */
     .footer {
       background: var(--black);
@@ -309,7 +322,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-label">Pipeline &amp; Content Analytics</span>
+      <span class="topbar-label">Lifetime Analytics &amp; Content Insights</span>
     </div>
   </div>
 
@@ -331,19 +344,19 @@
     </h2>
 
     <div class="stat-grid">
-      <div class="stat-card">
+      <div class="stat-card stat-card-red">
         <div class="stat-value">{{ emails_delivered }}</div>
         <div class="stat-label">Emails Delivered</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-blue">
         <div class="stat-value">{{ subscribers }}</div>
         <div class="stat-label">Subscribers</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-green">
         <div class="stat-value">{{ total_runs }}</div>
         <div class="stat-label">Total Runs</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-gold">
         <div class="stat-value">{{ articles_seen }}</div>
         <div class="stat-label">Articles Seen</div>
       </div>
@@ -358,10 +371,12 @@
     <div class="chart-row">
       <div class="chart-box">
         <h3 class="chart-box-title">Articles by Source</h3>
+        <p class="chart-box-subtitle">Newsletter articles distributed across sources (all time)</p>
         <canvas id="sourcesChart"></canvas>
       </div>
       <div class="chart-box">
         <h3 class="chart-box-title">Run Success Rate</h3>
+        <p class="chart-box-subtitle">Proportion of pipeline runs by outcome status</p>
         <canvas id="statusChart"></canvas>
       </div>
     </div>
@@ -374,6 +389,7 @@
 
     <div class="chart-full">
       <h3 class="chart-full-title">Volume Across Last 20 Successful Runs</h3>
+      <p class="chart-full-subtitle">Article count per edition — last 20 successful pipeline runs</p>
       <canvas id="runTrendChart"></canvas>
     </div>
 

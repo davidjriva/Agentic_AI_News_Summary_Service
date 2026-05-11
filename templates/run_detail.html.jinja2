@@ -368,6 +368,64 @@
       font-size: 13px;
       font-style: italic;
     }
+
+    /* ── SKELETON LOADER ────────────────────────────────── */
+    @keyframes skeleton-shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+
+    .skeleton-line {
+      display: block;
+      height: 10px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 800px 100%;
+      animation: skeleton-shimmer 1.6s infinite linear;
+      margin-bottom: 8px;
+    }
+
+    .skeleton-line-short { width: 55%; }
+    .skeleton-line-medium { width: 80%; }
+    .skeleton-line-long { width: 100%; }
+
+    /* ── IFRAME LOADING STATE ───────────────────────────── */
+    .newsletter-pane {
+      position: relative;
+    }
+
+    .iframe-loading-overlay {
+      position: absolute;
+      inset: 0;
+      background: var(--bg-section);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      z-index: 2;
+      transition: opacity 0.3s;
+    }
+
+    .iframe-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #DEDEDE;
+      border-top-color: #C41230;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .iframe-loading-text {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      letter-spacing: 0.5px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -405,17 +463,21 @@
 
       <!-- Newsletter iframe -->
       <div class="newsletter-pane">
+        <div class="iframe-loading-overlay" id="iframe-overlay">
+          <div class="iframe-spinner"></div>
+          <span class="iframe-loading-text">Loading edition&hellip;</span>
+        </div>
         {% if preview %}
-        <iframe src="/preview/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/preview/newsletter" title="Newsletter Edition" onload="document.getElementById('iframe-overlay').style.opacity='0'; setTimeout(()=>document.getElementById('iframe-overlay').style.display='none',300);"></iframe>
         {% else %}
-        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition" onload="document.getElementById('iframe-overlay').style.opacity='0'; setTimeout(()=>document.getElementById('iframe-overlay').style.display='none',300);"></iframe>
         {% endif %}
       </div>
 
       <!-- Sources sidebar -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h2 class="sidebar-header-title">Articles by Source</h2>
+          <h2 class="sidebar-header-title">Edition Summary</h2>
           <p class="sidebar-header-meta">
             {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
             &mdash;
@@ -451,7 +513,14 @@
           <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li style="padding:8px 0;">
+            <span class="skeleton-line skeleton-line-long"></span>
+            <span class="skeleton-line skeleton-line-medium"></span>
+          </li>
+          <li style="padding:8px 0;">
+            <span class="skeleton-line skeleton-line-long"></span>
+            <span class="skeleton-line skeleton-line-short"></span>
+          </li>
         </ul>
 
         <!-- Failed articles section -->
@@ -459,7 +528,10 @@
           <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li style="padding:8px 0;">
+            <span class="skeleton-line skeleton-line-long"></span>
+            <span class="skeleton-line skeleton-line-medium"></span>
+          </li>
         </ul>
       </aside>
 
