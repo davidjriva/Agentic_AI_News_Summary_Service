@@ -246,6 +246,20 @@
       cursor: not-allowed;
     }
 
+    /* ── FOCUS STYLES (keyboard nav) ─────────────────── */
+    .btn-primary:focus-visible,
+    .btn-secondary:focus-visible {
+      outline: 2px solid #C41230;
+      outline-offset: 2px;
+    }
+
+    .nav-tab:focus-visible,
+    .view-link:focus-visible {
+      outline: 2px solid #C41230;
+      outline-offset: 2px;
+      border-radius: 1px;
+    }
+
     /* ── RUNNING BADGE ──────────────────────────────── */
     .running-badge {
       display: inline-flex;
@@ -285,6 +299,7 @@
     /* ── TABLE ──────────────────────────────────────── */
     .runs-table {
       width: 100%;
+      min-width: 600px;
       border-collapse: collapse;
     }
 
@@ -459,10 +474,14 @@
   </div>
 
   <!-- ── NAV ───────────────────────────────────────────── -->
-  <nav class="nav">
+  <nav class="nav" role="navigation" aria-label="Main navigation">
     <div class="nav-inner">
-      <a class="nav-tab {% if active == 'dashboard' %}active{% endif %}" href="/">Run History</a>
-      <a class="nav-tab {% if active == 'metrics' %}active{% endif %}" href="/metrics">Metrics</a>
+      <a class="nav-tab {% if active == 'dashboard' %}active{% endif %}"
+         {% if active == 'dashboard' %}aria-current="page"{% endif %}
+         href="/">Run History</a>
+      <a class="nav-tab {% if active == 'metrics' %}active{% endif %}"
+         {% if active == 'metrics' %}aria-current="page"{% endif %}
+         href="/metrics">Metrics</a>
     </div>
   </nav>
 
@@ -470,8 +489,11 @@
   <main class="page-wrapper">
 
     <!-- Operations Desk -->
+    <h2 class="section-label">
+      <span class="section-label-accent">Controls</span>
+      Operations Desk
+    </h2>
     <div class="controls-card">
-      <h2 class="controls-title">Operations Desk</h2>
       <p class="controls-subtitle">Trigger a new pipeline run to fetch, rank, and deliver the latest AI news.</p>
       <hr class="controls-rule" />
       <div class="controls-actions">
@@ -506,6 +528,7 @@
 
     <div class="history-card">
       {% if runs %}
+      <div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
       <table class="runs-table">
         <thead>
           <tr>
@@ -578,6 +601,7 @@
           {% endfor %}
         </tbody>
       </table>
+      </div>
       {% else %}
       <div class="empty-state">
         <div class="empty-state-headline">No Editions Yet</div>
