@@ -124,6 +124,12 @@
       border-bottom-color: var(--red);
     }
 
+    .nav-tab:focus-visible,
+    .masthead-back:focus-visible {
+      outline: 2px solid #C41230;
+      outline-offset: 2px;
+    }
+
     /* ── LAYOUT ─────────────────────────────────────── */
     .layout-wrapper {
       display: flex;
@@ -265,6 +271,17 @@
       font-style: italic;
     }
 
+    .sidebar-empty-msg {
+      text-align: center;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+      padding: 16px 0;
+      margin: 0;
+      list-style: none;
+    }
+
     /* ── FILTER/FAIL SECTIONS ───────────────────────── */
     .sidebar-section-header {
       background: var(--bg-section);
@@ -368,6 +385,20 @@
       font-size: 13px;
       font-style: italic;
     }
+
+    .masthead-status-badge {
+      display: inline-block;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+    }
+
+    .masthead-status-success { background: #1A5C1A; color: #fff; }
+    .masthead-status-error   { background: #921818; color: #fff; }
+    .masthead-status-running { background: #C41230; color: #fff; }
   </style>
 </head>
 <body>
@@ -381,6 +412,15 @@
           <span class="masthead-sep">/</span>
           <span class="masthead-brand">The Agentic Times</span>
           <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          {% if status is defined and status %}
+          {% if status == 'success' %}
+          <span class="masthead-status-badge masthead-status-success">Success</span>
+          {% elif status == 'error' %}
+          <span class="masthead-status-badge masthead-status-error">Error</span>
+          {% elif status == 'running' %}
+          <span class="masthead-status-badge masthead-status-running">Running</span>
+          {% endif %}
+          {% endif %}
         </div>
         {% if started_at %}
         <span class="masthead-ts">{{ started_at }}</span>
@@ -389,7 +429,7 @@
     </header>
 
     <!-- ── NAV ─────────────────────────────────────── -->
-    <nav class="nav">
+    <nav class="nav" role="navigation" aria-label="Main navigation">
       <div class="nav-inner">
         <a class="nav-tab" href="/">Run History</a>
         <a class="nav-tab" href="/metrics">Metrics</a>
@@ -451,7 +491,7 @@
           <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="sidebar-empty-msg">Loading&hellip;</li>
         </ul>
 
         <!-- Failed articles section -->
@@ -459,7 +499,7 @@
           <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="sidebar-empty-msg">Loading&hellip;</li>
         </ul>
       </aside>
 
@@ -472,7 +512,7 @@
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">None dropped this run.</li>';
+        list.innerHTML = '<li class="sidebar-empty-msg">None dropped this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `
@@ -490,7 +530,7 @@
     function renderFailed(items) {
       const list = document.getElementById('failed-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">No failures this run.</li>';
+        list.innerHTML = '<li class="sidebar-empty-msg">No failures this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `
