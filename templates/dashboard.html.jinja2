@@ -79,33 +79,17 @@
       margin-top: 14px;
     }
 
-    /* ── TOP BAR ────────────────────────────────────── */
-    .topbar {
-      background: var(--black);
-      border-top: 1px solid #222;
-      border-bottom: 3px solid var(--red);
-    }
-
-    .topbar-inner {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 8px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .topbar-date {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      color: #AAAAAA;
-      font-style: italic;
-    }
-
     /* ── NAV ────────────────────────────────────────── */
     .nav {
       background: var(--black);
-      border-bottom: 1px solid #222;
+      border-bottom: 3px solid var(--red);
+    }
+
+    .nav-running {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
     }
 
     .nav-inner {
@@ -428,7 +412,6 @@
       .controls-card { padding: 20px; }
       .controls-actions { flex-direction: column; align-items: stretch; }
       .btn-primary, .btn-secondary { width: 100%; text-align: center; }
-      .topbar-inner { flex-wrap: wrap; gap: 6px; }
     }
   </style>
 </head>
@@ -445,24 +428,19 @@
     </div>
   </header>
 
-  <!-- ── TOP BAR ───────────────────────────────────────── -->
-  <div class="topbar">
-    <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
-      {% if running %}
-      <div class="running-badge">
-        <div class="running-dot"></div>
-        Run in Progress
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
   <!-- ── NAV ───────────────────────────────────────────── -->
   <nav class="nav">
     <div class="nav-inner">
       <a class="nav-tab {% if active == 'dashboard' %}active{% endif %}" href="/">Run History</a>
       <a class="nav-tab {% if active == 'metrics' %}active{% endif %}" href="/metrics">Metrics</a>
+      {% if running %}
+      <div class="nav-running">
+        <div class="running-badge">
+          <div class="running-dot"></div>
+          Run in Progress
+        </div>
+      </div>
+      {% endif %}
     </div>
   </nav>
 
@@ -592,7 +570,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p>Pipeline Dashboard</p>
     </div>
   </footer>
 
@@ -615,8 +593,27 @@
     }
 
     function insertOptimisticRow() {
-      const tbody = document.querySelector('.runs-table tbody');
-      if (!tbody) return;
+      let tbody = document.querySelector('.runs-table tbody');
+      if (!tbody) {
+        const card = document.querySelector('.history-card');
+        if (!card) return;
+        card.innerHTML = `
+          <table class="runs-table">
+            <thead>
+              <tr>
+                <th>Started</th>
+                <th>Status</th>
+                <th>Articles</th>
+                <th>Dropped</th>
+                <th>Failed</th>
+                <th>Duration</th>
+                <th>Edition</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>`;
+        tbody = card.querySelector('tbody');
+      }
       const row = document.createElement('tr');
       row.innerHTML = `
         <td><span class="ts">Just now\u2026</span></td>
