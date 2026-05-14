@@ -160,10 +160,19 @@ def dashboard(request: Request) -> HTMLResponse:
     ).fetchall()
     conn.close()
     runs = [dict(row) for row in rows]
+    run_time = None
+    if rows:
+        latest_ts = rows[0]["started_at"]  # already ordered DESC
+        if latest_ts:
+            try:
+                run_time = datetime.fromisoformat(latest_ts.replace("Z", "+00:00"))
+            except Exception:
+                run_time = None
+
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
-        {"runs": runs, "running": _is_running, "active": "dashboard"},
+        {"runs": runs, "running": _is_running, "active": "dashboard", "run_time": run_time},
     )
 
 

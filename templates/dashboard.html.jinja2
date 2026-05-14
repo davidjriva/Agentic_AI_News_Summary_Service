@@ -33,73 +33,78 @@
     /* ── MASTHEAD ───────────────────────────────────── */
     .masthead {
       background: var(--black);
-      text-align: center;
     }
 
     .masthead-inner {
       max-width: 900px;
       margin: 0 auto;
-      padding: 28px 20px 20px;
-    }
-
-    .masthead-eyebrow {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 2.5px;
-      text-transform: uppercase;
-      color: var(--gray-light);
-      margin-bottom: 10px;
-    }
-
-    .masthead-rule {
-      border: none;
-      border-top: 1px solid #3a3a3a;
-      margin: 10px auto 14px;
-      width: 300px;
-    }
-
-    .masthead-title {
-      font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 48px;
-      font-weight: 700;
-      color: #FFFFFF;
-      letter-spacing: -1px;
-      line-height: 1;
-      margin: 0;
-    }
-
-    .masthead-tagline {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
-      font-weight: 400;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: #999;
-      margin-top: 14px;
-    }
-
-    /* ── TOP BAR ────────────────────────────────────── */
-    .topbar {
-      background: var(--black);
-      border-top: 1px solid #222;
-      border-bottom: 3px solid var(--red);
-    }
-
-    .topbar-inner {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 8px 20px;
+      padding: 14px 20px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    .topbar-date {
+    .masthead-brand {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.5px;
+    }
+
+    .masthead-tagline {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      color: #AAAAAA;
-      font-style: italic;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #666;
+    }
+
+    /* ── STATS BAR ──────────────────────────────────── */
+    .stats-bar {
+      background: var(--black);
+      border-top: 1px solid #222;
+      border-bottom: 3px solid var(--red);
+    }
+
+    .stats-bar-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .stat-pill-value {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .stat-pill-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #666;
+    }
+
+    .stat-pill-divider {
+      width: 1px;
+      height: 18px;
+      background: #333;
+      align-self: center;
     }
 
     /* ── NAV ────────────────────────────────────────── */
@@ -423,12 +428,11 @@
 
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media (max-width: 620px) {
-      .masthead-title { font-size: 32px; }
       .page-wrapper { padding: 20px 16px 40px; }
       .controls-card { padding: 20px; }
       .controls-actions { flex-direction: column; align-items: stretch; }
       .btn-primary, .btn-secondary { width: 100%; text-align: center; }
-      .topbar-inner { flex-wrap: wrap; gap: 6px; }
+      .stats-bar-inner { flex-wrap: wrap; gap: 6px; }
     }
   </style>
 </head>
@@ -437,19 +441,36 @@
   <!-- ── MASTHEAD ─────────────────────────────────────── -->
   <header class="masthead">
     <div class="masthead-inner">
-      <div class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</div>
-      <hr class="masthead-rule" />
-      <h1 class="masthead-title">The Agentic Times</h1>
-      <hr class="masthead-rule" />
-      <div class="masthead-tagline">AI News &amp; Analysis &nbsp;&middot;&nbsp; Pipeline Dashboard</div>
+      <span class="masthead-brand">The Agentic Times</span>
+      <span class="masthead-tagline">Pipeline Dashboard</span>
     </div>
   </header>
 
-  <!-- ── TOP BAR ───────────────────────────────────────── -->
-  <div class="topbar">
-    <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
+  <!-- ── STATS BAR ─────────────────────────────────────── -->
+  <div class="stats-bar">
+    <div class="stats-bar-inner">
+      {% set success_runs = runs | selectattr('status', 'equalto', 'success') | list %}
+      {% set total = runs | length %}
+      <div class="stat-pill">
+        <span class="stat-pill-value">{{ total }}</span>
+        <span class="stat-pill-label">Total Runs</span>
+      </div>
+      <div class="stat-pill-divider"></div>
+      <div class="stat-pill">
+        <span class="stat-pill-value">{{ success_runs | length }}</span>
+        <span class="stat-pill-label">Successful</span>
+      </div>
+      <div class="stat-pill-divider"></div>
+      <div class="stat-pill">
+        {% if total > 0 %}
+        <span class="stat-pill-value">{{ ((success_runs | length / total) * 100) | round | int }}%</span>
+        {% else %}
+        <span class="stat-pill-value">—</span>
+        {% endif %}
+        <span class="stat-pill-label">Success Rate</span>
+      </div>
       {% if running %}
+      <div class="stat-pill-divider"></div>
       <div class="running-badge">
         <div class="running-dot"></div>
         Run in Progress
@@ -511,9 +532,8 @@
           <tr>
             <th>Started</th>
             <th>Status</th>
-            <th>Articles</th>
-            <th>Dropped</th>
-            <th>Failed</th>
+            <th>Published</th>
+            <th>Filtered/Failed</th>
             <th>Duration</th>
             <th>Edition</th>
           </tr>
@@ -543,11 +563,13 @@
             </td>
 
             <td>
-              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
-            </td>
-
-            <td>
-              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
+              {% set dropped = run.dropped_count if run.dropped_count is not none else 0 %}
+              {% set failed = run.failed_count if run.failed_count is not none else 0 %}
+              {% if dropped + failed > 0 %}
+              <span class="article-count" style="color: var(--gray-dark);">{{ dropped + failed }}</span>
+              {% else %}
+              <span style="color: var(--gray-light); font-family: 'Helvetica Neue', sans-serif; font-size: 12px;">—</span>
+              {% endif %}
             </td>
 
             <td>
@@ -592,7 +614,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p><a href="/">The Agentic Times Dashboard</a></p>
     </div>
   </footer>
 
@@ -621,7 +643,6 @@
       row.innerHTML = `
         <td><span class="ts">Just now\u2026</span></td>
         <td><span class="badge badge-running">Running</span></td>
-        <td><span class="article-count">&mdash;</span></td>
         <td><span class="article-count">&mdash;</span></td>
         <td><span class="article-count">&mdash;</span></td>
         <td><span class="duration">&mdash;</span></td>
@@ -696,13 +717,14 @@
         artTd.innerHTML = `<span class="article-count">${run.article_count !== null ? run.article_count : '&mdash;'}</span>`;
         row.appendChild(artTd);
 
-        const droppedTd = document.createElement('td');
-        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
-        row.appendChild(droppedTd);
-
-        const failedTd = document.createElement('td');
-        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
-        row.appendChild(failedTd);
+        const filteredTd = document.createElement('td');
+        const dropped = run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0;
+        const failed = run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0;
+        const total_filtered = dropped + failed;
+        filteredTd.innerHTML = total_filtered > 0
+          ? `<span class="article-count" style="color: var(--gray-dark);">${total_filtered}</span>`
+          : `<span style="color: var(--gray-light); font-family: 'Helvetica Neue', sans-serif; font-size: 12px;">—</span>`;
+        row.appendChild(filteredTd);
 
         const durTd = document.createElement('td');
         let dur = '&mdash;';

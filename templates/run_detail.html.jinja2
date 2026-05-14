@@ -152,7 +152,7 @@
 
     /* ── SIDEBAR ────────────────────────────────────── */
     .sidebar {
-      width: 272px;
+      width: 300px;
       flex-shrink: 0;
       background: var(--bg);
       border-left: 1px solid var(--border);
@@ -243,6 +243,10 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .article-score-high {
+      color: #1A5C1A;
+    }
+
     .article-list a {
       color: var(--charcoal);
       text-decoration: none;
@@ -281,6 +285,23 @@
       text-transform: uppercase;
       color: var(--gray-dark);
       margin: 0;
+    }
+
+    .sidebar-section-toggle {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--gray-mid);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      float: right;
+    }
+    .sidebar-section-toggle:hover {
+      color: var(--red);
     }
 
     .filtered-list,
@@ -415,11 +436,9 @@
       <!-- Sources sidebar -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h2 class="sidebar-header-title">Articles by Source</h2>
+          <h2 class="sidebar-header-title">Sources &amp; Articles</h2>
           <p class="sidebar-header-meta">
-            {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
-            &mdash;
-            {{ sources.values() | map('length') | sum }} fetched
+            {{ sources.values() | map('length') | sum }} article{{ 's' if sources.values() | map('length') | sum != 1 else '' }} from {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
           </p>
         </div>
 
@@ -434,7 +453,9 @@
               <ul class="article-list">
                 {% for article in articles %}
                 <li>
-                  {% if article.rank_score is not none %}<span class="article-score">{{ "%.1f"|format(article.rank_score) }}</span>{% endif %}
+                  {% if article.rank_score is not none %}
+                    <span class="article-score{% if article.rank_score >= 7.0 %} article-score-high{% endif %}">{{ "%.1f"|format(article.rank_score) }}</span>
+                  {% endif %}
                   <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.title }}</a>
                 </li>
                 {% endfor %}
@@ -448,18 +469,22 @@
 
         <!-- Filtered (dropped) articles section -->
         <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
+          <h3 class="sidebar-section-title">Dropped <span style="font-weight:400;color:var(--gray-mid);">—</span> Low Relevance
+            <button class="sidebar-section-toggle" onclick="toggleSection('filtered-list', this)">Hide</button>
+          </h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;padding:12px 0;">Fetching&hellip;</li>
         </ul>
 
         <!-- Failed articles section -->
         <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
+          <h3 class="sidebar-section-title">Failed <span style="font-weight:400;color:var(--gray-mid);">—</span> Processing Errors
+            <button class="sidebar-section-toggle" onclick="toggleSection('failed-list', this)">Hide</button>
+          </h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;padding:12px 0;">Fetching&hellip;</li>
         </ul>
       </aside>
 
@@ -468,6 +493,14 @@
 
   <script>
     const RUN_ID = "{{ run_id }}";
+
+    function toggleSection(listId, btn) {
+      const list = document.getElementById(listId);
+      if (!list) return;
+      const hidden = list.style.display === 'none';
+      list.style.display = hidden ? '' : 'none';
+      btn.textContent = hidden ? 'Hide' : 'Show';
+    }
 
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');

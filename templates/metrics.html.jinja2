@@ -18,6 +18,7 @@
       --bg:         #FFFFFF;
       --bg-warm:    #FDF8F0;
       --bg-section: #F7F7F5;
+      --green:      #1A5C1A;
     }
 
     body {
@@ -374,6 +375,7 @@
 
     <div class="chart-full">
       <h3 class="chart-full-title">Volume Across Last 20 Successful Runs</h3>
+      <p class="chart-full-subtitle">Articles published per pipeline run</p>
       <canvas id="runTrendChart"></canvas>
     </div>
 
@@ -383,7 +385,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p><a href="/">The Agentic Times Dashboard</a></p>
     </div>
   </footer>
 
@@ -400,105 +402,133 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script>
     const EDITORIAL_RED   = '#C41230';
+    const EDITORIAL_GREEN  = '#1A5C1A';
     const EDITORIAL_BLACK = '#121212';
     const EDITORIAL_GRAY  = '#888888';
     const EDITORIAL_LIGHT = '#DEDEDE';
+
+    function renderEmptyState(canvasId, message) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.offsetWidth || 300;
+      const h = canvas.offsetHeight || 200;
+      canvas.width = w;
+      canvas.height = h;
+      ctx.clearRect(0, 0, w, h);
+      ctx.font = "13px 'Helvetica Neue', sans-serif";
+      ctx.fillStyle = EDITORIAL_GRAY;
+      ctx.textAlign = 'center';
+      ctx.fillText(message, w / 2, h / 2);
+    }
 
     Chart.defaults.font.family = "'Helvetica Neue', Helvetica, Arial, sans-serif";
     Chart.defaults.color = EDITORIAL_GRAY;
 
     // Horizontal bar — Articles by Source
-    new Chart(document.getElementById('sourcesChart'), {
-      type: 'bar',
-      data: {
-        labels: SOURCES_LABELS,
-        datasets: [{
-          label: 'Articles',
-          data: SOURCES_DATA,
-          backgroundColor: EDITORIAL_BLACK,
-          borderRadius: 0,
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        plugins: {
-          legend: { display: false }
+    if (!SOURCES_DATA || SOURCES_DATA.length === 0) {
+      renderEmptyState('sourcesChart', 'No article data yet.');
+    } else {
+      new Chart(document.getElementById('sourcesChart'), {
+        type: 'bar',
+        data: {
+          labels: SOURCES_LABELS,
+          datasets: [{
+            label: 'Articles',
+            data: SOURCES_DATA,
+            backgroundColor: EDITORIAL_BLACK,
+            borderRadius: 0,
+          }]
         },
-        scales: {
-          x: {
-            beginAtZero: true,
-            ticks: { precision: 0, color: EDITORIAL_GRAY, font: { size: 11 } },
-            grid: { color: EDITORIAL_LIGHT }
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {
+            legend: { display: false }
           },
-          y: {
-            ticks: { color: EDITORIAL_BLACK, font: { size: 11, weight: '600' } },
-            grid: { display: false }
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { precision: 0, color: EDITORIAL_GRAY, font: { size: 11 } },
+              grid: { color: EDITORIAL_LIGHT }
+            },
+            y: {
+              ticks: { color: EDITORIAL_BLACK, font: { size: 11, weight: '600' } },
+              grid: { display: false }
+            }
           }
         }
-      }
-    });
+      });
+    }
 
     // Doughnut — Run Success Rate
-    new Chart(document.getElementById('statusChart'), {
-      type: 'doughnut',
-      data: {
-        labels: STATUS_LABELS,
-        datasets: [{
-          data: STATUS_DATA,
-          backgroundColor: STATUS_LABELS.map(label => {
-            if (label === 'success') return '#1A5C1A';
-            if (label === 'error')   return EDITORIAL_RED;
-            return '#856404';
-          }),
-          borderWidth: 0,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { padding: 16, font: { size: 11 }, color: EDITORIAL_BLACK }
+    if (!STATUS_DATA || STATUS_DATA.length === 0) {
+      renderEmptyState('statusChart', 'No run data yet.');
+    } else {
+      new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+          labels: STATUS_LABELS,
+          datasets: [{
+            data: STATUS_DATA,
+            backgroundColor: STATUS_LABELS.map(label => {
+              if (label === 'success') return EDITORIAL_GREEN;
+              if (label === 'error')   return EDITORIAL_RED;
+              return '#856404';
+            }),
+            borderWidth: 0,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { padding: 16, font: { size: 11 }, color: EDITORIAL_BLACK }
+            }
           }
         }
-      }
-    });
+      });
+    }
 
     // Line — Articles per Run
-    new Chart(document.getElementById('runTrendChart'), {
-      type: 'line',
-      data: {
-        labels: RUN_DATES,
-        datasets: [{
-          label: 'Articles',
-          data: RUN_COUNTS,
-          borderColor: EDITORIAL_BLACK,
-          backgroundColor: 'rgba(18,18,18,0.06)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 4,
-          pointBackgroundColor: EDITORIAL_RED,
-          pointBorderColor: EDITORIAL_BLACK,
-          pointBorderWidth: 1,
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { precision: 0, color: EDITORIAL_GRAY, font: { size: 11 } },
-            grid: { color: EDITORIAL_LIGHT }
-          },
-          x: {
-            ticks: { color: EDITORIAL_GRAY, font: { size: 10 }, maxRotation: 45 },
-            grid: { display: false }
+    if (!RUN_COUNTS || RUN_COUNTS.length === 0) {
+      renderEmptyState('runTrendChart', 'No run history yet.');
+    } else {
+      new Chart(document.getElementById('runTrendChart'), {
+        type: 'line',
+        data: {
+          labels: RUN_DATES,
+          datasets: [{
+            label: 'Articles',
+            data: RUN_COUNTS,
+            borderColor: EDITORIAL_BLACK,
+            backgroundColor: 'rgba(18,18,18,0.06)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 4,
+            pointBackgroundColor: EDITORIAL_RED,
+            pointBorderColor: EDITORIAL_BLACK,
+            pointBorderWidth: 1,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0, color: EDITORIAL_GRAY, font: { size: 11 } },
+              grid: { color: EDITORIAL_LIGHT }
+            },
+            x: {
+              ticks: { color: EDITORIAL_GRAY, font: { size: 10 }, maxRotation: 45 },
+              grid: { display: false }
+            }
           }
         }
-      }
-    });
+      });
+    }
   </script>
 </body>
 </html>
