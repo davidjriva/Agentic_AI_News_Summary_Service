@@ -9,7 +9,7 @@ from jinja2 import Environment, FileSystemLoader
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
 
-def render_newsletter(articles: list[dict], run_time: datetime) -> tuple[str, str]:
+def render_newsletter(articles: list[dict], run_time: datetime, run_id: str = "") -> tuple[str, str]:
     """Render the newsletter as (html, plain_text).
 
     Args:
@@ -25,7 +25,7 @@ def render_newsletter(articles: list[dict], run_time: datetime) -> tuple[str, st
     )
     template = env.get_template("newsletter.html.jinja2")
 
-    html = template.render(articles=articles, run_time=run_time, article_count=len(articles))
+    html = template.render(articles=articles, run_time=run_time, article_count=len(articles), run_id=run_id)
 
     # Plain-text version
     lines: list[str] = []
