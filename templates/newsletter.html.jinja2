@@ -159,11 +159,39 @@
       font-weight: 700;
     }
 
+    .intro-methodology {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #888;
+      margin: 6px 0 0 0;
+      letter-spacing: 0.2px;
+    }
+
     /* ── ARTICLE CARD ───────────────────────────────── */
     .article-card {
       width: 100%;
       background-color: #FFFFFF;
       border-bottom: 1px solid #DEDEDE;
+    }
+
+    .article-card-lead {
+      background-color: #FDF8F0;
+      border-left: 3px solid #C41230;
+    }
+
+    .article-card-lead .article-inner {
+      padding-left: 29px;
+    }
+
+    .article-lead-eyebrow {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #C41230;
+      margin-bottom: 10px;
+      display: block;
     }
 
     .article-card:first-of-type .article-inner {
@@ -337,18 +365,21 @@
 
     .article-readmore a {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
-      letter-spacing: 1px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
       color: #C41230;
       text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
+      display: inline-block;
+      border: 1.5px solid #C41230;
+      padding: 7px 16px;
+      transition: background 0.15s, color 0.15s;
     }
 
     .article-readmore a:hover {
-      border-bottom-color: #C41230;
+      background: #C41230;
+      color: #fff;
     }
 
     /* Section break between articles */
@@ -469,6 +500,7 @@
                 <strong>{{ article_count }}</strong>
                 article{{ 's' if article_count != 1 else '' }} curated &amp; ranked for you today
               </span>
+              <p class="intro-methodology">Ranked by AI-scored Impact (60%) &amp; Authenticity (40%) &mdash; filtered for relevance to agentic AI &amp; ML.</p>
             </div>
           </td>
         </tr>
@@ -477,9 +509,10 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card {% if loop.first %}article-card-lead{% endif %}">
               <div class="article-inner">
 
+                {% if loop.first %}<span class="article-lead-eyebrow">Lead Story</span>{% endif %}
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
                   <div>
@@ -497,7 +530,9 @@
                 </h2>
 
                 <!-- Byline -->
+                {% if article.author and article.author.lower() != 'unknown' %}
                 <p class="article-byline">By {{ article.author }}</p>
+                {% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
@@ -526,9 +561,6 @@
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
@@ -543,7 +575,7 @@
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
                     <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
+                      <a href="/">View Dashboard</a>
                     </span>
                   </div>
                 </td>

@@ -304,6 +304,8 @@
       text-align: left;
     }
 
+    th[title] { cursor: help; }
+
     .runs-table tbody tr {
       border-bottom: 1px solid var(--border);
       transition: background 0.1s;
@@ -449,12 +451,6 @@
   <div class="topbar">
     <div class="topbar-inner">
       <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
-      {% if running %}
-      <div class="running-badge">
-        <div class="running-dot"></div>
-        Run in Progress
-      </div>
-      {% endif %}
     </div>
   </div>
 
@@ -512,8 +508,8 @@
             <th>Started</th>
             <th>Status</th>
             <th>Articles</th>
-            <th>Dropped</th>
-            <th>Failed</th>
+            <th title="Articles filtered out due to low relevance score (below threshold 6)">Dropped</th>
+            <th title="Articles that encountered processing errors during the pipeline run">Failed</th>
             <th>Duration</th>
             <th>Edition</th>
           </tr>
@@ -521,7 +517,7 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts" data-iso="{{ run.started_at }}">{{ run.started_at }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -592,11 +588,24 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p><a href="/">The Agentic Times Dashboard</a></p>
     </div>
   </footer>
 
   <script>
+    function formatTs(isoStr) {
+      if (!isoStr) return '&mdash;';
+      try {
+        const d = new Date(isoStr.replace(' ', 'T'));
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const mon = months[d.getUTCMonth()];
+        const day = d.getUTCDate();
+        const hr = String(d.getUTCHours()).padStart(2,'0');
+        const min = String(d.getUTCMinutes()).padStart(2,'0');
+        return `${mon} ${day} at ${hr}:${min}`;
+      } catch(e) { return isoStr; }
+    }
+
     let pollingInterval = null;
     let activeRunId = null;
 
@@ -677,7 +686,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts">${formatTs(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -750,6 +759,9 @@
     document.addEventListener('DOMContentLoaded', () => {
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
+      document.querySelectorAll('.ts[data-iso]').forEach(el => {
+        el.textContent = formatTs(el.dataset.iso);
+      });
     });
   </script>
 </body>
