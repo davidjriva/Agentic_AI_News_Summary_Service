@@ -152,7 +152,7 @@
 
     /* ── SIDEBAR ────────────────────────────────────── */
     .sidebar {
-      width: 272px;
+      width: 300px;
       flex-shrink: 0;
       background: var(--bg);
       border-left: 1px solid var(--border);
@@ -344,6 +344,18 @@
       font-style: italic;
     }
 
+    .sidebar-count-badge {
+      display: inline-block;
+      background: var(--gray-mid);
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 5px;
+      letter-spacing: 0.3px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
       background: #FFF3CD;
@@ -471,6 +483,11 @@
 
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
+      const header = document.querySelector('.sidebar-section-header:first-of-type .sidebar-section-title');
+      const count = items ? items.length : 0;
+      if (header) {
+        header.innerHTML = `Dropped &mdash; Low Relevance <span class="sidebar-count-badge">${count}</span>`;
+      }
       if (!items || items.length === 0) {
         list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">None dropped this run.</li>';
         return;
@@ -489,6 +506,12 @@
 
     function renderFailed(items) {
       const list = document.getElementById('failed-list');
+      const headers = document.querySelectorAll('.sidebar-section-header .sidebar-section-title');
+      const header = headers.length > 1 ? headers[1] : null;
+      const count = items ? items.length : 0;
+      if (header) {
+        header.innerHTML = `Failed &mdash; Processing Errors <span class="sidebar-count-badge">${count}</span>`;
+      }
       if (!items || items.length === 0) {
         list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">No failures this run.</li>';
         return;
