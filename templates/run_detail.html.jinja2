@@ -152,7 +152,7 @@
 
     /* ── SIDEBAR ────────────────────────────────────── */
     .sidebar {
-      width: 272px;
+      width: 320px;
       flex-shrink: 0;
       background: var(--bg);
       border-left: 1px solid var(--border);
@@ -281,6 +281,25 @@
       text-transform: uppercase;
       color: var(--gray-dark);
       margin: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sidebar-toggle {
+      cursor: pointer;
+      user-select: none;
+    }
+    .sidebar-toggle:hover {
+      background: #F0F0F0;
+    }
+    .toggle-icon {
+      font-size: 9px;
+      color: var(--gray-mid);
+      transition: transform 0.2s;
+    }
+    .toggle-icon.open {
+      transform: rotate(180deg);
     }
 
     .filtered-list,
@@ -419,7 +438,7 @@
           <p class="sidebar-header-meta">
             {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
             &mdash;
-            {{ sources.values() | map('length') | sum }} fetched
+            {{ sources.values() | map('length') | sum }} article{{ 's' if sources.values() | map('length') | sum != 1 else '' }}
           </p>
         </div>
 
@@ -447,20 +466,30 @@
         </div>
 
         <!-- Filtered (dropped) articles section -->
-        <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
+        <div class="sidebar-section-header sidebar-toggle" onclick="toggleSection('filtered-section')">
+          <h3 class="sidebar-section-title">
+            Dropped &mdash; Low Relevance
+            <span class="toggle-icon" id="filtered-toggle-icon">&#9660;</span>
+          </h3>
         </div>
-        <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
-        </ul>
+        <div id="filtered-section" class="collapsible-section" style="display:none;">
+          <ul class="filtered-list" id="filtered-list">
+            <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          </ul>
+        </div>
 
         <!-- Failed articles section -->
-        <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
+        <div class="sidebar-section-header sidebar-toggle" onclick="toggleSection('failed-section')">
+          <h3 class="sidebar-section-title">
+            Failed &mdash; Processing Errors
+            <span class="toggle-icon" id="failed-toggle-icon">&#9660;</span>
+          </h3>
         </div>
-        <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
-        </ul>
+        <div id="failed-section" class="collapsible-section" style="display:none;">
+          <ul class="failed-list" id="failed-list">
+            <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          </ul>
+        </div>
       </aside>
 
     </div>
@@ -468,6 +497,19 @@
 
   <script>
     const RUN_ID = "{{ run_id }}";
+
+    function toggleSection(sectionId) {
+      const section = document.getElementById(sectionId);
+      const iconId = sectionId.replace('-section', '-toggle-icon');
+      const icon = document.getElementById(iconId);
+      if (section.style.display === 'none') {
+        section.style.display = 'block';
+        if (icon) icon.classList.add('open');
+      } else {
+        section.style.display = 'none';
+        if (icon) icon.classList.remove('open');
+      }
+    }
 
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');

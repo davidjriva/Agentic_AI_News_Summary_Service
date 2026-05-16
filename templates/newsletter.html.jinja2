@@ -266,68 +266,57 @@
       margin-bottom: 18px;
     }
 
-    /* Scores */
-    .article-scores {
-      display: flex;
-      gap: 20px;
-      padding-top: 14px;
-      border-top: 1px solid #F0F0F0;
+    /* ── LEAD STORY (rank #1) ──────────────────────── */
+    .article-card--lead {
+      background-color: #FFFEF9;
     }
 
-    .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+    .article-card--lead .article-inner {
+      border-left: 4px solid #C41230;
+      padding-left: 28px;
     }
 
-    .score-label {
+    .article-card--lead .article-headline {
+      font-size: 26px;
+    }
+
+    .article-editors-pick {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 9px;
       font-weight: 700;
-      letter-spacing: 1.5px;
+      letter-spacing: 2px;
       text-transform: uppercase;
-      color: #888;
+      color: #C41230;
+      display: block;
+      margin-bottom: 8px;
     }
 
-    .score-value {
-      font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 15px;
-      font-weight: 700;
-    }
-
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
-
-    /* Score label tooltips (browser only; email clients use title attr) */
-    .score-label {
-      position: relative;
-      cursor: help;
-    }
-
-    .score-label::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      width: 190px;
-      background: #121212;
-      color: #ddd;
-      font-size: 10px;
-      font-weight: 400;
+    /* Compact scores */
+    .article-scores-compact {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #999;
+      margin-bottom: 12px;
       letter-spacing: 0.3px;
-      text-transform: none;
-      white-space: normal;
-      text-align: center;
-      padding: 6px 10px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.15s;
-      z-index: 10;
     }
 
-    .score-label:hover::after { opacity: 1; }
+    .score-compact-label {
+      font-weight: 700;
+      color: #bbb;
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .score-compact-val {
+      color: #777;
+      margin-left: 2px;
+    }
+
+    .score-compact-sep {
+      margin: 0 6px;
+      color: #ddd;
+    }
 
     /* Read more link */
     .article-readmore {
@@ -411,6 +400,10 @@
   </style>
 </head>
 <body>
+  <!-- Email pre-header (preview text in email clients) -->
+  <span style="display:none;font-size:1px;color:#F7F7F5;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+    {{ article_count }} top AI stories ranked by impact and relevance — {{ run_time.strftime('%B %-d, %Y') }}
+  </span>
   <center>
     <div class="wrapper">
       <table class="main" cellpadding="0" cellspacing="0">
@@ -477,7 +470,7 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.index == 1 %} article-card--lead{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
@@ -492,34 +485,29 @@
                 </div>
 
                 <!-- Headline -->
+                {% if loop.index == 1 %}<span class="article-editors-pick">Editors' Pick</span>{% endif %}
                 <h2 class="article-headline">
                   <a href="{{ article.url }}">{{ article.title }}</a>
                 </h2>
 
                 <!-- Byline -->
-                <p class="article-byline">By {{ article.author }}</p>
+                {% if article.author %}<p class="article-byline">By {{ article.author }}</p>{% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
 
-                <!-- Scores + Read More -->
-                <div class="article-scores">
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
-                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
-                  </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
-                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
-                  </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
-                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
-                  </div>
-                </div>
-
+                <!-- Read More -->
                 <div class="article-readmore">
                   <a href="{{ article.url }}">Read Full Article &rarr;</a>
+                </div>
+
+                <!-- Compact Scores -->
+                <div class="article-scores-compact">
+                  <span class="score-compact-label">R</span><span class="score-compact-val">{{ article.relevance_score if article.relevance_score is not none else '?' }}</span>
+                  <span class="score-compact-sep">&middot;</span>
+                  <span class="score-compact-label">I</span><span class="score-compact-val">{{ article.impact_score }}</span>
+                  <span class="score-compact-sep">&middot;</span>
+                  <span class="score-compact-label">A</span><span class="score-compact-val">{{ article.authenticity_score }}</span>
                 </div>
 
               </div>
@@ -542,9 +530,6 @@
                     <hr class="footer-rule" />
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
-                    <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
-                    </span>
                   </div>
                 </td>
               </tr>

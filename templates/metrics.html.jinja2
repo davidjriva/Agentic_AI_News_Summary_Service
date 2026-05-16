@@ -204,6 +204,14 @@
       color: var(--gray-dark);
     }
 
+    .stat-secondary {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      color: var(--gray-mid);
+      margin-top: 4px;
+      letter-spacing: 0.3px;
+    }
+
     /* ── CHART ROW ──────────────────────────────────── */
     .chart-row {
       display: grid;
@@ -334,18 +342,22 @@
       <div class="stat-card">
         <div class="stat-value">{{ emails_delivered }}</div>
         <div class="stat-label">Emails Delivered</div>
+        <div class="stat-secondary">to {{ subscribers }} subscriber{{ 's' if subscribers != 1 else '' }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ subscribers }}</div>
         <div class="stat-label">Subscribers</div>
+        <div class="stat-secondary">on the mailing list</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ total_runs }}</div>
         <div class="stat-label">Total Runs</div>
+        <div class="stat-secondary">pipeline executions</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ articles_seen }}</div>
         <div class="stat-label">Articles Seen</div>
+        <div class="stat-secondary">across all sources</div>
       </div>
     </div>
 
@@ -374,6 +386,7 @@
 
     <div class="chart-full">
       <h3 class="chart-full-title">Volume Across Last 20 Successful Runs</h3>
+      <p class="chart-full-subtitle">Published articles across the last 20 successful pipeline runs</p>
       <canvas id="runTrendChart"></canvas>
     </div>
 
