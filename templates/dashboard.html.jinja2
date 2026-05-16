@@ -363,6 +363,9 @@
       color: var(--black);
     }
 
+    .count-zero    { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; color: var(--gray-light); }
+    .count-nonzero { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 700; color: #921818; }
+
     .view-link {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
@@ -448,7 +451,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
+      <span class="topbar-date">{{ today_date if today_date else 'Dashboard' }}</span>
       {% if running %}
       <div class="running-badge">
         <div class="running-dot"></div>
@@ -525,11 +528,11 @@
 
             <td>
               {% if run.status == 'success' %}
-                <span class="badge badge-success">Success</span>
+                <span class="badge badge-success">&#10003;&nbsp;Success</span>
               {% elif run.status == 'running' %}
-                <span class="badge badge-running">Running</span>
+                <span class="badge badge-running">&#8635;&nbsp;Running</span>
               {% else %}
-                <span class="badge badge-error">Error</span>
+                <span class="badge badge-error">&#10007;&nbsp;Error</span>
               {% endif %}
               {% if run.status == 'error' and run.error %}
                 <div class="error-msg">{{ run.error }}</div>
@@ -543,27 +546,18 @@
             </td>
 
             <td>
-              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
+              {% set dc = run.dropped_count if run.dropped_count is not none else 0 %}
+              <span class="{{ 'count-nonzero' if dc > 0 else 'count-zero' }}">{{ dc }}</span>
             </td>
 
             <td>
-              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
+              {% set fc = run.failed_count if run.failed_count is not none else 0 %}
+              <span class="{{ 'count-nonzero' if fc > 0 else 'count-zero' }}">{{ fc }}</span>
             </td>
 
             <td>
               <span class="duration">
-                {% if run.started_at and run.completed_at %}
-                  {% set start_parts = run.started_at.replace('T', ' ').split(' ') %}
-                  {% set end_parts = run.completed_at.replace('T', ' ').split(' ') %}
-                  {% set start_time = start_parts[1].split('.')[0].split(':') %}
-                  {% set end_time = end_parts[1].split('.')[0].split(':') %}
-                  {% set start_secs = start_time[0]|int * 3600 + start_time[1]|int * 60 + start_time[2]|int %}
-                  {% set end_secs = end_time[0]|int * 3600 + end_time[1]|int * 60 + end_time[2]|int %}
-                  {% set diff = end_secs - start_secs %}
-                  {% if diff < 0 %}{% set diff = diff + 86400 %}{% endif %}
-                  {% if diff >= 60 %}{{ (diff // 60)|int }}m {{ (diff % 60)|int }}s
-                  {% else %}{{ diff }}s{% endif %}
-                {% else %}&mdash;{% endif %}
+                {% if run.duration_str %}{{ run.duration_str }}{% else %}&mdash;{% endif %}
               </span>
             </td>
 
@@ -681,9 +675,9 @@
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
-        let cls = 'badge-success', lbl = 'Success';
-        if (run.status === 'running') { cls = 'badge-running'; lbl = 'Running'; }
-        else if (run.status === 'error') { cls = 'badge-error'; lbl = 'Error'; }
+        let cls = 'badge-success', lbl = '&#10003;&nbsp;Success';
+        if (run.status === 'running') { cls = 'badge-running'; lbl = '&#8635;&nbsp;Running'; }
+        else if (run.status === 'error') { cls = 'badge-error'; lbl = '&#10007;&nbsp;Error'; }
         statusTd.innerHTML = `<span class="badge ${cls}">${lbl}</span>`;
         if (run.status === 'error' && run.error) {
           const d = document.createElement('div');
@@ -697,26 +691,17 @@
         row.appendChild(artTd);
 
         const droppedTd = document.createElement('td');
-        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
+        const dc = run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0;
+        droppedTd.innerHTML = `<span class="${dc > 0 ? 'count-nonzero' : 'count-zero'}">${dc}</span>`;
         row.appendChild(droppedTd);
 
         const failedTd = document.createElement('td');
-        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
+        const fc = run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0;
+        failedTd.innerHTML = `<span class="${fc > 0 ? 'count-nonzero' : 'count-zero'}">${fc}</span>`;
         row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
-        let dur = '&mdash;';
-        if (run.started_at && run.completed_at) {
-          const sp = run.started_at.replace('T',' ').split(' ');
-          const ep = run.completed_at.replace('T',' ').split(' ');
-          const st = sp[1].split('.')[0].split(':');
-          const et = ep[1].split('.')[0].split(':');
-          const ss = +st[0]*3600 + +st[1]*60 + +st[2];
-          const es = +et[0]*3600 + +et[1]*60 + +et[2];
-          let d = es - ss; if (d < 0) d += 86400;
-          dur = d >= 60 ? `${Math.floor(d/60)}m ${d%60}s` : `${d}s`;
-        }
-        durTd.innerHTML = `<span class="duration">${dur}</span>`;
+        durTd.innerHTML = `<span class="duration">${run.duration_str || '&mdash;'}</span>`;
         row.appendChild(durTd);
 
         const linkTd = document.createElement('td');

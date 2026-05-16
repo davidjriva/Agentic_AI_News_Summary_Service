@@ -160,10 +160,31 @@ def dashboard(request: Request) -> HTMLResponse:
     ).fetchall()
     conn.close()
     runs = [dict(row) for row in rows]
+
+    for run in runs:
+        started = run.get("started_at")
+        completed = run.get("completed_at")
+        if started and completed:
+            try:
+                # Parse ISO timestamps (may or may not have timezone info)
+                fmt = "%Y-%m-%dT%H:%M:%S.%f" if "." in started else "%Y-%m-%dT%H:%M:%S"
+                t0 = datetime.strptime(started[:26], fmt)
+                t1 = datetime.strptime(completed[:26], fmt)
+                diff = max(0, int((t1 - t0).total_seconds()))
+                if diff >= 60:
+                    run["duration_str"] = f"{diff // 60}m {diff % 60}s"
+                else:
+                    run["duration_str"] = f"{diff}s"
+            except Exception:
+                run["duration_str"] = None
+        else:
+            run["duration_str"] = None
+
+    today_str = datetime.now(timezone.utc).strftime('%A, %B %-d, %Y')
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
-        {"runs": runs, "running": _is_running, "active": "dashboard"},
+        {"runs": runs, "running": _is_running, "active": "dashboard", "today_date": today_str},
     )
 
 
@@ -237,7 +258,27 @@ def list_runs() -> list[dict]:
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    runs = [dict(row) for row in rows]
+
+    for run in runs:
+        started = run.get("started_at")
+        completed = run.get("completed_at")
+        if started and completed:
+            try:
+                fmt = "%Y-%m-%dT%H:%M:%S.%f" if "." in started else "%Y-%m-%dT%H:%M:%S"
+                t0 = datetime.strptime(started[:26], fmt)
+                t1 = datetime.strptime(completed[:26], fmt)
+                diff = max(0, int((t1 - t0).total_seconds()))
+                if diff >= 60:
+                    run["duration_str"] = f"{diff // 60}m {diff % 60}s"
+                else:
+                    run["duration_str"] = f"{diff}s"
+            except Exception:
+                run["duration_str"] = None
+        else:
+            run["duration_str"] = None
+
+    return runs
 
 
 @app.get("/runs/{run_id}/newsletter", response_class=HTMLResponse)
