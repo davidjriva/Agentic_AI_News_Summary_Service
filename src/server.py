@@ -19,6 +19,31 @@ from src.renderer import render_newsletter
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
+
+def _fmt_ts(ts: str | None) -> str:
+    """Format ISO timestamp to human-readable string."""
+    if not ts:
+        return "—"
+    try:
+        dt = datetime.fromisoformat(ts)
+        return dt.strftime("%b %-d, %Y %I:%M %p UTC")
+    except Exception:
+        return ts or "—"
+
+
+def _calc_duration(started: str | None, completed: str | None) -> str:
+    """Calculate human-readable duration between two ISO timestamps."""
+    if not started or not completed:
+        return "—"
+    try:
+        s = datetime.fromisoformat(started)
+        e = datetime.fromisoformat(completed)
+        secs = max(0, int((e - s).total_seconds()))
+        return f"{secs // 60}m {secs % 60}s" if secs >= 60 else f"{secs}s"
+    except Exception:
+        return "—"
+
+
 _PREVIEW_ARTICLES: dict[str, list[dict]] = {
     "Anthropic Blog": [
         {"title": "Claude 4 Achieves State-of-the-Art on Long-Context Reasoning", "url": "#", "rank_score": 9.8},
@@ -160,10 +185,18 @@ def dashboard(request: Request) -> HTMLResponse:
     ).fetchall()
     conn.close()
     runs = [dict(row) for row in rows]
+    for run in runs:
+        run["started_at_fmt"] = _fmt_ts(run["started_at"])
+        run["duration"] = _calc_duration(run["started_at"], run["completed_at"])
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
-        {"runs": runs, "running": _is_running, "active": "dashboard"},
+        {
+            "runs": runs,
+            "running": _is_running,
+            "active": "dashboard",
+            "run_time": datetime.now(timezone.utc),
+        },
     )
 
 
@@ -188,6 +221,7 @@ def preview_newsletter() -> HTMLResponse:
     html, _ = render_newsletter(
         _PREVIEW_NEWSLETTER_ARTICLES,
         datetime(2026, 4, 17, 7, 0, tzinfo=timezone.utc),
+        run_id="preview",
     )
     return HTMLResponse(content=html)
 
@@ -237,7 +271,11 @@ def list_runs() -> list[dict]:
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    runs = [dict(row) for row in rows]
+    for run in runs:
+        run["started_at_fmt"] = _fmt_ts(run["started_at"])
+        run["duration"] = _calc_duration(run["started_at"], run["completed_at"])
+    return runs
 
 
 @app.get("/runs/{run_id}/newsletter", response_class=HTMLResponse)

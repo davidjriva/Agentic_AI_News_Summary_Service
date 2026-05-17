@@ -291,6 +291,10 @@
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
       .chart-row { grid-template-columns: 1fr; }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      .running-dot { animation: none; }
+    }
   </style>
 </head>
 <body>
@@ -383,7 +387,7 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p><a href="/">Dashboard</a></p>
     </div>
   </footer>
 
@@ -399,6 +403,17 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script>
+    function showEmptyState(canvasId, message) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const parent = canvas.parentElement;
+      canvas.style.display = 'none';
+      const empty = document.createElement('div');
+      empty.style.cssText = 'text-align:center;padding:40px 16px;font-family:"Helvetica Neue",sans-serif;font-size:13px;color:#888;font-style:italic;';
+      empty.textContent = message;
+      parent.appendChild(empty);
+    }
+
     const EDITORIAL_RED   = '#C41230';
     const EDITORIAL_BLACK = '#121212';
     const EDITORIAL_GRAY  = '#888888';
@@ -408,6 +423,9 @@
     Chart.defaults.color = EDITORIAL_GRAY;
 
     // Horizontal bar — Articles by Source
+    if (SOURCES_DATA.length === 0) {
+      showEmptyState('sourcesChart', 'No source data yet — run the pipeline first.');
+    } else {
     new Chart(document.getElementById('sourcesChart'), {
       type: 'bar',
       data: {
@@ -438,8 +456,12 @@
         }
       }
     });
+    }
 
     // Doughnut — Run Success Rate
+    if (STATUS_DATA.length === 0) {
+      showEmptyState('statusChart', 'No run data yet — run the pipeline first.');
+    } else {
     new Chart(document.getElementById('statusChart'), {
       type: 'doughnut',
       data: {
@@ -464,8 +486,12 @@
         }
       }
     });
+    }
 
     // Line — Articles per Run
+    if (RUN_COUNTS.length === 0) {
+      showEmptyState('runTrendChart', 'No successful runs yet — complete a pipeline run first.');
+    } else {
     new Chart(document.getElementById('runTrendChart'), {
       type: 'line',
       data: {
@@ -499,6 +525,7 @@
         }
       }
     });
+    }
   </script>
 </body>
 </html>

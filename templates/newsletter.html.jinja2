@@ -166,6 +166,11 @@
       border-bottom: 1px solid #DEDEDE;
     }
 
+    /* Top article gets a red left accent */
+    .article-card-top {
+      border-left: 4px solid #C41230;
+    }
+
     .article-card:first-of-type .article-inner {
       padding-top: 28px;
     }
@@ -191,16 +196,6 @@
       color: #C41230;
       line-height: 1;
       min-width: 32px;
-    }
-
-    .article-rank-label {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: #888;
-      display: block;
     }
 
     .article-topbar-divider {
@@ -268,16 +263,15 @@
 
     /* Scores */
     .article-scores {
-      display: flex;
-      gap: 20px;
+      display: block;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
     }
 
     .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+      display: inline-block;
+      margin-right: 20px;
+      vertical-align: baseline;
     }
 
     .score-label {
@@ -337,7 +331,7 @@
 
     .article-readmore a {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 700;
       letter-spacing: 1px;
       text-transform: uppercase;
@@ -349,13 +343,6 @@
 
     .article-readmore a:hover {
       border-bottom-color: #C41230;
-    }
-
-    /* Section break between articles */
-    .article-separator {
-      width: 100%;
-      height: 1px;
-      background: #DEDEDE;
     }
 
     /* ── FOOTER ─────────────────────────────────────── */
@@ -467,7 +454,8 @@
             <div class="intro-row">
               <span class="intro-count">
                 <strong>{{ article_count }}</strong>
-                article{{ 's' if article_count != 1 else '' }} curated &amp; ranked for you today
+                article{{ 's' if article_count != 1 else '' }} curated &amp; ranked
+                &nbsp;&middot;&nbsp; {{ run_time.strftime('%B %-d, %Y') }}
               </span>
             </div>
           </td>
@@ -477,14 +465,13 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.first %} article-card-top{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
                   <div>
                     <span class="article-rank">#{{ loop.index }}</span>
-                    <span class="article-rank-label">Rank</span>
                   </div>
                   <div class="article-topbar-divider"></div>
                   <span class="article-publication">{{ article.publication }}</span>
@@ -497,7 +484,9 @@
                 </h2>
 
                 <!-- Byline -->
+                {% if article.author and article.author not in ('Unknown', 'unknown', 'N/A', 'n/a', '') %}
                 <p class="article-byline">By {{ article.author }}</p>
+                {% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
@@ -505,16 +494,16 @@
                 <!-- Scores + Read More -->
                 <div class="article-scores">
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
-                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
-                  </div>
-                  <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
-                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-value score-impact" style="font-size:16px;">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
                     <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  </div>
+                  <div class="score-item">
+                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
+                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                 </div>
 
@@ -526,9 +515,6 @@
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
@@ -543,7 +529,7 @@
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
                     <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
+                      <a href="{{ base_url }}">View Dashboard</a>
                     </span>
                   </div>
                 </td>
