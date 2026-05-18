@@ -241,6 +241,7 @@
       font-weight: 600;
       color: var(--gray-mid);
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     .article-list a {
@@ -344,6 +345,16 @@
       font-style: italic;
     }
 
+    /* ── LOADING STATE ──────────────────────────────── */
+    .loading-indicator {
+      text-align: center;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+      padding: 8px 0;
+    }
+
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
       background: #FFF3CD;
@@ -391,7 +402,7 @@
     <!-- ── NAV ─────────────────────────────────────── -->
     <nav class="nav">
       <div class="nav-inner">
-        <a class="nav-tab" href="/">Run History</a>
+        <a class="nav-tab active" href="/">Run History</a>
         <a class="nav-tab" href="/metrics">Metrics</a>
       </div>
     </nav>
@@ -434,7 +445,7 @@
               <ul class="article-list">
                 {% for article in articles %}
                 <li>
-                  {% if article.rank_score is not none %}<span class="article-score">{{ "%.1f"|format(article.rank_score) }}</span>{% endif %}
+                  {% if article.rank_score is not none %}<span class="article-score">&#9650;&nbsp;{{ "%.1f"|format(article.rank_score) }}</span>{% endif %}
                   <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.title }}</a>
                 </li>
                 {% endfor %}
@@ -451,7 +462,7 @@
           <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="loading-indicator">Loading&hellip;</li>
         </ul>
 
         <!-- Failed articles section -->
@@ -459,7 +470,7 @@
           <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="loading-indicator">Loading&hellip;</li>
         </ul>
       </aside>
 
@@ -472,7 +483,7 @@
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">None dropped this run.</li>';
+        list.innerHTML = '<li class="loading-indicator" style="font-style:normal;">None dropped this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `
@@ -490,7 +501,7 @@
     function renderFailed(items) {
       const list = document.getElementById('failed-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">No failures this run.</li>';
+        list.innerHTML = '<li class="loading-indicator" style="font-style:normal;">No failures this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `
