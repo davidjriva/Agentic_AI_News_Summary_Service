@@ -295,9 +295,9 @@
       font-weight: 700;
     }
 
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
+    .score-relevance     { color: #121212; }
+    .score-impact        { color: #121212; }
+    .score-authenticity  { color: #121212; }
 
     /* Score label tooltips (browser only; email clients use title attr) */
     .score-label {
@@ -331,7 +331,8 @@
 
     /* Read more link */
     .article-readmore {
-      margin-top: 16px;
+      margin-top: 0;
+      margin-bottom: 16px;
       display: block;
     }
 
@@ -349,6 +350,15 @@
 
     .article-readmore a:hover {
       border-bottom-color: #C41230;
+    }
+
+    /* Lead article treatment */
+    .article-card--lead {
+      background-color: #FFFCF7;
+      border-left: 4px solid #C41230;
+    }
+    .article-card--lead .article-headline {
+      font-size: 26px;
     }
 
     /* Section break between articles */
@@ -477,7 +487,7 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.index == 1 %} article-card--lead{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
@@ -502,7 +512,11 @@
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
 
-                <!-- Scores + Read More -->
+                <div class="article-readmore">
+                  <a href="{{ article.url }}">Read Full Article &rarr;</a>
+                </div>
+
+                <!-- Scores -->
                 <div class="article-scores">
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
@@ -516,10 +530,6 @@
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
                     <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
-                </div>
-
-                <div class="article-readmore">
-                  <a href="{{ article.url }}">Read Full Article &rarr;</a>
                 </div>
 
               </div>
@@ -542,9 +552,6 @@
                     <hr class="footer-rule" />
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
-                    <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
-                    </span>
                   </div>
                 </td>
               </tr>
