@@ -176,12 +176,38 @@
 
     /* Rank + publication bar */
     .article-topbar {
+      width: 100%;
       margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
       border-bottom: 1px solid #DEDEDE;
       padding-bottom: 12px;
+    }
+    .article-topbar-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .article-topbar-rank-cell {
+      vertical-align: middle;
+      padding-right: 10px;
+      white-space: nowrap;
+    }
+    .article-topbar-divider-cell {
+      vertical-align: middle;
+      padding-right: 10px;
+      width: 1px;
+    }
+    .article-topbar-divider-inner {
+      width: 1px;
+      height: 32px;
+      background: #DEDEDE;
+      display: block;
+    }
+    .article-topbar-pub-cell {
+      vertical-align: middle;
+    }
+    .article-topbar-date-cell {
+      vertical-align: middle;
+      text-align: right;
+      white-space: nowrap;
     }
 
     .article-rank {
@@ -203,13 +229,6 @@
       display: block;
     }
 
-    .article-topbar-divider {
-      width: 1px;
-      height: 32px;
-      background: #DEDEDE;
-      flex-shrink: 0;
-    }
-
     .article-publication {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
@@ -217,7 +236,6 @@
       letter-spacing: 1px;
       text-transform: uppercase;
       color: #121212;
-      flex: 1;
     }
 
     .article-pub-date {
@@ -268,16 +286,23 @@
 
     /* Scores */
     .article-scores {
-      display: flex;
-      gap: 20px;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
     }
-
+    .article-scores-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .article-scores-cell {
+      vertical-align: top;
+      padding-right: 20px;
+      width: 33%;
+    }
+    .article-scores-cell:last-child {
+      padding-right: 0;
+    }
     .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+      display: block;
     }
 
     .score-label {
@@ -329,34 +354,20 @@
 
     .score-label:hover::after { opacity: 1; }
 
-    /* Read more link */
-    .article-readmore {
-      margin-top: 16px;
+    .score-bar {
+      display: block;
+      width: 60px;
+      height: 3px;
+      background: #EFEFEF;
+      margin-top: 4px;
+    }
+    .score-bar-fill {
+      height: 3px;
       display: block;
     }
-
-    .article-readmore a {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: #C41230;
-      text-decoration: none;
-      border-bottom: 1px solid transparent;
-      transition: border-color 0.15s;
-    }
-
-    .article-readmore a:hover {
-      border-bottom-color: #C41230;
-    }
-
-    /* Section break between articles */
-    .article-separator {
-      width: 100%;
-      height: 1px;
-      background: #DEDEDE;
-    }
+    .score-bar-fill-relevance  { background: #1A3D7A; }
+    .score-bar-fill-impact     { background: #1A5C1A; }
+    .score-bar-fill-authenticity { background: #7B5B00; }
 
     /* ── FOOTER ─────────────────────────────────────── */
     .footer-table {
@@ -406,11 +417,14 @@
       .article-headline { font-size: 19px !important; }
       .article-summary { font-size: 13px !important; }
       .article-rank { font-size: 22px !important; }
-      .article-topbar { flex-wrap: wrap; }
+      .article-topbar-table { width: 100% !important; }
     }
   </style>
 </head>
 <body>
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+  {{ article_count }} AI &amp; ML stories curated and ranked for {{ run_time.strftime('%B %-d, %Y') }} &mdash; The Agentic Times
+</div>
   <center>
     <div class="wrapper">
       <table class="main" cellpadding="0" cellspacing="0">
@@ -482,13 +496,23 @@
 
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
-                  <div>
-                    <span class="article-rank">#{{ loop.index }}</span>
-                    <span class="article-rank-label">Rank</span>
-                  </div>
-                  <div class="article-topbar-divider"></div>
-                  <span class="article-publication">{{ article.publication }}</span>
-                  <span class="article-pub-date">{{ article.published_at.strftime('%b %-d, %Y') }}</span>
+                  <table class="article-topbar-table" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td class="article-topbar-rank-cell">
+                        <span class="article-rank">#{{ loop.index }}</span>
+                        <span class="article-rank-label">Rank</span>
+                      </td>
+                      <td class="article-topbar-divider-cell">
+                        <span class="article-topbar-divider-inner"></span>
+                      </td>
+                      <td class="article-topbar-pub-cell">
+                        <span class="article-publication">{{ article.publication }}</span>
+                      </td>
+                      <td class="article-topbar-date-cell">
+                        <span class="article-pub-date">{{ article.published_at.strftime('%b %-d, %Y') }}</span>
+                      </td>
+                    </tr>
+                  </table>
                 </div>
 
                 <!-- Headline -->
@@ -502,33 +526,39 @@
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
 
-                <!-- Scores + Read More -->
+                <!-- Scores -->
                 <div class="article-scores">
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
-                    <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
-                  </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
-                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
-                  </div>
-                  <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
-                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
-                  </div>
-                </div>
-
-                <div class="article-readmore">
-                  <a href="{{ article.url }}">Read Full Article &rarr;</a>
+                  <table class="article-scores-table" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td class="article-scores-cell">
+                        <div class="score-item">
+                          <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
+                          <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                          <span class="score-bar"><span class="score-bar-fill score-bar-fill-relevance" style="width:{{ ((article.relevance_score if article.relevance_score is not none else 0) / 10 * 60)|int }}px;"></span></span>
+                        </div>
+                      </td>
+                      <td class="article-scores-cell">
+                        <div class="score-item">
+                          <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
+                          <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                          <span class="score-bar"><span class="score-bar-fill score-bar-fill-impact" style="width:{{ (article.impact_score / 10 * 60)|int }}px;"></span></span>
+                        </div>
+                      </td>
+                      <td class="article-scores-cell">
+                        <div class="score-item">
+                          <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
+                          <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                          <span class="score-bar"><span class="score-bar-fill score-bar-fill-authenticity" style="width:{{ (article.authenticity_score / 10 * 60)|int }}px;"></span></span>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
                 </div>
 
               </div>
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
@@ -541,10 +571,7 @@
                     <span class="footer-brand">The Agentic Times</span>
                     <hr class="footer-rule" />
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
-                    <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
-                    <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
-                    </span>
+                    <span class="footer-meta">Generated {{ run_time.strftime('%B %-d, %Y at %H:%M UTC') }}</span>
                   </div>
                 </td>
               </tr>

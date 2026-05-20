@@ -143,6 +143,35 @@ _PREVIEW_NEWSLETTER_ARTICLES: list[dict] = [
     },
 ]
 
+def _format_run_for_display(run: dict) -> dict:
+    """Add human-readable display fields to a run dict."""
+    from datetime import datetime as _dt
+    run = dict(run)
+    # Format started_at as human-readable
+    raw = run.get("started_at") or ""
+    try:
+        ts = _dt.fromisoformat(raw.replace("Z", "+00:00"))
+        run["started_at_display"] = ts.strftime("%b %-d at %-I:%M %p")
+    except (ValueError, AttributeError):
+        run["started_at_display"] = raw[:16].replace("T", " ") if raw else "—"
+    # Compute duration display
+    started = run.get("started_at") or ""
+    completed = run.get("completed_at") or ""
+    run["duration_display"] = "—"
+    if started and completed:
+        try:
+            s = _dt.fromisoformat(started.replace("Z", "+00:00"))
+            e = _dt.fromisoformat(completed.replace("Z", "+00:00"))
+            secs = max(0, int((e - s).total_seconds()))
+            if secs >= 60:
+                run["duration_display"] = f"{secs // 60}m {secs % 60}s"
+            else:
+                run["duration_display"] = f"{secs}s"
+        except (ValueError, AttributeError):
+            pass
+    return run
+
+
 app = FastAPI(title="Agentic AI News Dashboard")
 
 _running_lock = threading.Lock()
@@ -159,7 +188,7 @@ def dashboard(request: Request) -> HTMLResponse:
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
-    runs = [dict(row) for row in rows]
+    runs = [_format_run_for_display(dict(row)) for row in rows]
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
@@ -237,7 +266,7 @@ def list_runs() -> list[dict]:
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return [_format_run_for_display(dict(row)) for row in rows]
 
 
 @app.get("/runs/{run_id}/newsletter", response_class=HTMLResponse)
