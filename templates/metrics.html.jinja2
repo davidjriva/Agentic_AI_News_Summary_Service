@@ -204,6 +204,15 @@
       color: var(--gray-dark);
     }
 
+    .stat-context {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      color: var(--gray-mid);
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+      font-style: italic;
+    }
+
     /* ── CHART ROW ──────────────────────────────────── */
     .chart-row {
       display: grid;
@@ -221,9 +230,9 @@
 
     .chart-box-title {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 1.5px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
       color: var(--gray-dark);
       margin: 0 0 18px 0;
@@ -242,9 +251,9 @@
 
     .chart-full-title {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 1.5px;
+      letter-spacing: 1.2px;
       text-transform: uppercase;
       color: var(--gray-dark);
       margin: 0 0 18px 0;
@@ -334,18 +343,22 @@
       <div class="stat-card">
         <div class="stat-value">{{ emails_delivered }}</div>
         <div class="stat-label">Emails Delivered</div>
+        <div class="stat-context">all time</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ subscribers }}</div>
         <div class="stat-label">Subscribers</div>
+        <div class="stat-context">active recipients</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ total_runs }}</div>
         <div class="stat-label">Total Runs</div>
+        <div class="stat-context">pipeline executions</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ articles_seen }}</div>
         <div class="stat-label">Articles Seen</div>
+        <div class="stat-context">deduplicated cache</div>
       </div>
     </div>
 
@@ -410,6 +423,23 @@
     // Horizontal bar — Articles by Source
     new Chart(document.getElementById('sourcesChart'), {
       type: 'bar',
+      plugins: [{
+        id: 'barLabels',
+        afterDatasetsDraw(chart) {
+          const { ctx, data } = chart;
+          ctx.save();
+          chart.getDatasetMeta(0).data.forEach((bar, i) => {
+            const val = data.datasets[0].data[i];
+            if (val > 0) {
+              ctx.fillStyle = EDITORIAL_BLACK;
+              ctx.font = '600 10px Helvetica Neue, Arial, sans-serif';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(val, bar.x + 5, bar.y);
+            }
+          });
+          ctx.restore();
+        }
+      }],
       data: {
         labels: SOURCES_LABELS,
         datasets: [{
@@ -417,18 +447,29 @@
           data: SOURCES_DATA,
           backgroundColor: EDITORIAL_BLACK,
           borderRadius: 0,
+          barThickness: 14,
         }]
       },
       options: {
         indexAxis: 'y',
         responsive: true,
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => ` ${ctx.parsed.x} articles`
+            }
+          }
         },
         scales: {
           x: {
             beginAtZero: true,
-            ticks: { precision: 0, color: EDITORIAL_GRAY, font: { size: 11 } },
+            ticks: {
+              precision: 0,
+              color: EDITORIAL_GRAY,
+              font: { size: 11 },
+              callback: function(value) { return value === 0 ? '' : value; }
+            },
             grid: { color: EDITORIAL_LIGHT }
           },
           y: {

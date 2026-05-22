@@ -421,6 +421,30 @@
     .footer a { color: #888; text-decoration: none; }
     .footer a:hover { color: #aaa; }
 
+    /* ── ARTICLE SUB-COUNTS ─────────────────────────── */
+    .article-sub-counts {
+      margin-top: 3px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .sub-count-dropped {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      color: #856404;
+      background: #FFF8E1;
+      padding: 1px 6px;
+      letter-spacing: 0.3px;
+    }
+    .sub-count-failed {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      color: #921818;
+      background: #FDE8E8;
+      padding: 1px 6px;
+      letter-spacing: 0.3px;
+    }
+
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media (max-width: 620px) {
       .masthead-title { font-size: 32px; }
@@ -448,13 +472,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
-      {% if running %}
-      <div class="running-badge">
-        <div class="running-dot"></div>
-        Run in Progress
-      </div>
-      {% endif %}
+      <span class="topbar-date" id="topbar-date">Dashboard</span>
     </div>
   </div>
 
@@ -512,8 +530,6 @@
             <th>Started</th>
             <th>Status</th>
             <th>Articles</th>
-            <th>Dropped</th>
-            <th>Failed</th>
             <th>Duration</th>
             <th>Edition</th>
           </tr>
@@ -540,14 +556,12 @@
               <span class="article-count">
                 {% if run.article_count is not none %}{{ run.article_count }}{% else %}&mdash;{% endif %}
               </span>
-            </td>
-
-            <td>
-              <span class="article-count">{{ run.dropped_count if run.dropped_count is not none else 0 }}</span>
-            </td>
-
-            <td>
-              <span class="article-count">{{ run.failed_count if run.failed_count is not none else 0 }}</span>
+              {% if run.dropped_count or run.failed_count %}
+              <div class="article-sub-counts">
+                {% if run.dropped_count %}<span class="sub-count-dropped">{{ run.dropped_count }} dropped</span>{% endif %}
+                {% if run.failed_count %}<span class="sub-count-failed">{{ run.failed_count }} failed</span>{% endif %}
+              </div>
+              {% endif %}
             </td>
 
             <td>
@@ -597,6 +611,16 @@
   </footer>
 
   <script>
+    function formatTimestamp(iso) {
+      if (!iso) return '—';
+      try {
+        const d = new Date(iso.replace(' ', 'T'));
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          + ' · '
+          + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      } catch(e) { return iso; }
+    }
+
     let pollingInterval = null;
     let activeRunId = null;
 
@@ -621,8 +645,6 @@
       row.innerHTML = `
         <td><span class="ts">Just now\u2026</span></td>
         <td><span class="badge badge-running">Running</span></td>
-        <td><span class="article-count">&mdash;</span></td>
-        <td><span class="article-count">&mdash;</span></td>
         <td><span class="article-count">&mdash;</span></td>
         <td><span class="duration">&mdash;</span></td>
         <td>&mdash;</td>
@@ -677,7 +699,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts">${formatTimestamp(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
@@ -693,16 +715,13 @@
         row.appendChild(statusTd);
 
         const artTd = document.createElement('td');
-        artTd.innerHTML = `<span class="article-count">${run.article_count !== null ? run.article_count : '&mdash;'}</span>`;
+        let artHtml = `<span class="article-count">${run.article_count !== null ? run.article_count : '&mdash;'}</span>`;
+        const subs = [];
+        if (run.dropped_count) subs.push(`<span class="sub-count-dropped">${run.dropped_count} dropped</span>`);
+        if (run.failed_count) subs.push(`<span class="sub-count-failed">${run.failed_count} failed</span>`);
+        if (subs.length) artHtml += `<div class="article-sub-counts">${subs.join('')}</div>`;
+        artTd.innerHTML = artHtml;
         row.appendChild(artTd);
-
-        const droppedTd = document.createElement('td');
-        droppedTd.innerHTML = `<span class="article-count">${run.dropped_count !== null && run.dropped_count !== undefined ? run.dropped_count : 0}</span>`;
-        row.appendChild(droppedTd);
-
-        const failedTd = document.createElement('td');
-        failedTd.innerHTML = `<span class="article-count">${run.failed_count !== null && run.failed_count !== undefined ? run.failed_count : 0}</span>`;
-        row.appendChild(failedTd);
 
         const durTd = document.createElement('td');
         let dur = '&mdash;';
@@ -748,6 +767,20 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Set current date in topbar
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      const el = document.getElementById('topbar-date');
+      if (el) el.textContent = dateStr;
+
+      // Format any pre-rendered ISO timestamps
+      document.querySelectorAll('.ts').forEach(el => {
+        const raw = el.textContent.trim();
+        if (raw.includes('T') || raw.match(/\d{4}-\d{2}-\d{2}/)) {
+          el.textContent = formatTimestamp(raw);
+        }
+      });
+
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
     });
