@@ -344,6 +344,63 @@
       font-style: italic;
     }
 
+    /* ── LOADING SPINNER ────────────────────────────────── */
+    .loading-spinner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+      gap: 8px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+    }
+    .spinner-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gray-mid);
+      animation: spinnerPulse 1.4s ease-in-out infinite;
+    }
+    .spinner-dot:nth-child(2) { animation-delay: 0.2s; }
+    .spinner-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes spinnerPulse {
+      0%, 100% { opacity: 0.3; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1); }
+    }
+
+    .filtered-list .empty-state,
+    .failed-list .empty-state {
+      text-align: center;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+      padding: 12px 0;
+      list-style: none;
+    }
+
+    .article-score::before {
+      content: '↑';
+      font-size: 8px;
+      margin-right: 1px;
+      opacity: 0.6;
+    }
+
+    .sidebar-section-header.header-dropped {
+      border-top-color: #856404;
+    }
+    .sidebar-section-header.header-dropped .sidebar-section-title {
+      color: #856404;
+    }
+    .sidebar-section-header.header-failed {
+      border-top-color: #921818;
+    }
+    .sidebar-section-header.header-failed .sidebar-section-title {
+      color: #921818;
+    }
+
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
       background: #FFF3CD;
@@ -447,19 +504,19 @@
         </div>
 
         <!-- Filtered (dropped) articles section -->
-        <div class="sidebar-section-header">
+        <div class="sidebar-section-header header-dropped">
           <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li><div class="loading-spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div>Loading</div></li>
         </ul>
 
         <!-- Failed articles section -->
-        <div class="sidebar-section-header">
+        <div class="sidebar-section-header header-failed">
           <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li><div class="loading-spinner"><div class="spinner-dot"></div><div class="spinner-dot"></div><div class="spinner-dot"></div>Loading</div></li>
         </ul>
       </aside>
 
@@ -472,7 +529,7 @@
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">None dropped this run.</li>';
+        list.innerHTML = '<li class="empty-state">None dropped this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `
@@ -490,7 +547,7 @@
     function renderFailed(items) {
       const list = document.getElementById('failed-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">No failures this run.</li>';
+        list.innerHTML = '<li class="empty-state">No failures this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `
