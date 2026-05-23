@@ -177,11 +177,20 @@
     /* Rank + publication bar */
     .article-topbar {
       margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
       border-bottom: 1px solid #DEDEDE;
       padding-bottom: 12px;
+      font-size: 0;
+    }
+
+    .article-topbar > * {
+      display: inline-block;
+      vertical-align: middle;
+      font-size: 14px;
+      margin-right: 10px;
+    }
+
+    .article-topbar > *:last-child {
+      margin-right: 0;
     }
 
     .article-rank {
@@ -203,11 +212,32 @@
       display: block;
     }
 
+    /* Top story featured treatment */
+    .article-card--featured {
+      border-left: 4px solid #C41230;
+    }
+
+    .top-story-eyebrow {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #C41230;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .article-headline--featured {
+      font-size: 26px;
+      line-height: 1.25;
+    }
+
     .article-topbar-divider {
       width: 1px;
       height: 32px;
       background: #DEDEDE;
-      flex-shrink: 0;
+      margin: 0 0 0 0;
     }
 
     .article-publication {
@@ -217,7 +247,6 @@
       letter-spacing: 1px;
       text-transform: uppercase;
       color: #121212;
-      flex: 1;
     }
 
     .article-pub-date {
@@ -268,16 +297,21 @@
 
     /* Scores */
     .article-scores {
-      display: flex;
-      gap: 20px;
+      display: block;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
+      font-size: 0;
     }
 
     .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+      display: inline-block;
+      vertical-align: baseline;
+      margin-right: 20px;
+      font-size: 14px;
+    }
+
+    .score-item:last-child {
+      margin-right: 0;
     }
 
     .score-label {
@@ -295,9 +329,9 @@
       font-weight: 700;
     }
 
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
+    .score-relevance     { color: #888888; }
+    .score-impact        { color: #C41230; }
+    .score-authenticity  { color: #333333; }
 
     /* Score label tooltips (browser only; email clients use title attr) */
     .score-label {
@@ -406,7 +440,7 @@
       .article-headline { font-size: 19px !important; }
       .article-summary { font-size: 13px !important; }
       .article-rank { font-size: 22px !important; }
-      .article-topbar { flex-wrap: wrap; }
+      .article-topbar > * { margin-right: 8px; }
     }
   </style>
 </head>
@@ -466,8 +500,7 @@
           <td>
             <div class="intro-row">
               <span class="intro-count">
-                <strong>{{ article_count }}</strong>
-                article{{ 's' if article_count != 1 else '' }} curated &amp; ranked for you today
+                <strong>{{ article_count }}</strong> article{{ 's' if article_count != 1 else '' }} curated, scored &amp; ranked by relevance to agentic AI
               </span>
             </div>
           </td>
@@ -477,8 +510,12 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.index == 1 %} article-card--featured{% endif %}">
               <div class="article-inner">
+
+                {% if loop.index == 1 %}
+                <span class="top-story-eyebrow">Top Story</span>
+                {% endif %}
 
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
@@ -492,7 +529,7 @@
                 </div>
 
                 <!-- Headline -->
-                <h2 class="article-headline">
+                <h2 class="article-headline{% if loop.index == 1 %} article-headline--featured{% endif %}">
                   <a href="{{ article.url }}">{{ article.title }}</a>
                 </h2>
 
@@ -504,6 +541,12 @@
 
                 <!-- Scores + Read More -->
                 <div class="article-scores">
+                  {% if article.impact_score is not none and article.authenticity_score is not none %}
+                  <div class="score-item score-item--composite">
+                    <span class="score-label" title="Weighted rank score: Impact × 0.6 + Authenticity × 0.4">Score</span>
+                    <span class="score-value" style="color:#121212;">{{ "%.1f"|format(article.impact_score * 0.6 + article.authenticity_score * 0.4) }}<span style="font-size:11px;color:#888;">/10</span></span>
+                  </div>
+                  {% endif %}
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
                     <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
@@ -540,11 +583,8 @@
                   <div class="footer-inner">
                     <span class="footer-brand">The Agentic Times</span>
                     <hr class="footer-rule" />
-                    <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
-                    <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
-                    </span>
+                    <span class="footer-meta">Automated AI News &amp; Analysis</span>
                   </div>
                 </td>
               </tr>

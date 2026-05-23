@@ -88,7 +88,8 @@
     .masthead-ts {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
-      color: #666;
+      color: #aaa;
+      font-style: italic;
     }
 
     /* ── NAV ────────────────────────────────────────── */
@@ -238,9 +239,10 @@
     .article-score {
       flex-shrink: 0;
       font-size: 10px;
-      font-weight: 600;
-      color: var(--gray-mid);
+      font-weight: 700;
+      color: var(--red);
       font-variant-numeric: tabular-nums;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     }
 
     .article-list a {
@@ -269,8 +271,9 @@
     .sidebar-section-header {
       background: var(--bg-section);
       padding: 12px 20px 10px;
-      border-top: 2px solid var(--border);
+      border-top: 3px solid var(--black);
       border-bottom: 1px solid var(--border);
+      margin-top: 8px;
     }
 
     .sidebar-section-title {
@@ -380,7 +383,7 @@
           <a class="masthead-back" href="/">&larr; Dashboard</a>
           <span class="masthead-sep">/</span>
           <span class="masthead-brand">The Agentic Times</span>
-          <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          <span class="masthead-edition">Edition · {{ started_at[:10] if started_at and started_at != 'Preview Mode' else 'Preview' }}</span>
         </div>
         {% if started_at %}
         <span class="masthead-ts">{{ started_at }}</span>
@@ -417,9 +420,7 @@
         <div class="sidebar-header">
           <h2 class="sidebar-header-title">Articles by Source</h2>
           <p class="sidebar-header-meta">
-            {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
-            &mdash;
-            {{ sources.values() | map('length') | sum }} fetched
+            {{ sources.values() | map('length') | sum }} article{{ 's' if sources.values() | map('length') | sum != 1 else '' }} from {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
           </p>
         </div>
 
@@ -508,14 +509,20 @@
     {% else %}
     document.addEventListener('DOMContentLoaded', () => {
       fetch(`/runs/${RUN_ID}/filtered`)
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('network'); return r.json(); })
         .then(data => renderFiltered(data.filtered))
-        .catch(() => renderFiltered([]));
+        .catch(() => {
+          const list = document.getElementById('filtered-list');
+          list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:#888;font-style:italic;">Unable to load dropped articles.</li>';
+        });
 
       fetch(`/runs/${RUN_ID}/failed`)
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('network'); return r.json(); })
         .then(data => renderFailed(data.failed))
-        .catch(() => renderFailed([]));
+        .catch(() => {
+          const list = document.getElementById('failed-list');
+          list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:#888;font-style:italic;">Unable to load failed articles.</li>';
+        });
     });
     {% endif %}
   </script>
