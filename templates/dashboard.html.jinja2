@@ -30,60 +30,45 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── MASTHEAD ───────────────────────────────────── */
+    /* ── MASTHEAD (compact dashboard header) ──────────────── */
     .masthead {
       background: var(--black);
-      text-align: center;
+      border-bottom: 3px solid var(--red);
     }
 
     .masthead-inner {
       max-width: 900px;
       margin: 0 auto;
-      padding: 28px 20px 20px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
     }
 
-    .masthead-eyebrow {
+    .masthead-brand {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .masthead-sub {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 10px;
       font-weight: 700;
-      letter-spacing: 2.5px;
+      letter-spacing: 2px;
       text-transform: uppercase;
-      color: var(--gray-light);
-      margin-bottom: 10px;
-    }
-
-    .masthead-rule {
-      border: none;
-      border-top: 1px solid #3a3a3a;
-      margin: 10px auto 14px;
-      width: 300px;
-    }
-
-    .masthead-title {
-      font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 48px;
-      font-weight: 700;
-      color: #FFFFFF;
-      letter-spacing: -1px;
-      line-height: 1;
-      margin: 0;
-    }
-
-    .masthead-tagline {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
-      font-weight: 400;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: #999;
-      margin-top: 14px;
+      color: #888;
     }
 
     /* ── TOP BAR ────────────────────────────────────── */
     .topbar {
       background: var(--black);
-      border-top: 1px solid #222;
-      border-bottom: 3px solid var(--red);
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #222;
     }
 
     .topbar-inner {
@@ -423,7 +408,7 @@
 
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media (max-width: 620px) {
-      .masthead-title { font-size: 32px; }
+      .masthead-brand { font-size: 18px; }
       .page-wrapper { padding: 20px 16px 40px; }
       .controls-card { padding: 20px; }
       .controls-actions { flex-direction: column; align-items: stretch; }
@@ -437,11 +422,8 @@
   <!-- ── MASTHEAD ─────────────────────────────────────── -->
   <header class="masthead">
     <div class="masthead-inner">
-      <div class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</div>
-      <hr class="masthead-rule" />
-      <h1 class="masthead-title">The Agentic Times</h1>
-      <hr class="masthead-rule" />
-      <div class="masthead-tagline">AI News &amp; Analysis &nbsp;&middot;&nbsp; Pipeline Dashboard</div>
+      <span class="masthead-brand">The Agentic Times</span>
+      <span class="masthead-sub">Pipeline Dashboard</span>
     </div>
   </header>
 
@@ -495,6 +477,7 @@
           Run in Progress &mdash; Please Wait
         </div>
         {% endif %}
+        <p style="width:100%;margin-top:8px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;color:#888;font-style:italic;">Clean Run clears the last 12&nbsp;hours from the deduplication cache before fetching, so recently-seen articles are re-eligible.</p>
       </div>
     </div>
 
@@ -581,7 +564,7 @@
       {% else %}
       <div class="empty-state">
         <div class="empty-state-headline">No Editions Yet</div>
-        <div class="empty-state-body">Click <strong>Run Now</strong> to generate your first newsletter.</div>
+        <div class="empty-state-body">Trigger your first pipeline run using <strong>Run Now</strong> above. The digest will fetch, rank, and deliver the latest AI articles to your subscribers.</div>
       </div>
       {% endif %}
     </div>
@@ -592,7 +575,6 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
     </div>
   </footer>
 
