@@ -41,6 +41,10 @@ LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "anthropic")
 LOCAL_LLM_URL: str = os.getenv("LOCAL_LLM_URL", "http://localhost:8080")
 LOCAL_LLM_MODEL: str = os.getenv("LOCAL_LLM_MODEL", "local")
 RELEVANCE_THRESHOLD: int = int(os.getenv("RELEVANCE_THRESHOLD", "6"))
+
+# Optional public-facing URL for the dashboard, shown in the newsletter footer.
+# Leave blank to omit the "View Dashboard" footer link from emails.
+DASHBOARD_URL: str = os.getenv("DASHBOARD_URL", "")
 PROCESSOR_MAX_RETRIES: int = int(os.getenv("PROCESSOR_MAX_RETRIES", "2"))
 PROCESSOR_RETRY_DELAY: float = float(os.getenv("PROCESSOR_RETRY_DELAY", "2.0"))
 

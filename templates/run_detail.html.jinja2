@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Edition {{ run_id[:8] }} &mdash; The Agentic Times</title>
+  <title>The Agentic Times &mdash; Edition {{ started_at[:10] if started_at else run_id[:8] }}</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -88,7 +88,8 @@
     .masthead-ts {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 11px;
-      color: #666;
+      color: #888;
+      font-style: italic;
     }
 
     /* ── NAV ────────────────────────────────────────── */
@@ -141,6 +142,41 @@
     .newsletter-pane {
       flex: 1 1 0;
       min-width: 0;
+      position: relative;
+    }
+
+    /* ── IFRAME LOADER ──────────────────────────────── */
+    .iframe-loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-section);
+      z-index: 2;
+    }
+
+    .iframe-loader-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .iframe-loader-text {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      color: var(--gray-mid);
+      font-style: italic;
+      margin: 0;
     }
 
     .newsletter-pane iframe {
@@ -152,7 +188,7 @@
 
     /* ── SIDEBAR ────────────────────────────────────── */
     .sidebar {
-      width: 272px;
+      width: 300px;
       flex-shrink: 0;
       background: var(--bg);
       border-left: 1px solid var(--border);
@@ -237,10 +273,24 @@
 
     .article-score {
       flex-shrink: 0;
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--gray-mid);
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--black);
+      padding: 2px 5px;
       font-variant-numeric: tabular-nums;
+      letter-spacing: 0.3px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+
+    /* ── SIDEBAR LOADING ────────────────────────────── */
+    .sidebar-loading {
+      text-align: center;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
+      font-style: italic;
+      padding: 12px 0;
     }
 
     .article-list a {
@@ -380,7 +430,7 @@
           <a class="masthead-back" href="/">&larr; Dashboard</a>
           <span class="masthead-sep">/</span>
           <span class="masthead-brand">The Agentic Times</span>
-          <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          <span class="masthead-edition">&mdash;&nbsp;Edition {{ started_at[:10] if started_at else run_id[:8] }}</span>
         </div>
         {% if started_at %}
         <span class="masthead-ts">{{ started_at }}</span>
@@ -391,7 +441,7 @@
     <!-- ── NAV ─────────────────────────────────────── -->
     <nav class="nav">
       <div class="nav-inner">
-        <a class="nav-tab" href="/">Run History</a>
+        <a class="nav-tab active" href="/">Run History</a>
         <a class="nav-tab" href="/metrics">Metrics</a>
       </div>
     </nav>
@@ -405,10 +455,14 @@
 
       <!-- Newsletter iframe -->
       <div class="newsletter-pane">
+        <div class="iframe-loader" id="iframe-loader">
+          <div class="iframe-loader-spinner"></div>
+          <p class="iframe-loader-text">Loading edition&hellip;</p>
+        </div>
         {% if preview %}
-        <iframe src="/preview/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/preview/newsletter" title="Newsletter Edition" id="newsletter-frame" style="opacity: 0;"></iframe>
         {% else %}
-        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition" id="newsletter-frame" style="opacity: 0;"></iframe>
         {% endif %}
       </div>
 
@@ -451,7 +505,7 @@
           <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="sidebar-loading">Loading&hellip;</li>
         </ul>
 
         <!-- Failed articles section -->
@@ -459,7 +513,7 @@
           <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="sidebar-loading">Loading&hellip;</li>
         </ul>
       </aside>
 
@@ -469,10 +523,23 @@
   <script>
     const RUN_ID = "{{ run_id }}";
 
+    // Handle iframe loading state
+    const frame = document.getElementById('newsletter-frame');
+    const loader = document.getElementById('iframe-loader');
+    if (frame && loader) {
+      frame.addEventListener('load', () => {
+        loader.style.opacity = '0';
+        loader.style.transition = 'opacity 0.3s ease';
+        frame.style.opacity = '1';
+        frame.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => { loader.style.display = 'none'; }, 300);
+      });
+    }
+
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">None dropped this run.</li>';
+        list.innerHTML = '<li class="sidebar-loading">None dropped this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `
@@ -490,7 +557,7 @@
     function renderFailed(items) {
       const list = document.getElementById('failed-list');
       if (!items || items.length === 0) {
-        list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">No failures this run.</li>';
+        list.innerHTML = '<li class="sidebar-loading">No failures this run.</li>';
         return;
       }
       list.innerHTML = items.map(a => `
