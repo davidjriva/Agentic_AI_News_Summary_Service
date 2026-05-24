@@ -166,8 +166,8 @@
       border-bottom: 1px solid #DEDEDE;
     }
 
-    .article-card:first-of-type .article-inner {
-      padding-top: 28px;
+    .article-card--featured {
+      border-top: 3px solid #C41230;
     }
 
     .article-inner {
@@ -177,9 +177,8 @@
     /* Rank + publication bar */
     .article-topbar {
       margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: table;
+      width: 100%;
       border-bottom: 1px solid #DEDEDE;
       padding-bottom: 12px;
     }
@@ -205,9 +204,9 @@
 
     .article-topbar-divider {
       width: 1px;
-      height: 32px;
       background: #DEDEDE;
-      flex-shrink: 0;
+      display: table-cell;
+      padding: 0 1px;
     }
 
     .article-publication {
@@ -217,7 +216,6 @@
       letter-spacing: 1px;
       text-transform: uppercase;
       color: #121212;
-      flex: 1;
     }
 
     .article-pub-date {
@@ -268,16 +266,15 @@
 
     /* Scores */
     .article-scores {
-      display: flex;
-      gap: 20px;
+      display: block;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
     }
 
     .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+      display: inline-block;
+      margin-right: 20px;
+      vertical-align: middle;
     }
 
     .score-label {
@@ -286,48 +283,20 @@
       font-weight: 700;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      color: #888;
+      color: #555;
+      display: block;
     }
 
     .score-value {
       font-family: Georgia, 'Times New Roman', Times, serif;
       font-size: 15px;
       font-weight: 700;
+      color: #121212;
     }
 
-    .score-relevance     { color: #1A3D7A; }
-    .score-impact        { color: #1A5C1A; }
-    .score-authenticity  { color: #7B5B00; }
-
-    /* Score label tooltips (browser only; email clients use title attr) */
-    .score-label {
-      position: relative;
-      cursor: help;
-    }
-
-    .score-label::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      width: 190px;
-      background: #121212;
-      color: #ddd;
-      font-size: 10px;
-      font-weight: 400;
-      letter-spacing: 0.3px;
-      text-transform: none;
-      white-space: normal;
-      text-align: center;
-      padding: 6px 10px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.15s;
-      z-index: 10;
-    }
-
-    .score-label:hover::after { opacity: 1; }
+    .score-relevance     { color: #121212; }
+    .score-impact        { color: #121212; }
+    .score-authenticity  { color: #121212; }
 
     /* Read more link */
     .article-readmore {
@@ -406,7 +375,7 @@
       .article-headline { font-size: 19px !important; }
       .article-summary { font-size: 13px !important; }
       .article-rank { font-size: 22px !important; }
-      .article-topbar { flex-wrap: wrap; }
+      .article-topbar { display: block; }
     }
   </style>
 </head>
@@ -477,18 +446,23 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.first %} article-card--featured{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
                 <div class="article-topbar">
-                  <div>
+                  <div style="display: table-cell; vertical-align: middle; padding-right: 10px; white-space: nowrap;">
                     <span class="article-rank">#{{ loop.index }}</span>
                     <span class="article-rank-label">Rank</span>
+                    {% if loop.first %}<span style="font-size: 9px; color: #C41230; font-family: Helvetica, sans-serif; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; display: block;">&#9733; FEATURED</span>{% endif %}
                   </div>
-                  <div class="article-topbar-divider"></div>
-                  <span class="article-publication">{{ article.publication }}</span>
-                  <span class="article-pub-date">{{ article.published_at.strftime('%b %-d, %Y') }}</span>
+                  <div style="display: table-cell; width: 1px; background: #DEDEDE; padding: 0 1px;">&nbsp;</div>
+                  <div style="display: table-cell; vertical-align: middle; padding-left: 10px; width: 100%;">
+                    <span class="article-publication">{{ article.publication }}</span>
+                  </div>
+                  <div style="display: table-cell; vertical-align: middle; white-space: nowrap; padding-left: 10px;">
+                    <span class="article-pub-date">{{ article.published_at.strftime('%b %-d, %Y') }}</span>
+                  </div>
                 </div>
 
                 <!-- Headline -->
@@ -505,16 +479,19 @@
                 <!-- Scores + Read More -->
                 <div class="article-scores">
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking." data-tooltip="LLM-scored 1–10. How on-topic for agentic AI/ML. Articles below 6 are filtered out.">Relevance</span>
+                    <span class="score-label" title="LLM-scored 1–10. How on-topic the article is for agentic AI/ML. Articles scoring below 6 are filtered out before ranking.">Relevance</span>
                     <span class="score-value score-relevance">{{ article.relevance_score if article.relevance_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <div style="width: {{ (article.relevance_score or 0) * 10 }}%; height: 2px; background: #C41230; margin-top: 2px;"></div>
                   </div>
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
+                    <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score.">Impact</span>
                     <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <div style="width: {{ (article.impact_score or 0) * 10 }}%; height: 2px; background: #C41230; margin-top: 2px;"></div>
                   </div>
                   <div class="score-item">
-                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
+                    <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score.">Authenticity</span>
                     <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <div style="width: {{ (article.authenticity_score or 0) * 10 }}%; height: 2px; background: #C41230; margin-top: 2px;"></div>
                   </div>
                 </div>
 
@@ -542,9 +519,11 @@
                     <hr class="footer-rule" />
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
+                    {% if dashboard_url is defined and dashboard_url %}
                     <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
+                      <a href="{{ dashboard_url }}">View Dashboard</a>
                     </span>
+                    {% endif %}
                   </div>
                 </td>
               </tr>

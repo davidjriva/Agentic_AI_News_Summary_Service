@@ -209,6 +209,7 @@
       background: var(--red);
       color: #fff;
       border: none;
+      border-radius: 0;
       padding: 11px 28px;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 12px;
@@ -226,6 +227,7 @@
       background: transparent;
       color: var(--black);
       border: 1.5px solid var(--black);
+      border-radius: 0;
       padding: 10px 28px;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 12px;
@@ -421,6 +423,42 @@
     .footer a { color: #888; text-decoration: none; }
     .footer a:hover { color: #aaa; }
 
+    /* ── EMPTY STATE ICON ───────────────────────────── */
+    .empty-state-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+      opacity: 0.25;
+    }
+
+    /* ── TOAST ─────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      min-width: 240px;
+      max-width: 360px;
+      padding: 14px 20px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      border-left: 4px solid;
+      background: #fff;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    .toast.toast--show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .toast--success { border-color: #1A5C1A; color: #1A5C1A; }
+    .toast--error   { border-color: #C41230; color: #C41230; }
+
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media (max-width: 620px) {
       .masthead-title { font-size: 32px; }
@@ -448,7 +486,7 @@
   <!-- ── TOP BAR ───────────────────────────────────────── -->
   <div class="topbar">
     <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
+      <span class="topbar-date" id="topbar-date">Dashboard</span>
       {% if running %}
       <div class="running-badge">
         <div class="running-dot"></div>
@@ -469,6 +507,12 @@
   <!-- ── CONTENT ───────────────────────────────────────── -->
   <main class="page-wrapper">
 
+    <!-- Controls Section Label -->
+    <h2 class="section-label" style="margin-bottom: 16px;">
+      <span class="section-label-accent">Controls</span>
+      Pipeline Operations
+    </h2>
+
     <!-- Operations Desk -->
     <div class="controls-card">
       <h2 class="controls-title">Operations Desk</h2>
@@ -481,14 +525,14 @@
           title="Fetch new articles not seen before and send the newsletter"
           onclick="triggerRun(false)"
           {% if running %}disabled{% endif %}
-        >&#9654;&nbsp; Run Now</button>
+        >&#9654;&thinsp; Run Now</button>
         <button
           type="button"
           class="btn-secondary"
           title="Clears articles seen in the last 12 hours from the dedup cache, then runs the pipeline"
           onclick="triggerRun(true)"
           {% if running %}disabled{% endif %}
-        >&#8635;&nbsp; Clean Run</button>
+        >&#8635;&thinsp; Clean Run</button>
         {% if running %}
         <div class="running-badge">
           <div class="running-dot"></div>
@@ -507,12 +551,21 @@
     <div class="history-card">
       {% if runs %}
       <table class="runs-table">
+        <colgroup>
+          <col style="width: 160px;" />  <!-- Started -->
+          <col style="width: 120px;" />  <!-- Status -->
+          <col style="width: 80px;" />   <!-- Articles -->
+          <col style="width: 80px;" />   <!-- Filtered -->
+          <col style="width: 70px;" />   <!-- Failed -->
+          <col style="width: 90px;" />   <!-- Duration -->
+          <col />                         <!-- Edition (remaining space) -->
+        </colgroup>
         <thead>
           <tr>
             <th>Started</th>
             <th>Status</th>
             <th>Articles</th>
-            <th>Dropped</th>
+            <th title="Articles filtered out due to low relevance score (&lt;6/10)">Filtered</th>
             <th>Failed</th>
             <th>Duration</th>
             <th>Edition</th>
@@ -580,8 +633,9 @@
       </table>
       {% else %}
       <div class="empty-state">
+        <div class="empty-state-icon">&#9648;</div>
         <div class="empty-state-headline">No Editions Yet</div>
-        <div class="empty-state-body">Click <strong>Run Now</strong> to generate your first newsletter.</div>
+        <div class="empty-state-body">Click <strong>Run Now</strong> above to fetch, score, and deliver your first AI news edition.</div>
       </div>
       {% endif %}
     </div>
@@ -595,6 +649,8 @@
       <p><a href="http://localhost:8000">http://localhost:8000</a></p>
     </div>
   </footer>
+
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
 
   <script>
     let pollingInterval = null;
@@ -646,6 +702,18 @@
       document.querySelectorAll('.btn-primary, .btn-secondary').forEach(btn => btn.disabled = false);
     }
 
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast toast--${type}`;
+      // Force reflow
+      toast.offsetHeight;
+      toast.classList.add('toast--show');
+      setTimeout(() => {
+        toast.classList.remove('toast--show');
+      }, 4000);
+    }
+
     function startPolling() {
       stopPolling();
       pollingInterval = setInterval(() => {
@@ -657,6 +725,16 @@
               stopPolling();
               hideRunningBadges();
               enableButtons();
+              if (activeRunId) {
+                const completedRun = data.find(r => r.id === activeRunId);
+                if (completedRun) {
+                  if (completedRun.status === 'success') {
+                    showToast('✓ Run complete — edition ready', 'success');
+                  } else if (completedRun.status === 'error') {
+                    showToast('✕ Run failed — check the error', 'error');
+                  }
+                }
+              }
               activeRunId = null;
             }
           })
@@ -748,6 +826,14 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      // Always show current date in topbar
+      const dateEl = document.getElementById('topbar-date');
+      if (dateEl) {
+        const now = new Date();
+        const opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateEl.textContent = now.toLocaleDateString('en-US', opts);
+      }
+
       const badge = document.querySelector('.running-badge');
       if (badge && getComputedStyle(badge).display !== 'none') startPolling();
     });
