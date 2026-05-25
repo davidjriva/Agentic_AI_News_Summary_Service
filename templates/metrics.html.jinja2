@@ -173,7 +173,7 @@
     /* ── STAT GRID ──────────────────────────────────── */
     .stat-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 16px;
       margin-bottom: 36px;
     }
@@ -202,6 +202,24 @@
       letter-spacing: 1.5px;
       text-transform: uppercase;
       color: var(--gray-dark);
+    }
+
+    .stat-sublabel {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      color: var(--gray-mid);
+      letter-spacing: 0.5px;
+      margin-top: 4px;
+      font-style: italic;
+    }
+
+    .stat-card-accent {
+      border-top-color: var(--red);
+    }
+
+    .stat-value-score {
+      font-size: 28px;
+      color: var(--red);
     }
 
     /* ── CHART ROW ──────────────────────────────────── */
@@ -345,7 +363,17 @@
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ articles_seen }}</div>
-        <div class="stat-label">Articles Seen</div>
+        <div class="stat-label">Articles Processed</div>
+      </div>
+      <div class="stat-card stat-card-accent">
+        <div class="stat-value stat-value-score">{{ avg_impact }}</div>
+        <div class="stat-label">Avg Impact Score</div>
+        <div class="stat-sublabel">out of 10</div>
+      </div>
+      <div class="stat-card stat-card-accent">
+        <div class="stat-value stat-value-score">{{ avg_rank }}</div>
+        <div class="stat-label">Avg Rank Score</div>
+        <div class="stat-sublabel">impact×0.6 + auth×0.4</div>
       </div>
     </div>
 
@@ -358,10 +386,12 @@
     <div class="chart-row">
       <div class="chart-box">
         <h3 class="chart-box-title">Articles by Source</h3>
+        <p class="chart-full-subtitle" style="margin-top:-10px;">Total articles included in newsletters, by publication</p>
         <canvas id="sourcesChart"></canvas>
       </div>
       <div class="chart-box">
         <h3 class="chart-box-title">Run Success Rate</h3>
+        <p class="chart-full-subtitle" style="margin-top:-10px;">Breakdown of pipeline run statuses</p>
         <canvas id="statusChart"></canvas>
       </div>
     </div>
@@ -374,7 +404,20 @@
 
     <div class="chart-full">
       <h3 class="chart-full-title">Volume Across Last 20 Successful Runs</h3>
+      <p class="chart-full-subtitle">Number of articles included per newsletter edition</p>
       <canvas id="runTrendChart"></canvas>
+    </div>
+
+    <!-- Score Quality -->
+    <h2 class="section-label">
+      <span class="section-label-accent">Quality</span>
+      Score Averages by Dimension
+    </h2>
+
+    <div class="chart-full">
+      <h3 class="chart-full-title">Average Scores Across All Included Articles</h3>
+      <p class="chart-full-subtitle">Scores are LLM-assigned 1–10. Impact weighted 60%, Authenticity 40% in rank formula.</p>
+      <canvas id="avgScoresChart"></canvas>
     </div>
 
   </main>
@@ -494,6 +537,44 @@
           },
           x: {
             ticks: { color: EDITORIAL_GRAY, font: { size: 10 }, maxRotation: 45 },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+
+    // Horizontal bar — Average scores by dimension
+    new Chart(document.getElementById('avgScoresChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Relevance', 'Impact', 'Authenticity', 'Rank Score'],
+        datasets: [{
+          label: 'Average Score',
+          data: [
+            {{ avg_rel if avg_rel != '—' else 'null' }},
+            {{ avg_impact if avg_impact != '—' else 'null' }},
+            {{ avg_auth if avg_auth != '—' else 'null' }},
+            {{ avg_rank if avg_rank != '—' else 'null' }}
+          ],
+          backgroundColor: ['#1A3D7A', '#1A5C1A', '#7B5B00', EDITORIAL_RED],
+          borderRadius: 0,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            max: 10,
+            ticks: { precision: 1, color: EDITORIAL_GRAY, font: { size: 11 } },
+            grid: { color: EDITORIAL_LIGHT }
+          },
+          y: {
+            ticks: { color: EDITORIAL_BLACK, font: { size: 12, weight: '600' } },
             grid: { display: false }
           }
         }

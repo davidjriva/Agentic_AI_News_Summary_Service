@@ -355,6 +355,20 @@ def metrics(request: Request) -> HTMLResponse:
         "ORDER BY started_at ASC LIMIT 20"
     ).fetchall()
 
+    avg_scores_row = conn.execute(
+        "SELECT "
+        "  ROUND(AVG(s.impact_score), 1) as avg_impact, "
+        "  ROUND(AVG(s.authenticity_score), 1) as avg_auth, "
+        "  ROUND(AVG(s.relevance_score), 1) as avg_rel, "
+        "  ROUND(AVG(ra.rank_score), 1) as avg_rank "
+        "FROM run_articles ra "
+        "LEFT JOIN article_scores s ON ra.url = s.url"
+    ).fetchone()
+
+    avg_articles_per_run = conn.execute(
+        "SELECT ROUND(AVG(article_count), 1) FROM runs WHERE status='success' AND article_count IS NOT NULL"
+    ).fetchone()[0]
+
     conn.close()
 
     subscribers = len(_cfg.RECIPIENTS)
@@ -378,6 +392,11 @@ def metrics(request: Request) -> HTMLResponse:
                 [row["started_at"][:10] for row in run_rows]
             ),
             "run_counts_json": json.dumps([row["article_count"] for row in run_rows]),
+            "avg_impact": avg_scores_row["avg_impact"] if avg_scores_row and avg_scores_row["avg_impact"] else "—",
+            "avg_auth": avg_scores_row["avg_auth"] if avg_scores_row and avg_scores_row["avg_auth"] else "—",
+            "avg_rel": avg_scores_row["avg_rel"] if avg_scores_row and avg_scores_row["avg_rel"] else "—",
+            "avg_rank": avg_scores_row["avg_rank"] if avg_scores_row and avg_scores_row["avg_rank"] else "—",
+            "avg_articles_per_run": avg_articles_per_run if avg_articles_per_run else "—",
             "active": "metrics",
         },
     )
