@@ -30,89 +30,47 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── MASTHEAD ───────────────────────────────────── */
-    .masthead {
+    /* ── UNIFIED SITE HEADER ────────────────────────── */
+    .site-header {
       background: var(--black);
-      text-align: center;
     }
 
-    .masthead-inner {
+    .site-header-inner {
       max-width: 900px;
       margin: 0 auto;
-      padding: 28px 20px 20px;
-    }
-
-    .masthead-eyebrow {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 2.5px;
-      text-transform: uppercase;
-      color: var(--gray-light);
-      margin-bottom: 10px;
-    }
-
-    .masthead-rule {
-      border: none;
-      border-top: 1px solid #3a3a3a;
-      margin: 10px auto 14px;
-      width: 300px;
-    }
-
-    .masthead-title {
-      font-family: Georgia, 'Times New Roman', Times, serif;
-      font-size: 48px;
-      font-weight: 700;
-      color: #FFFFFF;
-      letter-spacing: -1px;
-      line-height: 1;
-      margin: 0;
-    }
-
-    .masthead-tagline {
-      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 11px;
-      font-weight: 400;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: #999;
-      margin-top: 14px;
-    }
-
-    /* ── TOP BAR ────────────────────────────────────── */
-    .topbar {
-      background: var(--black);
-      border-top: 1px solid #222;
-      border-bottom: 3px solid var(--red);
-    }
-
-    .topbar-inner {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 8px 20px;
+      padding: 12px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    .topbar-date {
+    .header-brand {
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.5px;
+      display: block;
+    }
+
+    .header-subtitle {
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-      font-size: 12px;
-      color: #AAAAAA;
-      font-style: italic;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #666666;
+      display: block;
+      margin-top: 2px;
     }
 
-    /* ── NAV ────────────────────────────────────────── */
-    .nav {
-      background: var(--black);
-      border-bottom: 1px solid #222;
-    }
-
-    .nav-inner {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 0 20px;
+    .header-nav {
       display: flex;
+      align-items: center;
     }
 
     .nav-tab {
@@ -133,6 +91,74 @@
     .nav-tab.active {
       color: #FFFFFF;
       border-bottom-color: var(--red);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .header-date {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: #AAAAAA;
+      font-style: italic;
+    }
+
+    .header-red-rule {
+      width: 100%;
+      height: 3px;
+      background: var(--red);
+      display: block;
+    }
+
+    /* ── STATS BAR ──────────────────────────────────── */
+    .stats-bar {
+      background: var(--bg-section);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stats-bar-inner {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 0 28px;
+      flex-shrink: 0;
+    }
+
+    .stat-value {
+      font-family: Georgia, 'Times New Roman', Times, serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--black);
+      display: block;
+    }
+
+    .stat-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #888888;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .stat-divider {
+      width: 1px;
+      height: 32px;
+      background: var(--border);
+      flex-shrink: 0;
     }
 
     /* ── PAGE WRAPPER ───────────────────────────────── */
@@ -172,6 +198,7 @@
       background: var(--bg);
       border: 1px solid var(--border);
       border-top: 3px solid var(--black);
+      border-radius: 0;
       padding: 28px 32px;
       margin-bottom: 32px;
     }
@@ -188,7 +215,15 @@
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 12px;
       color: var(--gray-dark);
+      margin: 0 0 6px 0;
+    }
+
+    .controls-last-run {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 11px;
+      color: var(--gray-mid);
       margin: 0 0 20px 0;
+      font-style: italic;
     }
 
     .controls-rule {
@@ -423,48 +458,68 @@
 
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media (max-width: 620px) {
-      .masthead-title { font-size: 32px; }
+      .site-header-inner { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+      .header-title { font-size: 20px; }
+      .header-nav { order: 3; width: 100%; }
       .page-wrapper { padding: 20px 16px 40px; }
       .controls-card { padding: 20px; }
       .controls-actions { flex-direction: column; align-items: stretch; }
       .btn-primary, .btn-secondary { width: 100%; text-align: center; }
-      .topbar-inner { flex-wrap: wrap; gap: 6px; }
+      .stats-bar-inner { flex-wrap: wrap; gap: 8px; }
+      .stat-item { padding: 0 14px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ── MASTHEAD ─────────────────────────────────────── -->
-  <header class="masthead">
-    <div class="masthead-inner">
-      <div class="masthead-eyebrow">Est. 2026 &nbsp;&middot;&nbsp; Automated Edition</div>
-      <hr class="masthead-rule" />
-      <h1 class="masthead-title">The Agentic Times</h1>
-      <hr class="masthead-rule" />
-      <div class="masthead-tagline">AI News &amp; Analysis &nbsp;&middot;&nbsp; Pipeline Dashboard</div>
+  <!-- ── UNIFIED SITE HEADER ────────────────────────────── -->
+  <header class="site-header">
+    <div class="site-header-inner">
+      <!-- Left: brand -->
+      <div class="header-brand">
+        <span class="header-title">The Agentic Times</span>
+        <span class="header-subtitle">Pipeline Dashboard</span>
+      </div>
+      <!-- Center: nav tabs -->
+      <nav class="header-nav">
+        <a class="nav-tab {% if active == 'dashboard' %}active{% endif %}" href="/">Run History</a>
+        <a class="nav-tab {% if active == 'metrics' %}active{% endif %}" href="/metrics">Metrics</a>
+      </nav>
+      <!-- Right: date + running badge -->
+      <div class="header-right">
+        {% if run_time %}
+        <span class="header-date">{{ run_time.strftime('%B %-d, %Y') }}</span>
+        {% endif %}
+        {% if running %}
+        <div class="running-badge">
+          <div class="running-dot"></div>
+          Run in Progress
+        </div>
+        {% endif %}
+      </div>
     </div>
+    <div class="header-red-rule"></div>
   </header>
 
-  <!-- ── TOP BAR ───────────────────────────────────────── -->
-  <div class="topbar">
-    <div class="topbar-inner">
-      <span class="topbar-date">{{ run_time.strftime('%A, %B %-d, %Y') if run_time else 'Dashboard' }}</span>
-      {% if running %}
-      <div class="running-badge">
-        <div class="running-dot"></div>
-        Run in Progress
+  <!-- ── STATS BAR ──────────────────────────────────────── -->
+  <div class="stats-bar">
+    <div class="stats-bar-inner">
+      <div class="stat-item">
+        <span class="stat-value" id="stat-total">{{ runs|length }}</span>
+        <span class="stat-label">Total Editions</span>
       </div>
-      {% endif %}
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-success">{{ runs|selectattr('status','eq','success')|list|length }}</span>
+        <span class="stat-label">Successful</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-latest">{{ runs[0].started_at[:10] if runs else '&mdash;' }}</span>
+        <span class="stat-label">Last Run</span>
+      </div>
     </div>
   </div>
-
-  <!-- ── NAV ───────────────────────────────────────────── -->
-  <nav class="nav">
-    <div class="nav-inner">
-      <a class="nav-tab {% if active == 'dashboard' %}active{% endif %}" href="/">Run History</a>
-      <a class="nav-tab {% if active == 'metrics' %}active{% endif %}" href="/metrics">Metrics</a>
-    </div>
-  </nav>
 
   <!-- ── CONTENT ───────────────────────────────────────── -->
   <main class="page-wrapper">
@@ -473,6 +528,12 @@
     <div class="controls-card">
       <h2 class="controls-title">Operations Desk</h2>
       <p class="controls-subtitle">Trigger a new pipeline run to fetch, rank, and deliver the latest AI news.</p>
+      {% if runs %}
+        {% set last_success = runs|selectattr('status','eq','success')|list %}
+        {% if last_success %}
+        <p class="controls-last-run">Last successful edition: {{ last_success[0].started_at[:10] }}</p>
+        {% endif %}
+      {% endif %}
       <hr class="controls-rule" />
       <div class="controls-actions">
         <button
@@ -521,7 +582,15 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td>
+              <span class="ts">
+                {% set dt_parts = run.started_at[:16].split('T') %}
+                {% set d = dt_parts[0].split('-') %}
+                {% set t = dt_parts[1].split(':') %}
+                {% set months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] %}
+                {{ months[d[1]|int - 1] }} {{ d[2]|int }}, {{ d[0] }} at {{ t[0] }}:{{ t[1] }}
+              </span>
+            </td>
 
             <td>
               {% if run.status == 'success' %}
@@ -592,13 +661,29 @@
   <footer class="footer">
     <div class="footer-inner">
       <p>The Agentic Times &mdash; Automated AI News Digest</p>
-      <p><a href="http://localhost:8000">http://localhost:8000</a></p>
+      <p><a href="/">The Agentic Times Dashboard</a></p>
     </div>
   </footer>
 
   <script>
     let pollingInterval = null;
     let activeRunId = null;
+
+    function formatTs(iso) {
+      if (!iso) return '';
+      try {
+        const d = new Date(iso);
+        return d.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (e) {
+        return iso;
+      }
+    }
 
     function triggerRun(clean) {
       const url = clean ? '/run?clean=true' : '/run';
@@ -619,7 +704,7 @@
       if (!tbody) return;
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td><span class="ts">Just now\u2026</span></td>
+        <td><span class="ts">Just now…</span></td>
         <td><span class="badge badge-running">Running</span></td>
         <td><span class="article-count">&mdash;</span></td>
         <td><span class="article-count">&mdash;</span></td>
@@ -658,6 +743,7 @@
               hideRunningBadges();
               enableButtons();
               activeRunId = null;
+              updateStatBar(data);
             }
           })
           .catch(() => {});
@@ -666,6 +752,15 @@
 
     function stopPolling() {
       if (pollingInterval !== null) { clearInterval(pollingInterval); pollingInterval = null; }
+    }
+
+    function updateStatBar(runs) {
+      const total = document.getElementById('stat-total');
+      const success = document.getElementById('stat-success');
+      const latest = document.getElementById('stat-latest');
+      if (total) total.textContent = runs.length;
+      if (success) success.textContent = runs.filter(r => r.status === 'success').length;
+      if (latest && runs.length > 0) latest.textContent = runs[0].started_at.slice(0, 10);
     }
 
     function renderRuns(runs) {
@@ -677,7 +772,7 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        startedTd.innerHTML = `<span class="ts">${formatTs(run.started_at)}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');
