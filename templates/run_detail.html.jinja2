@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Edition {{ run_id[:8] }} &mdash; The Agentic Times</title>
+  <title>Edition {{ started_at[:10] if started_at else run_id[:8] }} &mdash; The Agentic Times</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -152,7 +152,7 @@
 
     /* ── SIDEBAR ────────────────────────────────────── */
     .sidebar {
-      width: 272px;
+      width: 300px;
       flex-shrink: 0;
       background: var(--bg);
       border-left: 1px solid var(--border);
@@ -344,6 +344,27 @@
       font-style: italic;
     }
 
+    /* ── SKELETON LOADERS ──────────────────────────── */
+    .skeleton-item { padding: 6px 0; list-style: none; }
+    .skeleton-line {
+      height: 10px;
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 2px;
+      margin-bottom: 6px;
+    }
+    .skeleton-line-long { width: 85%; }
+    .skeleton-line-short { width: 50%; }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── SOURCE TOGGLE ──────────────────────────────── */
+    .source-toggle { font-size: 10px; color: var(--gray-mid); transition: transform 0.15s; display: inline-block; }
+    .source-name.collapsed .source-toggle { transform: rotate(-90deg); }
+
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
       background: #FFF3CD;
@@ -380,7 +401,11 @@
           <a class="masthead-back" href="/">&larr; Dashboard</a>
           <span class="masthead-sep">/</span>
           <span class="masthead-brand">The Agentic Times</span>
-          <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          {% if started_at %}
+          <span class="masthead-edition">{{ started_at[:10] }}</span>
+          {% else %}
+          <span class="masthead-edition">{{ run_id[:8] }}&hellip;</span>
+          {% endif %}
         </div>
         {% if started_at %}
         <span class="masthead-ts">{{ started_at }}</span>
@@ -418,8 +443,8 @@
           <h2 class="sidebar-header-title">Articles by Source</h2>
           <p class="sidebar-header-meta">
             {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
-            &mdash;
-            {{ sources.values() | map('length') | sum }} fetched
+            &nbsp;·&nbsp;
+            {{ sources.values() | map('length') | sum }} articles fetched
           </p>
         </div>
 
@@ -427,9 +452,12 @@
           {% if sources %}
             {% for publication, articles in sources.items() %}
             <div class="source-group">
-              <h3 class="source-name">
+              <h3 class="source-name" onclick="toggleSource(this)" style="cursor:pointer;">
                 <span>{{ publication }}</span>
-                <span class="source-count">{{ articles | length }}</span>
+                <span style="display:flex;align-items:center;gap:6px;">
+                  <span class="source-count">{{ articles | length }}</span>
+                  <span class="source-toggle">&#9662;</span>
+                </span>
               </h3>
               <ul class="article-list">
                 {% for article in articles %}
@@ -448,18 +476,32 @@
 
         <!-- Filtered (dropped) articles section -->
         <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Dropped &mdash; Low Relevance</h3>
+          <h3 class="sidebar-section-title" id="filtered-header">Dropped &mdash; Low Relevance</h3>
         </div>
         <ul class="filtered-list" id="filtered-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="skeleton-item">
+            <div class="skeleton-line skeleton-line-long"></div>
+            <div class="skeleton-line skeleton-line-short"></div>
+          </li>
+          <li class="skeleton-item">
+            <div class="skeleton-line skeleton-line-long"></div>
+            <div class="skeleton-line skeleton-line-short"></div>
+          </li>
         </ul>
 
         <!-- Failed articles section -->
         <div class="sidebar-section-header">
-          <h3 class="sidebar-section-title">Failed &mdash; Processing Errors</h3>
+          <h3 class="sidebar-section-title" id="failed-header">Failed &mdash; Processing Errors</h3>
         </div>
         <ul class="failed-list" id="failed-list">
-          <li style="text-align:center;font-family:'Helvetica Neue',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">Loading&hellip;</li>
+          <li class="skeleton-item">
+            <div class="skeleton-line skeleton-line-long"></div>
+            <div class="skeleton-line skeleton-line-short"></div>
+          </li>
+          <li class="skeleton-item">
+            <div class="skeleton-line skeleton-line-long"></div>
+            <div class="skeleton-line skeleton-line-short"></div>
+          </li>
         </ul>
       </aside>
 
@@ -471,6 +513,8 @@
 
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');
+      const header = document.getElementById('filtered-header');
+      if (header) header.textContent = `Dropped — Low Relevance (${items ? items.length : 0})`;
       if (!items || items.length === 0) {
         list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">None dropped this run.</li>';
         return;
@@ -489,6 +533,8 @@
 
     function renderFailed(items) {
       const list = document.getElementById('failed-list');
+      const header = document.getElementById('failed-header');
+      if (header) header.textContent = `Failed — Processing Errors (${items ? items.length : 0})`;
       if (!items || items.length === 0) {
         list.innerHTML = '<li style="text-align:center;font-family:\'Helvetica Neue\',sans-serif;font-size:11px;color:var(--gray-mid);font-style:italic;">No failures this run.</li>';
         return;
@@ -500,6 +546,13 @@
           ${a.reason ? `<div class="fail-reason">${a.reason}</div>` : ''}
         </li>
       `).join('');
+    }
+
+    function toggleSource(nameEl) {
+      const group = nameEl.parentElement;
+      const list = group.querySelector('.article-list');
+      const collapsed = nameEl.classList.toggle('collapsed');
+      list.style.display = collapsed ? 'none' : '';
     }
 
     {% if preview %}
