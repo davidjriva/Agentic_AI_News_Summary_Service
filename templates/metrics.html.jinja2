@@ -217,6 +217,7 @@
       border: 1px solid var(--border);
       border-top: 3px solid var(--black);
       padding: 24px;
+      min-height: 300px;
     }
 
     .chart-box-title {
@@ -238,6 +239,7 @@
       border-top: 3px solid var(--black);
       padding: 24px;
       margin-bottom: 36px;
+      min-height: 250px;
     }
 
     .chart-full-title {
@@ -358,11 +360,11 @@
     <div class="chart-row">
       <div class="chart-box">
         <h3 class="chart-box-title">Articles by Source</h3>
-        <canvas id="sourcesChart"></canvas>
+        <div style="position:relative;"><canvas id="sourcesChart"></canvas></div>
       </div>
       <div class="chart-box">
         <h3 class="chart-box-title">Run Success Rate</h3>
-        <canvas id="statusChart"></canvas>
+        <div style="position:relative;"><canvas id="statusChart"></canvas></div>
       </div>
     </div>
 
@@ -374,7 +376,7 @@
 
     <div class="chart-full">
       <h3 class="chart-full-title">Volume Across Last 20 Successful Runs</h3>
-      <canvas id="runTrendChart"></canvas>
+      <div style="position:relative;"><canvas id="runTrendChart"></canvas></div>
     </div>
 
   </main>

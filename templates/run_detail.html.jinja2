@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Edition {{ run_id[:8] }} &mdash; The Agentic Times</title>
+  <title>Edition #{{ run_id[:6] | upper }} &mdash; The Agentic Times</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
 
@@ -141,6 +141,39 @@
     .newsletter-pane {
       flex: 1 1 0;
       min-width: 0;
+      position: relative;
+    }
+
+    .iframe-loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-section);
+      gap: 14px;
+      z-index: 2;
+    }
+
+    .iframe-loader-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .iframe-loader-text {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 12px;
+      color: var(--gray-mid);
+      letter-spacing: 0.3px;
     }
 
     .newsletter-pane iframe {
@@ -168,6 +201,34 @@
       top: 0;
       z-index: 1;
       border-bottom: 2px solid var(--red);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+
+    .sidebar-collapse-btn {
+      background: none;
+      border: 1px solid #444;
+      color: #888;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 3px 7px;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 2px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .sidebar-collapse-btn:hover {
+      background: #333;
+      color: #fff;
+    }
+
+    .layout--sidebar-collapsed .sidebar {
+      display: none;
     }
 
     .sidebar-header-title {
@@ -346,9 +407,9 @@
 
     /* ── PREVIEW BANNER ─────────────────────────────── */
     .preview-banner {
-      background: #FFF3CD;
-      border-bottom: 1px solid #FFECB5;
-      color: #856404;
+      background: #FEF08A;
+      border-bottom: 2px solid #EAB308;
+      color: #713F12;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 12px;
       font-weight: 600;
@@ -380,7 +441,7 @@
           <a class="masthead-back" href="/">&larr; Dashboard</a>
           <span class="masthead-sep">/</span>
           <span class="masthead-brand">The Agentic Times</span>
-          <span class="masthead-edition">Edition {{ run_id[:8] }}&hellip;</span>
+          <span class="masthead-edition">#{{ run_id[:6] | upper }}</span>
         </div>
         {% if started_at %}
         <span class="masthead-ts">{{ started_at }}</span>
@@ -405,22 +466,29 @@
 
       <!-- Newsletter iframe -->
       <div class="newsletter-pane">
+        <div class="iframe-loader" id="iframe-loader">
+          <div class="iframe-loader-spinner"></div>
+          <span class="iframe-loader-text">Loading edition&hellip;</span>
+        </div>
         {% if preview %}
-        <iframe src="/preview/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/preview/newsletter" title="Newsletter Edition" onload="document.getElementById('iframe-loader').style.display='none'"></iframe>
         {% else %}
-        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition"></iframe>
+        <iframe src="/runs/{{ run_id }}/newsletter" title="Newsletter Edition" onload="document.getElementById('iframe-loader').style.display='none'"></iframe>
         {% endif %}
       </div>
 
       <!-- Sources sidebar -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h2 class="sidebar-header-title">Articles by Source</h2>
-          <p class="sidebar-header-meta">
-            {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
-            &mdash;
-            {{ sources.values() | map('length') | sum }} fetched
-          </p>
+          <div>
+            <h2 class="sidebar-header-title">Articles by Source</h2>
+            <p class="sidebar-header-meta">
+              {{ sources | length }} source{{ 's' if sources | length != 1 else '' }}
+              &mdash;
+              {{ sources.values() | map('length') | sum }} fetched
+            </p>
+          </div>
+          <button class="sidebar-collapse-btn" id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Collapse sidebar">Hide</button>
         </div>
 
         <div class="sidebar-body">
@@ -468,6 +536,13 @@
 
   <script>
     const RUN_ID = "{{ run_id }}";
+
+    function toggleSidebar() {
+      const layout = document.querySelector('.layout');
+      const btn = document.getElementById('sidebar-toggle-btn');
+      const isCollapsed = layout.classList.toggle('layout--sidebar-collapsed');
+      btn.textContent = isCollapsed ? 'Show' : 'Hide';
+    }
 
     function renderFiltered(items) {
       const list = document.getElementById('filtered-list');

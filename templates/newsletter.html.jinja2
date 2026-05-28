@@ -268,19 +268,18 @@
 
     /* Scores */
     .article-scores {
-      display: flex;
-      gap: 20px;
       padding-top: 14px;
       border-top: 1px solid #F0F0F0;
     }
 
     .score-item {
-      display: flex;
-      align-items: baseline;
-      gap: 5px;
+      display: inline-block;
+      vertical-align: baseline;
+      margin-right: 20px;
     }
 
     .score-label {
+      display: inline;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 9px;
       font-weight: 700;
@@ -290,6 +289,7 @@
     }
 
     .score-value {
+      display: inline;
       font-family: Georgia, 'Times New Roman', Times, serif;
       font-size: 15px;
       font-weight: 700;
@@ -351,13 +351,6 @@
       border-bottom-color: #C41230;
     }
 
-    /* Section break between articles */
-    .article-separator {
-      width: 100%;
-      height: 1px;
-      background: #DEDEDE;
-    }
-
     /* ── FOOTER ─────────────────────────────────────── */
     .footer-table {
       width: 100%;
@@ -397,6 +390,23 @@
       margin: 16px auto;
       width: 200px;
     }
+
+    /* ── LEAD STORY ─────────────────────────────────── */
+    .article-card--lead {
+      border-left: 4px solid #C41230;
+    }
+
+    .article-lead-label {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #C41230;
+      margin-bottom: 8px;
+    }
+
+    .article-card--lead .article-headline { font-size: 26px; }
 
     /* ── RESPONSIVE ─────────────────────────────────── */
     @media only screen and (max-width: 620px) {
@@ -477,7 +487,7 @@
         {% for article in articles %}
         <tr>
           <td>
-            <div class="article-card">
+            <div class="article-card{% if loop.index == 1 %} article-card--lead{% endif %}">
               <div class="article-inner">
 
                 <!-- Rank + Publication -->
@@ -492,12 +502,13 @@
                 </div>
 
                 <!-- Headline -->
+                {% if loop.index == 1 %}<div class="article-lead-label">Lead Story</div>{% endif %}
                 <h2 class="article-headline">
                   <a href="{{ article.url }}">{{ article.title }}</a>
                 </h2>
 
                 <!-- Byline -->
-                <p class="article-byline">By {{ article.author }}</p>
+                {% if article.author %}<p class="article-byline">By {{ article.author }}</p>{% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
@@ -510,11 +521,11 @@
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's significance and potential impact on the AI field. Weighted 60% in rank score." data-tooltip="LLM-scored 1–10. Significance and potential impact on the AI field. Weighted 60% in rank.">Impact</span>
-                    <span class="score-value score-impact">{{ article.impact_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-value score-impact">{{ article.impact_score if article.impact_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                   <div class="score-item">
                     <span class="score-label" title="LLM-scored 1–10. Measures the article's credibility and factual grounding. Weighted 40% in rank score." data-tooltip="LLM-scored 1–10. Credibility and factual grounding. Weighted 40% in rank.">Authenticity</span>
-                    <span class="score-value score-authenticity">{{ article.authenticity_score }}<span style="font-size:11px;color:#888;">/10</span></span>
+                    <span class="score-value score-authenticity">{{ article.authenticity_score if article.authenticity_score is not none else '?' }}<span style="font-size:11px;color:#888;">/10</span></span>
                   </div>
                 </div>
 
@@ -526,9 +537,6 @@
             </div>
           </td>
         </tr>
-        {% if not loop.last %}
-        <tr><td><div class="article-separator"></div></td></tr>
-        {% endif %}
         {% endfor %}
 
         <!-- ── FOOTER ────────────────────────────────── -->
@@ -542,9 +550,6 @@
                     <hr class="footer-rule" />
                     <span class="footer-meta">Automated AI News &amp; Analysis</span>
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
-                    <span class="footer-meta" style="margin-top:8px;">
-                      <a href="http://localhost:8000">View Dashboard</a>
-                    </span>
                   </div>
                 </td>
               </tr>
