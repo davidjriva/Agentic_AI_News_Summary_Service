@@ -121,7 +121,7 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             conn.close()
 
             bar.set_description("Rendering")
-            html, plain_text = render_newsletter(articles, started_at)
+            html, plain_text = render_newsletter(articles, started_at, run_id=run_id)
             tqdm.write(f"[{run_id}] Newsletter rendered")
             bar.update(1)
 

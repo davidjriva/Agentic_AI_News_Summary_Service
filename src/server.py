@@ -149,6 +149,32 @@ _running_lock = threading.Lock()
 _is_running: bool = False
 
 
+def _format_duration(started_at: str | None, completed_at: str | None) -> str:
+    if not started_at or not completed_at:
+        return ""
+    try:
+        start = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+        end = datetime.fromisoformat(completed_at.replace("Z", "+00:00"))
+        diff = int((end - start).total_seconds())
+        if diff < 0:
+            diff = 0
+        if diff >= 60:
+            return f"{diff // 60}m {diff % 60}s"
+        return f"{diff}s"
+    except (ValueError, TypeError):
+        return ""
+
+
+def _format_timestamp(ts: str | None) -> str:
+    if not ts:
+        return ""
+    try:
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return dt.strftime("%b %-d, %Y · %-I:%M %p UTC").replace(" · 0", " · ")
+    except (ValueError, TypeError):
+        return ts or ""
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request) -> HTMLResponse:
     """Serve the run-history dashboard."""
@@ -160,6 +186,9 @@ def dashboard(request: Request) -> HTMLResponse:
     ).fetchall()
     conn.close()
     runs = [dict(row) for row in rows]
+    for run in runs:
+        run["duration"] = _format_duration(run.get("started_at"), run.get("completed_at"))
+        run["started_at_display"] = _format_timestamp(run.get("started_at"))
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
@@ -237,7 +266,11 @@ def list_runs() -> list[dict]:
         "FROM runs ORDER BY started_at DESC"
     ).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    runs = [dict(row) for row in rows]
+    for run in runs:
+        run["duration"] = _format_duration(run.get("started_at"), run.get("completed_at"))
+        run["started_at_display"] = _format_timestamp(run.get("started_at"))
+    return runs
 
 
 @app.get("/runs/{run_id}/newsletter", response_class=HTMLResponse)
