@@ -4,12 +4,15 @@ import argparse
 import logging
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from tqdm import tqdm
 
 from src.config import LLM_PROVIDER, LOOKBACK_HOURS, TOP_N
-from src.db import get_connection
+from src.db import get_session
+from src.models import FailedArticle, FilteredArticle, Run, RunArticle, SeenArticle
 from src.emailer import send_newsletter
 from src.fetcher import fetch_articles
 from src.filter import filter_articles
@@ -43,22 +46,17 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
 
     started_at = datetime.now(timezone.utc)
 
-    conn = get_connection()
-    conn.execute(
-        "INSERT INTO runs (id, started_at, status) VALUES (?, ?, ?)",
-        (run_id, started_at.isoformat(), "running"),
-    )
-    conn.commit()
-    conn.close()
+    with get_session() as session:
+        session.add(Run(id=run_id, started_at=started_at.isoformat(), status="running"))
 
     try:
         if clean:
-            conn = get_connection()
-            conn.execute(
-                f"DELETE FROM seen_articles WHERE seen_at >= datetime('now', '-{LOOKBACK_HOURS} hours')"
-            )
-            conn.commit()
-            conn.close()
+            # seen_at is an ISO-8601 string; lexicographic comparison is chronological.
+            clean_cutoff = (started_at - timedelta(hours=LOOKBACK_HOURS)).isoformat()
+            with get_session() as session:
+                session.execute(
+                    delete(SeenArticle).where(SeenArticle.seen_at >= clean_cutoff)
+                )
             tqdm.write(f"[{run_id}] Clean run: cleared seen_articles for past {LOOKBACK_HOURS} hours")
 
         with tqdm(total=7, desc="Pipeline", leave=True) as bar:
@@ -79,16 +77,18 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             bar.update(1)
 
             if dropped_articles:
-                conn = get_connection()
-                conn.executemany(
-                    "INSERT INTO filtered_articles (run_id, url, title, publication, relevance_score, relevance_reason) VALUES (?, ?, ?, ?, ?, ?)",
-                    [
-                        (run_id, a["url"], a["title"], a["publication"], a["relevance_score"], a.get("relevance_reason", ""))
+                with get_session() as session:
+                    session.add_all([
+                        FilteredArticle(
+                            run_id=run_id,
+                            url=a["url"],
+                            title=a["title"],
+                            publication=a["publication"],
+                            relevance_score=a["relevance_score"],
+                            relevance_reason=a.get("relevance_reason", ""),
+                        )
                         for a in dropped_articles
-                    ],
-                )
-                conn.commit()
-                conn.close()
+                    ])
 
             bar.set_description("Ranking")
             articles = rank_articles(articles)
@@ -96,29 +96,31 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             bar.update(1)
 
             now_iso = datetime.now(timezone.utc).isoformat()
-            conn = get_connection()
-            conn.executemany(
-                "INSERT OR IGNORE INTO seen_articles (url, seen_at) VALUES (?, ?)",
-                [(a["url"], now_iso) for a in articles[:TOP_N]],
-            )
-            conn.commit()
-            conn.close()
+            seen_rows = [{"url": a["url"], "seen_at": now_iso} for a in articles[:TOP_N]]
+            if seen_rows:
+                stmt = pg_insert(SeenArticle).values(seen_rows).on_conflict_do_nothing(
+                    index_elements=[SeenArticle.url]
+                )
+                with get_session() as session:
+                    session.execute(stmt)
 
             bar.set_description("Generating summaries")
             articles = summarize_articles(articles, run_id=run_id)
             tqdm.write(f"[{run_id}] Summaries generated for {len(articles)} articles")
             bar.update(1)
 
-            conn = get_connection()
-            conn.executemany(
-                "INSERT INTO run_articles (run_id, title, url, publication, published_at, rank_score) VALUES (?, ?, ?, ?, ?, ?)",
-                [
-                    (run_id, a["title"], a["url"], a["publication"], str(a.get("published_at", "")), a.get("rank_score"))
+            with get_session() as session:
+                session.add_all([
+                    RunArticle(
+                        run_id=run_id,
+                        title=a["title"],
+                        url=a["url"],
+                        publication=a["publication"],
+                        published_at=str(a.get("published_at", "")),
+                        rank_score=a.get("rank_score"),
+                    )
                     for a in articles
-                ],
-            )
-            conn.commit()
-            conn.close()
+                ])
 
             bar.set_description("Rendering")
             html, plain_text = render_newsletter(articles, started_at)
@@ -136,17 +138,22 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
             bar.update(1)
 
         completed_at = datetime.now(timezone.utc)
-        conn = get_connection()
-        failed_count_row = conn.execute(
-            "SELECT COUNT(*) FROM failed_articles WHERE run_id = ?", (run_id,)
-        ).fetchone()
-        failed_count = failed_count_row[0] if failed_count_row else 0
-        conn.execute(
-            "UPDATE runs SET status=?, completed_at=?, article_count=?, html=?, dropped_count=?, failed_count=? WHERE id=?",
-            ("success", completed_at.isoformat(), len(articles), html, len(dropped_articles), failed_count, run_id),
-        )
-        conn.commit()
-        conn.close()
+        with get_session() as session:
+            failed_count = session.scalar(
+                select(func.count()).select_from(FailedArticle).where(FailedArticle.run_id == run_id)
+            ) or 0
+            session.execute(
+                update(Run)
+                .where(Run.id == run_id)
+                .values(
+                    status="success",
+                    completed_at=completed_at.isoformat(),
+                    article_count=len(articles),
+                    html=html,
+                    dropped_count=len(dropped_articles),
+                    failed_count=failed_count,
+                )
+            )
 
         tqdm.write(f"[{run_id}] Run complete")
         return run_id
@@ -154,13 +161,12 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
     except Exception as exc:
         log.exception("[%s] Pipeline failed: %s", run_id, exc)
         completed_at = datetime.now(timezone.utc)
-        conn = get_connection()
-        conn.execute(
-            "UPDATE runs SET status=?, completed_at=?, error=? WHERE id=?",
-            ("error", completed_at.isoformat(), str(exc), run_id),
-        )
-        conn.commit()
-        conn.close()
+        with get_session() as session:
+            session.execute(
+                update(Run)
+                .where(Run.id == run_id)
+                .values(status="error", completed_at=completed_at.isoformat(), error=str(exc))
+            )
         raise
 
 

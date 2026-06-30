@@ -11,13 +11,17 @@ failed_articles dead-letter queue and excluded from results.
 import json
 import re
 import time
+from datetime import datetime, timedelta, timezone
 
 import anthropic
 import requests
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from tqdm import tqdm
 
 from src import config as _cfg
-from src.db import get_connection
+from src.db import get_session
+from src.models import ArticleScore, FailedArticle
 
 SYSTEM_PROMPT = """You are an AI news analyst specializing in agentic AI, machine learning, and deep learning. For each article provided, return a JSON object with exactly these keys:
 - impact_score: integer 1-10 rating of the article's impact on the AI/ML field
@@ -80,6 +84,9 @@ def _call_local_llm(user_content: str) -> str:
                 {"role": "user", "content": user_content},
             ],
             "max_tokens": 1024,
+            # Disable Qwen3 "thinking" — it ~triples output tokens for no benefit
+            # on this strict-JSON task. llama.cpp forwards this to the chat template.
+            "chat_template_kwargs": {"enable_thinking": False},
         },
         timeout=60,
     )
@@ -115,6 +122,7 @@ def _call_local_llm_summary(user_content: str) -> str:
                 {"role": "user", "content": user_content},
             ],
             "max_tokens": 512,
+            "chat_template_kwargs": {"enable_thinking": False},
         },
         timeout=60,
     )
@@ -135,68 +143,54 @@ def _clean_description(desc: str, max_chars: int = 400) -> str:
     return desc
 
 
+_SCORE_FIELDS = (
+    "impact_score",
+    "authenticity_score",
+    "relevance_score",
+    "impact_reason",
+    "authenticity_reason",
+    "relevance_reason",
+)
+
+
 def _write_failed(article: dict, reason: str, run_id: str | None) -> None:
     """Persist a failed article to the dead-letter queue. Best-effort: never raises."""
     try:
-        conn = get_connection()
-        try:
-            conn.execute(
-                "INSERT INTO failed_articles (run_id, url, title, publication, reason) VALUES (?, ?, ?, ?, ?)",
-                (run_id, article.get("url", ""), article.get("title", ""), article.get("publication", ""), reason),
+        with get_session() as session:
+            session.add(
+                FailedArticle(
+                    run_id=run_id,
+                    url=article.get("url", ""),
+                    title=article.get("title", ""),
+                    publication=article.get("publication", ""),
+                    reason=reason,
+                )
             )
-            conn.commit()
-        finally:
-            conn.close()
     except Exception:
         pass  # best-effort: a DB failure must not abort the rest of the pipeline
 
 
-def _load_score_cache(conn) -> dict[str, dict]:
-    """Load all non-expired score cache entries keyed by URL. Caller owns the connection."""
-    ttl_modifier = f"-{_cfg.SCORE_CACHE_TTL_DAYS} days"
-    rows = conn.execute(
-        "SELECT url, impact_score, authenticity_score, relevance_score, "
-        "impact_reason, authenticity_reason, relevance_reason "
-        "FROM article_scores "
-        "WHERE cached_at >= datetime('now', ?)",
-        (ttl_modifier,),
-    ).fetchall()
-    return {
-        row["url"]: {
-            "impact_score": row["impact_score"],
-            "authenticity_score": row["authenticity_score"],
-            "relevance_score": row["relevance_score"],
-            "impact_reason": row["impact_reason"],
-            "authenticity_reason": row["authenticity_reason"],
-            "relevance_reason": row["relevance_reason"],
-        }
-        for row in rows
-    }
+def _load_score_cache() -> dict[str, dict]:
+    """Load all non-expired score cache entries keyed by URL."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=_cfg.SCORE_CACHE_TTL_DAYS)
+    with get_session() as session:
+        rows = session.execute(
+            select(ArticleScore).where(ArticleScore.cached_at >= cutoff)
+        ).scalars()
+        return {row.url: {f: getattr(row, f) for f in _SCORE_FIELDS} for row in rows}
 
 
 def _write_score_cache(url: str, scores: dict) -> None:
-    """Persist computed scores to article_scores. Best-effort: never raises."""
+    """Persist computed scores to article_scores (upsert). Best-effort: never raises."""
     try:
-        conn = get_connection()
-        try:
-            conn.execute(
-                "INSERT OR REPLACE INTO article_scores "
-                "(url, impact_score, authenticity_score, relevance_score, "
-                "impact_reason, authenticity_reason, relevance_reason, cached_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)",
-                (
-                    url,
-                    scores["impact_score"],
-                    scores["authenticity_score"],
-                    scores["relevance_score"],
-                    scores["impact_reason"],
-                    scores["authenticity_reason"],
-                    scores["relevance_reason"],
-                ),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        values = {"url": url, "cached_at": func.now(), **{f: scores[f] for f in _SCORE_FIELDS}}
+        stmt = pg_insert(ArticleScore).values(**values)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[ArticleScore.url],
+            set_={"cached_at": func.now(), **{f: scores[f] for f in _SCORE_FIELDS}},
+        )
+        with get_session() as session:
+            session.execute(stmt)
     except Exception:
         pass
 
@@ -253,11 +247,7 @@ def process_articles(articles: list[dict], run_id: str | None = None) -> list[di
     use_local = _cfg.LLM_PROVIDER == "local"
     client = None if use_local else anthropic.Anthropic()
 
-    conn = get_connection()
-    try:
-        score_cache = _load_score_cache(conn)
-    finally:
-        conn.close()
+    score_cache = _load_score_cache()
 
     results = []
     with tqdm(total=len(articles), desc="Articles", unit="art", leave=False) as bar:

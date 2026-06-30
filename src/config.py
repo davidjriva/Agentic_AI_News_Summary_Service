@@ -45,6 +45,19 @@ PROCESSOR_MAX_RETRIES: int = int(os.getenv("PROCESSOR_MAX_RETRIES", "2"))
 PROCESSOR_RETRY_DELAY: float = float(os.getenv("PROCESSOR_RETRY_DELAY", "2.0"))
 
 # ---------------------------------------------------------------------------
+# Database (Supabase Postgres) — secrets come from .env
+# ---------------------------------------------------------------------------
+# The SQLAlchemy URL is assembled in db.py via URL.create() so the password
+# (which may contain URL-reserved characters) is escaped correctly. Tests can
+# override the whole URL with DATABASE_URL.
+DATABASE_URL: str | None = os.getenv("DATABASE_URL")  # full override (e.g. tests)
+SUPABASE_DB_HOST: str = os.getenv("SUPABASE_DB_HOST", "")
+SUPABASE_DB_PORT: int = int(os.getenv("SUPABASE_DB_PORT", "5432"))
+SUPABASE_DB_USER: str = os.getenv("SUPABASE_DB_USER", "postgres")
+SUPABASE_DB_NAME: str = os.getenv("SUPABASE_DB_NAME", "postgres")
+DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
+
+# ---------------------------------------------------------------------------
 # Article dict schema — locked contract shared by all pipeline stages
 # ---------------------------------------------------------------------------
 # Produced by fetcher.py:

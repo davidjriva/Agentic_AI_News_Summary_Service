@@ -1,102 +1,69 @@
-import sqlite3
-from pathlib import Path
+"""Database access layer — a SQLAlchemy Engine + Session over Supabase Postgres.
 
-_DATA_DIR = Path(__file__).parent.parent / "data"
+This replaces the previous file-based sqlite3 layer. The schema itself lives in
+``models.py`` and is managed by Alembic (``alembic upgrade head``); this module
+only owns connection setup and session lifecycle.
 
-_CREATE_SEEN_ARTICLES = """
-CREATE TABLE IF NOT EXISTS seen_articles (
-    url TEXT PRIMARY KEY,
-    seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+Usage::
+
+    from src.db import get_session
+
+    with get_session() as session:
+        session.add(Run(id=run_id, ...))
+        # commit happens on clean exit; rollback on exception
 """
 
-_CREATE_RUNS = """
-CREATE TABLE IF NOT EXISTS runs (
-    id TEXT PRIMARY KEY,
-    started_at TIMESTAMP,
-    completed_at TIMESTAMP,
-    status TEXT,
-    article_count INTEGER,
-    html TEXT,
-    error TEXT
-);
-"""
+from __future__ import annotations
 
-_CREATE_RUN_ARTICLES = """
-CREATE TABLE IF NOT EXISTS run_articles (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id       TEXT NOT NULL,
-    title        TEXT,
-    url          TEXT,
-    publication  TEXT,
-    published_at TEXT,
-    rank_score   REAL
-);
-"""
+from contextlib import contextmanager
+from functools import lru_cache
+from typing import Iterator
 
-_CREATE_FAILED_ARTICLES = """
-CREATE TABLE IF NOT EXISTS failed_articles (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id      TEXT NOT NULL,
-    url         TEXT,
-    title       TEXT,
-    publication TEXT,
-    reason      TEXT,
-    failed_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-"""
+from sqlalchemy import URL, Engine, create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
-_CREATE_FILTERED_ARTICLES = """
-CREATE TABLE IF NOT EXISTS filtered_articles (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id           TEXT NOT NULL,
-    url              TEXT,
-    title            TEXT,
-    publication      TEXT,
-    relevance_score  INTEGER,
-    relevance_reason TEXT
-);
-"""
-
-_CREATE_ARTICLE_SCORES = """
-CREATE TABLE IF NOT EXISTS article_scores (
-    url                 TEXT PRIMARY KEY,
-    impact_score        INTEGER,
-    authenticity_score  INTEGER,
-    relevance_score     INTEGER,
-    impact_reason       TEXT,
-    authenticity_reason TEXT,
-    relevance_reason    TEXT,
-    cached_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-"""
+from src import config as _cfg
 
 
-def get_connection() -> sqlite3.Connection:
-    """Return a fresh sqlite3 connection with row_factory set to sqlite3.Row.
+def _build_url() -> URL | str:
+    """Assemble the SQLAlchemy connection URL.
 
-    Creates the data/ directory and required tables on first use.
-    Callers are expected to use the connection as a context manager.
+    A full ``DATABASE_URL`` (used by tests/CI) wins. Otherwise the URL is built
+    from the discrete ``SUPABASE_DB_*`` parts with ``URL.create`` so that a
+    password containing URL-reserved characters is escaped correctly.
     """
-    _DATA_DIR.mkdir(parents=True, exist_ok=True)
-    db_path = _DATA_DIR / "state.db"
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    conn.execute(_CREATE_SEEN_ARTICLES)
-    conn.execute(_CREATE_RUNS)
-    conn.execute(_CREATE_RUN_ARTICLES)
-    conn.execute(_CREATE_FAILED_ARTICLES)
-    conn.execute(_CREATE_FILTERED_ARTICLES)
-    conn.execute(_CREATE_ARTICLE_SCORES)
-    # Migrate existing runs table — safe to run repeatedly
-    for col_sql in (
-        "ALTER TABLE runs ADD COLUMN dropped_count INTEGER DEFAULT 0",
-        "ALTER TABLE runs ADD COLUMN failed_count INTEGER DEFAULT 0",
-        "ALTER TABLE run_articles ADD COLUMN rank_score REAL",
-    ):
-        try:
-            conn.execute(col_sql)
-        except sqlite3.OperationalError:
-            pass  # column already exists
-    conn.commit()
-    return conn
+    if _cfg.DATABASE_URL:
+        return _cfg.DATABASE_URL
+    return URL.create(
+        "postgresql+psycopg",
+        username=_cfg.SUPABASE_DB_USER,
+        password=_cfg.DB_PASSWORD,
+        host=_cfg.SUPABASE_DB_HOST,
+        port=_cfg.SUPABASE_DB_PORT,
+        database=_cfg.SUPABASE_DB_NAME,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_engine() -> Engine:
+    """Return the process-wide pooled Engine (created lazily on first use)."""
+    return create_engine(_build_url(), pool_pre_ping=True, future=True)
+
+
+@lru_cache(maxsize=1)
+def _get_sessionmaker() -> sessionmaker[Session]:
+    return sessionmaker(bind=get_engine(), expire_on_commit=False, future=True)
+
+
+@contextmanager
+def get_session() -> Iterator[Session]:
+    """Yield a Session, committing on clean exit and rolling back on error."""
+    session = _get_sessionmaker()()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
