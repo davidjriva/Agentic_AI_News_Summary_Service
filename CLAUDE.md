@@ -4,24 +4,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+Tasks are run via [`just`](https://github.com/casey/just) (the old Makefile was removed). Run `just` with no args to list all recipes.
+
 ```bash
 # Install dependencies
-make install          # runs: poetry install
+just install          # runs: poetry install
 
 # Run the pipeline
-make run              # full run (fetches, processes, ranks, sends email)
-make run-dry          # dry run: skips email, prints HTML to stdout
+just run              # full run (fetches, processes, ranks, sends email)
+just run-dry          # dry run: skips email, prints HTML to stdout
+just run-clean        # clears recent seen_articles, then runs
 
 # Start the dashboard server
-make serve            # uvicorn on http://localhost:8000 with --reload
+just serve            # uvicorn on http://localhost:8000 with --reload
 
-# Run tests
-make test             # poetry run pytest tests/ -v
-poetry run pytest tests/test_processor.py -v   # single test file
-poetry run pytest tests/test_processor.py::TestLocalLLMProvider -v  # single class
+# Start the local llama.cpp model server on :8089 (see Local LLM section)
+just llama
+
+# Run tests (DB-touching tests require Docker — see Testing approach)
+just test                              # full suite
+just test-one tests/test_processor.py  # single file or node
+
+# Database migrations (Supabase Postgres via Alembic)
+just migrate                       # alembic upgrade head
+just makemigration "msg"           # autogenerate a migration from model changes
 
 # Register launchd scheduling (macOS, 7 AM + 6 PM daily)
-make install-launchd
+just install-launchd
 ```
 
 ## Architecture
@@ -36,7 +45,7 @@ fetcher.py → processor.py → ranker.py → renderer.py → emailer.py
 
 ### Module responsibilities
 
-- **`src/db.py`** — `get_connection()` opens SQLite at `data/state.db` and auto-creates both tables (`seen_articles`, `runs`) on first call. Every caller is responsible for closing the connection.
+- **`src/db.py`** — Persistence is **Supabase Postgres** via SQLAlchemy. `get_session()` is a context manager yielding a `Session` from a process-wide pooled `Engine` (commits on clean exit, rolls back on error). ORM models live in **`src/models.py`**; the schema is owned by **Alembic** (`alembic/`), not created at runtime. The connection URL is built in `db.py` from `SUPABASE_DB_*` + `DB_PASSWORD` (escaped via `URL.create`), or overridden wholesale by `DATABASE_URL` (used by tests). Postgres-specific upserts (`ON CONFLICT`) are used for `seen_articles`/`article_scores`. A one-time `scripts/migrate_sqlite_to_pg.py` backfilled the legacy `data/state.db`.
 - **`src/fetcher.py`** — Polls all `FEED_URLS`. Nine sources use `feedparser` for RSS/Atom; one (`HN_ALGOLIA_URL`) uses the Algolia JSON API via `requests`. Deduplication is read-then-batch-write per run — all new URLs are inserted at the end of `fetch_articles()`, not per article.
 - **`src/processor.py`** — Calls one LLM request per article. Supports two providers via `LLM_PROVIDER` env var: `"anthropic"` (default, uses Anthropic SDK with ephemeral prompt caching on the system message) and `"local"` (llama.cpp via OpenAI-compatible `/v1/chat/completions`). Failures fall back to neutral scores (5/5) and truncated description as summary.
 - **`src/ranker.py`** — Stateless scoring: `rank_score = (impact_score * 0.6) + (authenticity_score * 0.4)`. Does **not** assign a `rank` field (1-based ranking in the spec was never added; sort order is the implicit rank).
@@ -45,10 +54,21 @@ fetcher.py → processor.py → ranker.py → renderer.py → emailer.py
 
 ### Configuration
 
-All non-secret config lives in `src/config.py`. Secrets (`ANTHROPIC_API_KEY`, `GMAIL_APP_PASSWORD`, `GMAIL_SENDER`) and optional overrides (`LLM_PROVIDER`, `LOCAL_LLM_URL`, `LOCAL_LLM_MODEL`, `EMAIL_RECIPIENTS`) are loaded from `.env` via `python-dotenv`. `.env.example` documents all env vars.
+All non-secret config lives in `src/config.py`. Secrets (`ANTHROPIC_API_KEY`, `GMAIL_APP_PASSWORD`, `GMAIL_SENDER`, `DB_PASSWORD`) and overrides (`LLM_PROVIDER`, `LOCAL_LLM_URL`, `LOCAL_LLM_MODEL`, `EMAIL_RECIPIENTS`, `SUPABASE_DB_HOST`/`SUPABASE_DB_USER`/`SUPABASE_DB_PORT`/`SUPABASE_DB_NAME`, `DATABASE_URL`) are loaded from `.env` via `python-dotenv`. `.env.example` documents all env vars. The Supabase connection uses the **Session pooler** (port 5432).
 
 `RECIPIENTS` is populated from the `EMAIL_RECIPIENTS` env var (comma-separated); it is empty by default — the `.env` file must set it for email delivery to work.
+
+### Local LLM (llama.cpp)
+
+With `LLM_PROVIDER=local`, the processor POSTs to `{LOCAL_LLM_URL}/v1/chat/completions`. The dev setup serves **`news-agent-14b`** (a Qwen3-14B Q4_K_M build, system-prompted for this project) via llama.cpp's `llama-server` on `:8089` — start it with `just llama` (or the `llama-start` shell alias). The model is stored in **Ollama's blob store** and symlinked to `~/llama-cpp/models/news-agent-14b.gguf`, so llama.cpp serves the same weights without a separate download.
+
+Operational gotchas on a 24 GB unified-memory Mac (learned the hard way):
+- **Ollama and llama.cpp cannot both hold the 14B model** (~14 GB each in VRAM) — running both OOMs the Metal GPU. Unload Ollama first (`ollama stop news-agent-14b`); `just llama` does this automatically.
+- **Use `-c 8192`, not 32768** — the large KV cache plus weights exceeds the GPU working-set cap and OOMs mid-decode. Once the Metal backend errors, the server is poisoned and must be restarted.
+- **Throughput is ~9–10 tok/s** and Qwen3's "thinking" mode can emit ~470 tokens/call, so a full 75-article run is slow (tens of minutes to hours, worsened by thermal throttling on the fanless Air). The `article_scores` cache (TTL `SCORE_CACHE_TTL_DAYS`) makes reruns much faster.
 
 ### Testing approach
 
 Tests mock at the boundary of each external dependency (`anthropic.Anthropic`, `requests.post`, `smtplib.SMTP`, `feedparser.parse`). The `src.config` module is patched directly via `patch.object(_cfg, "LLM_PROVIDER", ...)` rather than environment variable patching.
+
+DB-touching tests use a **real, ephemeral Postgres** via `testcontainers` (the models rely on Postgres-specific upserts, so SQLite can't stand in). The session-scoped container + per-test clean live in `tests/conftest.py`; request the `db` fixture to use it. **These tests require a running Docker daemon.** Pure-logic tests (ranker, renderer, filter, and the LLM paths in processor/fetcher) stay mock-based and never touch the DB — the autouse `_isolate_db` fixture in `test_processor.py` keeps them off Postgres. CI (`.github/workflows/ci.yml`) runs the full suite; Docker is preinstalled on the runner.
