@@ -1,38 +1,11 @@
 """Tests for src/main.py run_pipeline orchestration."""
 
-import sqlite3
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
+from sqlalchemy import select
 
-
-# ---------------------------------------------------------------------------
-# Test: tqdm stage bar
-# ---------------------------------------------------------------------------
-
-def test_run_pipeline_uses_tqdm(monkeypatch):
-    """Stage bar should be created with total=6 during a dry run (6 stages including filter)."""
-    bar_mock = MagicMock()
-    bar_mock.__enter__ = MagicMock(return_value=bar_mock)
-    bar_mock.__exit__ = MagicMock(return_value=False)
-    tqdm_cls = MagicMock(return_value=bar_mock)
-
-    with (
-        patch("src.main.fetch_articles", return_value=[]),
-        patch("src.main.process_articles", return_value=[]),
-        patch("src.main.filter_articles", return_value=([], [])),
-        patch("src.main.rank_articles", return_value=[]),
-        patch("src.main.summarize_articles", return_value=[]),
-        patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
-        patch("src.main.get_connection"),
-        patch("src.main.tqdm", tqdm_cls),
-    ):
-        from src.main import run_pipeline
-        run_pipeline(dry_run=True)
-
-    tqdm_cls.assert_called_once_with(total=7, desc="Pipeline", leave=True)
-    assert bar_mock.update.call_count == 7
+from src.db import get_session
+from src.models import FailedArticle, FilteredArticle, Run, SeenArticle
 
 
 # ---------------------------------------------------------------------------
@@ -55,82 +28,53 @@ def _make_article(url: str = "http://example.com/1", relevance_score: int = 8) -
     }
 
 
+def _seed(*objs):
+    with get_session() as session:
+        session.add_all(objs)
+
+
+def _get_run(run_id):
+    with get_session() as session:
+        return session.get(Run, run_id)
+
+
+def _filtered_for(run_id):
+    with get_session() as session:
+        return session.execute(
+            select(FilteredArticle).where(FilteredArticle.run_id == run_id)
+        ).scalars().all()
+
+
+def _seen_urls():
+    with get_session() as session:
+        return set(session.scalars(select(SeenArticle.url)).all())
+
+
 # ---------------------------------------------------------------------------
-# Fixtures
+# Test: tqdm stage bar
 # ---------------------------------------------------------------------------
 
-@pytest.fixture()
-def temp_db(tmp_path, monkeypatch):
-    """Patch src.main.get_connection (and src.db._DATA_DIR) to use isolated temp DB."""
-    db_path = tmp_path / "test_state.db"
+def test_run_pipeline_uses_tqdm(db):
+    """Stage bar should be created with total=7 during a dry run."""
+    bar_mock = MagicMock()
+    bar_mock.__enter__ = MagicMock(return_value=bar_mock)
+    bar_mock.__exit__ = MagicMock(return_value=False)
+    tqdm_cls = MagicMock(return_value=bar_mock)
 
-    def _make_conn():
-        conn = sqlite3.connect(str(db_path))
-        conn.row_factory = sqlite3.Row
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS runs (
-                id TEXT PRIMARY KEY,
-                started_at TIMESTAMP,
-                completed_at TIMESTAMP,
-                status TEXT,
-                article_count INTEGER,
-                html TEXT,
-                error TEXT,
-                dropped_count INTEGER DEFAULT 0,
-                failed_count INTEGER DEFAULT 0
-            )"""
-        )
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS run_articles (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id       TEXT NOT NULL,
-                title        TEXT,
-                url          TEXT,
-                publication  TEXT,
-                published_at TEXT,
-                rank_score   REAL
-            )"""
-        )
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS seen_articles (
-                url TEXT PRIMARY KEY,
-                seen_at TIMESTAMP
-            )"""
-        )
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS failed_articles (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id      TEXT NOT NULL,
-                url         TEXT,
-                title       TEXT,
-                publication TEXT,
-                reason      TEXT,
-                failed_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )"""
-        )
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS filtered_articles (
-                id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id           TEXT NOT NULL,
-                url              TEXT,
-                title            TEXT,
-                publication      TEXT,
-                relevance_score  INTEGER,
-                relevance_reason TEXT
-            )"""
-        )
-        conn.commit()
-        return conn
+    with (
+        patch("src.main.fetch_articles", return_value=[]),
+        patch("src.main.process_articles", return_value=[]),
+        patch("src.main.filter_articles", return_value=([], [])),
+        patch("src.main.rank_articles", return_value=[]),
+        patch("src.main.summarize_articles", return_value=[]),
+        patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
+        patch("src.main.tqdm", tqdm_cls),
+    ):
+        from src.main import run_pipeline
+        run_pipeline(dry_run=True)
 
-    monkeypatch.setattr("src.main.get_connection", _make_conn)
-    # Also patch src.db._DATA_DIR in case anything calls get_connection via src.db
-    monkeypatch.setattr("src.db._DATA_DIR", tmp_path)
-
-    # Initialize schema so tests can insert directly via sqlite3.connect
-    init = _make_conn()
-    init.close()
-
-    return db_path
+    tqdm_cls.assert_called_once_with(total=7, desc="Pipeline", leave=True)
+    assert bar_mock.update.call_count == 7
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +84,7 @@ def temp_db(tmp_path, monkeypatch):
 class TestFilterCalledBetweenProcessAndRank:
     """filter_articles must be called after process_articles and before rank_articles."""
 
-    def test_filter_called_after_process_before_rank(self, temp_db):
+    def test_filter_called_after_process_before_rank(self, db):
         kept = [_make_article("http://kept.com", relevance_score=8)]
         dropped = [_make_article("http://dropped.com", relevance_score=3)]
         call_order = []
@@ -176,7 +120,7 @@ class TestFilterCalledBetweenProcessAndRank:
             f"Expected process→filter→rank, got {call_order}"
         )
 
-    def test_rank_receives_only_kept_articles(self, temp_db):
+    def test_rank_receives_only_kept_articles(self, db):
         kept = [_make_article("http://kept.com", relevance_score=8)]
         dropped = [_make_article("http://dropped.com", relevance_score=3)]
         rank_input = {}
@@ -209,7 +153,7 @@ class TestFilterCalledBetweenProcessAndRank:
 class TestDroppedArticlesPersisted:
     """Dropped articles must be written to filtered_articles table."""
 
-    def test_dropped_articles_inserted_to_db(self, temp_db):
+    def test_dropped_articles_inserted_to_db(self, db):
         kept = [_make_article("http://kept.com", relevance_score=8)]
         dropped = [
             _make_article("http://dropped1.com", relevance_score=3),
@@ -230,19 +174,13 @@ class TestDroppedArticlesPersisted:
             from src.main import run_pipeline
             run_id = run_pipeline(run_id="test-persist-run")
 
-        conn = sqlite3.connect(str(temp_db))
-        rows = conn.execute(
-            "SELECT url, title, relevance_score FROM filtered_articles WHERE run_id = ?",
-            (run_id,),
-        ).fetchall()
-        conn.close()
-
+        rows = _filtered_for(run_id)
         assert len(rows) == 2
-        urls = {row[0] for row in rows}
+        urls = {row.url for row in rows}
         assert "http://dropped1.com" in urls
         assert "http://dropped2.com" in urls
 
-    def test_no_db_write_when_no_dropped_articles(self, temp_db):
+    def test_no_db_write_when_no_dropped_articles(self, db):
         kept = [_make_article("http://kept.com", relevance_score=8)]
 
         with (
@@ -257,15 +195,9 @@ class TestDroppedArticlesPersisted:
             from src.main import run_pipeline
             run_id = run_pipeline(run_id="test-no-dropped-run")
 
-        conn = sqlite3.connect(str(temp_db))
-        rows = conn.execute(
-            "SELECT * FROM filtered_articles WHERE run_id = ?", (run_id,)
-        ).fetchall()
-        conn.close()
+        assert len(_filtered_for(run_id)) == 0
 
-        assert len(rows) == 0
-
-    def test_dropped_articles_store_relevance_reason(self, temp_db):
+    def test_dropped_articles_store_relevance_reason(self, db):
         kept = []
         dropped = [_make_article("http://dropped.com", relevance_score=4)]
         dropped[0]["relevance_reason"] = "not about AI"
@@ -282,14 +214,9 @@ class TestDroppedArticlesPersisted:
             from src.main import run_pipeline
             run_id = run_pipeline(run_id="test-reason-run")
 
-        conn = sqlite3.connect(str(temp_db))
-        row = conn.execute(
-            "SELECT relevance_reason FROM filtered_articles WHERE run_id = ?", (run_id,)
-        ).fetchone()
-        conn.close()
-
-        assert row is not None
-        assert row[0] == "not about AI"
+        rows = _filtered_for(run_id)
+        assert len(rows) == 1
+        assert rows[0].relevance_reason == "not about AI"
 
 
 # ---------------------------------------------------------------------------
@@ -299,7 +226,7 @@ class TestDroppedArticlesPersisted:
 class TestRunCountersUpdated:
     """The final UPDATE runs SET ... must include dropped_count and failed_count."""
 
-    def test_dropped_count_stored_in_runs(self, temp_db):
+    def test_dropped_count_stored_in_runs(self, db):
         kept = [_make_article("http://kept.com", relevance_score=9)]
         dropped = [
             _make_article("http://d1.com", relevance_score=2),
@@ -318,28 +245,18 @@ class TestRunCountersUpdated:
             from src.main import run_pipeline
             run_id = run_pipeline(run_id="test-counters-run")
 
-        conn = sqlite3.connect(str(temp_db))
-        row = conn.execute(
-            "SELECT dropped_count, failed_count FROM runs WHERE id = ?", (run_id,)
-        ).fetchone()
-        conn.close()
+        run = _get_run(run_id)
+        assert run is not None
+        assert run.dropped_count == 2
+        assert run.failed_count == 0
 
-        assert row is not None
-        assert row[0] == 2  # dropped_count
-        assert row[1] == 0  # failed_count (no failed_articles rows)
-
-    def test_failed_count_reads_from_failed_articles_table(self, temp_db):
+    def test_failed_count_reads_from_failed_articles_table(self, db):
         kept = [_make_article("http://kept.com", relevance_score=9)]
-
-        # Pre-insert failed_articles rows for this run_id
         run_id = "test-failed-count-run"
-        conn = sqlite3.connect(str(temp_db))
-        conn.execute(
-            "INSERT INTO failed_articles (run_id, url, title, publication, reason) VALUES (?,?,?,?,?)",
-            (run_id, "http://fail.com", "Fail Article", "fail.com", "LLM timeout"),
-        )
-        conn.commit()
-        conn.close()
+
+        # Pre-insert a failed_articles row for this run_id.
+        _seed(FailedArticle(run_id=run_id, url="http://fail.com", title="Fail Article",
+                            publication="fail.com", reason="LLM timeout"))
 
         with (
             patch("src.main.fetch_articles", return_value=kept),
@@ -353,30 +270,22 @@ class TestRunCountersUpdated:
             from src.main import run_pipeline
             run_pipeline(run_id=run_id)
 
-        conn = sqlite3.connect(str(temp_db))
-        row = conn.execute(
-            "SELECT dropped_count, failed_count FROM runs WHERE id = ?", (run_id,)
-        ).fetchone()
-        conn.close()
+        run = _get_run(run_id)
+        assert run is not None
+        assert run.dropped_count == 0
+        assert run.failed_count == 1
 
-        assert row is not None
-        assert row[0] == 0  # dropped_count
-        assert row[1] == 1  # failed_count from failed_articles
-
-    def test_both_dropped_and_failed_counted(self, temp_db):
+    def test_both_dropped_and_failed_counted(self, db):
         kept = [_make_article("http://kept.com", relevance_score=9)]
         dropped = [_make_article("http://dropped.com", relevance_score=1)]
         run_id = "test-both-run"
 
-        # Pre-insert 2 failed_articles rows
-        conn = sqlite3.connect(str(temp_db))
-        for i in range(2):
-            conn.execute(
-                "INSERT INTO failed_articles (run_id, url, title, publication, reason) VALUES (?,?,?,?,?)",
-                (run_id, f"http://fail{i}.com", f"Fail {i}", "fail.com", "error"),
-            )
-        conn.commit()
-        conn.close()
+        # Pre-insert 2 failed_articles rows.
+        _seed(*[
+            FailedArticle(run_id=run_id, url=f"http://fail{i}.com", title=f"Fail {i}",
+                         publication="fail.com", reason="error")
+            for i in range(2)
+        ])
 
         with (
             patch("src.main.fetch_articles", return_value=kept + dropped),
@@ -390,51 +299,24 @@ class TestRunCountersUpdated:
             from src.main import run_pipeline
             run_pipeline(run_id=run_id)
 
-        conn = sqlite3.connect(str(temp_db))
-        row = conn.execute(
-            "SELECT dropped_count, failed_count FROM runs WHERE id = ?", (run_id,)
-        ).fetchone()
-        conn.close()
-
-        assert row[0] == 1  # dropped_count
-        assert row[1] == 2  # failed_count
+        run = _get_run(run_id)
+        assert run.dropped_count == 1
+        assert run.failed_count == 2
 
 
 # ---------------------------------------------------------------------------
 # Test: top-N URLs written to seen_articles after ranking
 # ---------------------------------------------------------------------------
 
-def test_top_n_urls_written_to_seen_articles(tmp_path):
-    """After ranking, exactly the top-N article URLs must be in seen_articles — no more, no less."""
-    import sqlite3
-    from unittest.mock import patch
+def test_top_n_urls_written_to_seen_articles(db):
+    """After ranking, exactly the top-N article URLs must be in seen_articles."""
     from src.config import TOP_N
     from src.main import run_pipeline
 
-    db_path = tmp_path / "state.db"
-
-    def _make_conn():
-        c = sqlite3.connect(str(db_path))
-        c.row_factory = sqlite3.Row
-        for ddl in [
-            "CREATE TABLE IF NOT EXISTS seen_articles (url TEXT PRIMARY KEY, seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, started_at TIMESTAMP, completed_at TIMESTAMP, status TEXT, article_count INTEGER, html TEXT, error TEXT, dropped_count INTEGER DEFAULT 0, failed_count INTEGER DEFAULT 0)",
-            "CREATE TABLE IF NOT EXISTS run_articles (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT, title TEXT, url TEXT, publication TEXT, published_at TEXT, rank_score REAL)",
-            "CREATE TABLE IF NOT EXISTS failed_articles (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT, url TEXT, title TEXT, publication TEXT, reason TEXT, failed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS filtered_articles (id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT, url TEXT, title TEXT, publication TEXT, relevance_score INTEGER, relevance_reason TEXT)",
-            "CREATE TABLE IF NOT EXISTS article_scores (url TEXT PRIMARY KEY, impact_score INTEGER, authenticity_score INTEGER, relevance_score INTEGER, impact_reason TEXT, authenticity_reason TEXT, relevance_reason TEXT, cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
-        ]:
-            c.execute(ddl)
-        c.commit()
-        return c
-
-    _make_conn().close()
-
-    # Seed TOP_N + 5 ranked articles so we can assert only TOP_N are written.
     total = TOP_N + 5
     all_urls = [f"https://example.com/article-{i}" for i in range(total)]
 
-    def _make_article(i, url):
+    def _article(i, url):
         return {
             "url": url,
             "title": f"Title {i}",
@@ -447,7 +329,7 @@ def test_top_n_urls_written_to_seen_articles(tmp_path):
             "summary": "A summary.",
         }
 
-    ranked_articles = [_make_article(i, url) for i, url in enumerate(all_urls)]
+    ranked_articles = [_article(i, url) for i, url in enumerate(all_urls)]
     top_articles = ranked_articles[:TOP_N]
 
     with patch("src.main.fetch_articles", return_value=[]), \
@@ -456,16 +338,10 @@ def test_top_n_urls_written_to_seen_articles(tmp_path):
          patch("src.main.rank_articles", return_value=ranked_articles), \
          patch("src.main.summarize_articles", return_value=top_articles), \
          patch("src.main.render_newsletter", return_value=("<html/>", "plain")), \
-         patch("src.main.send_newsletter"), \
-         patch("src.main.get_connection", side_effect=_make_conn):
+         patch("src.main.send_newsletter"):
         run_pipeline(dry_run=True, run_id="test-run-id")
 
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    rows = conn.execute("SELECT url FROM seen_articles").fetchall()
-    seen = {row["url"] for row in rows}
-    conn.close()
-
+    seen = _seen_urls()
     expected = {a["url"] for a in ranked_articles[:TOP_N]}
     unexpected = {a["url"] for a in ranked_articles[TOP_N:]}
 

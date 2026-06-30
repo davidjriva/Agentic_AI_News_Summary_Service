@@ -1,15 +1,15 @@
 """Tests for src/server.py FastAPI endpoints."""
 
-import sqlite3
-import threading
-
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 
+from src.db import get_session
+from src.models import FailedArticle, FilteredArticle, Run, RunArticle
+
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Fixtures / helpers
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(autouse=True)
@@ -22,81 +22,16 @@ def reset_running_state():
 
 
 @pytest.fixture()
-def temp_db(tmp_path, monkeypatch):
-    """Patch src.server.get_connection to use an isolated temp database."""
-    db_path = tmp_path / "test_state.db"
-
-    def _mock_get_connection():
-        conn = sqlite3.connect(str(db_path))
-        conn.row_factory = sqlite3.Row
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS runs (
-                id TEXT PRIMARY KEY,
-                started_at TIMESTAMP,
-                completed_at TIMESTAMP,
-                status TEXT,
-                article_count INTEGER,
-                html TEXT,
-                error TEXT,
-                dropped_count INTEGER DEFAULT 0,
-                failed_count INTEGER DEFAULT 0
-            )"""
-        )
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS run_articles (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id       TEXT NOT NULL,
-                title        TEXT,
-                url          TEXT,
-                publication  TEXT,
-                published_at TEXT,
-                rank_score   REAL
-            )"""
-        )
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS seen_articles (
-                url TEXT PRIMARY KEY,
-                seen_at TIMESTAMP
-            )"""
-        )
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS filtered_articles (
-                id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id           TEXT NOT NULL,
-                url              TEXT,
-                title            TEXT,
-                publication      TEXT,
-                relevance_score  INTEGER,
-                relevance_reason TEXT
-            )"""
-        )
-        conn.execute(
-            """CREATE TABLE IF NOT EXISTS failed_articles (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                run_id      TEXT NOT NULL,
-                url         TEXT,
-                title       TEXT,
-                publication TEXT,
-                reason      TEXT,
-                failed_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )"""
-        )
-        conn.commit()
-        return conn
-
-    monkeypatch.setattr("src.server.get_connection", _mock_get_connection)
-
-    # Initialize schema so tests can insert directly via sqlite3.connect
-    init = _mock_get_connection()
-    init.close()
-
-    return db_path
-
-
-@pytest.fixture()
-def client(temp_db):
+def client(db):
+    """TestClient backed by a clean testcontainers Postgres (via the db fixture)."""
     from src.server import app
     return TestClient(app)
+
+
+def _seed(*objs):
+    """Persist ORM objects through the application's session."""
+    with get_session() as session:
+        session.add_all(objs)
 
 
 # ---------------------------------------------------------------------------
@@ -185,14 +120,8 @@ def test_list_runs_empty(client):
     assert response.json() == []
 
 
-def test_list_runs_returns_records(client, temp_db):
-    conn = sqlite3.connect(str(temp_db))
-    conn.execute(
-        "INSERT INTO runs (id, started_at, status, article_count) VALUES (?,?,?,?)",
-        ("run-1", "2026-04-14T07:00:00", "success", 15),
-    )
-    conn.commit()
-    conn.close()
+def test_list_runs_returns_records(client):
+    _seed(Run(id="run-1", started_at="2026-04-14T07:00:00", status="success", article_count=15))
 
     response = client.get("/runs")
     assert response.status_code == 200
@@ -212,15 +141,9 @@ def test_get_run_not_found(client):
     assert response.status_code == 404
 
 
-def test_get_run_renders_detail_page(client, temp_db):
+def test_get_run_renders_detail_page(client):
     html_content = "<html><body>Newsletter content</body></html>"
-    conn = sqlite3.connect(str(temp_db))
-    conn.execute(
-        "INSERT INTO runs (id, started_at, status, article_count, html) VALUES (?,?,?,?,?)",
-        ("run-2", "2026-04-14T07:00:00", "success", 10, html_content),
-    )
-    conn.commit()
-    conn.close()
+    _seed(Run(id="run-2", started_at="2026-04-14T07:00:00", status="success", article_count=10, html=html_content))
 
     response = client.get("/runs/run-2")
     assert response.status_code == 200
@@ -228,14 +151,8 @@ def test_get_run_renders_detail_page(client, temp_db):
     assert "/runs/run-2/newsletter" in response.text
 
 
-def test_get_run_error_status_returns_404(client, temp_db):
-    conn = sqlite3.connect(str(temp_db))
-    conn.execute(
-        "INSERT INTO runs (id, started_at, status, error) VALUES (?,?,?,?)",
-        ("run-3", "2026-04-14T07:00:00", "error", "Something went wrong"),
-    )
-    conn.commit()
-    conn.close()
+def test_get_run_error_status_returns_404(client):
+    _seed(Run(id="run-3", started_at="2026-04-14T07:00:00", status="error", error="Something went wrong"))
 
     response = client.get("/runs/run-3")
     assert response.status_code == 404
@@ -245,15 +162,9 @@ def test_get_run_error_status_returns_404(client, temp_db):
 # GET /runs/{run_id}/newsletter (raw HTML)
 # ---------------------------------------------------------------------------
 
-def test_get_run_newsletter_returns_raw_html(client, temp_db):
+def test_get_run_newsletter_returns_raw_html(client):
     html_content = "<html><body>Newsletter content</body></html>"
-    conn = sqlite3.connect(str(temp_db))
-    conn.execute(
-        "INSERT INTO runs (id, started_at, status, article_count, html) VALUES (?,?,?,?,?)",
-        ("run-5", "2026-04-14T07:00:00", "success", 10, html_content),
-    )
-    conn.commit()
-    conn.close()
+    _seed(Run(id="run-5", started_at="2026-04-14T07:00:00", status="success", article_count=10, html=html_content))
 
     response = client.get("/runs/run-5/newsletter")
     assert response.status_code == 200
@@ -275,14 +186,8 @@ def test_dashboard_renders(client):
     assert "Agentic Times" in response.text
 
 
-def test_dashboard_shows_run_history(client, temp_db):
-    conn = sqlite3.connect(str(temp_db))
-    conn.execute(
-        "INSERT INTO runs (id, started_at, status, article_count) VALUES (?,?,?,?)",
-        ("run-4", "2026-04-14T07:00:00", "success", 12),
-    )
-    conn.commit()
-    conn.close()
+def test_dashboard_shows_run_history(client):
+    _seed(Run(id="run-4", started_at="2026-04-14T07:00:00", status="success", article_count=12))
 
     response = client.get("/")
     assert response.status_code == 200
@@ -294,20 +199,13 @@ def test_dashboard_shows_run_history(client, temp_db):
 # ---------------------------------------------------------------------------
 
 class TestMetricsRoute:
-    def test_metrics_renders(self, client, temp_db):
+    def test_metrics_renders(self, client):
         """GET /metrics returns 200 with expected stat values in body."""
-        conn = sqlite3.connect(str(temp_db))
-        conn.execute(
-            "INSERT INTO runs (id, started_at, completed_at, status, article_count) "
-            "VALUES (?,?,?,?,?)",
-            ("m-run-1", "2026-04-14T07:00:00", "2026-04-14T07:05:00", "success", 8),
+        _seed(
+            Run(id="m-run-1", started_at="2026-04-14T07:00:00", completed_at="2026-04-14T07:05:00",
+                status="success", article_count=8),
+            RunArticle(run_id="m-run-1", title="Test Article", url="https://example.com/1", publication="TechCrunch"),
         )
-        conn.execute(
-            "INSERT INTO run_articles (run_id, title, url, publication) VALUES (?,?,?,?)",
-            ("m-run-1", "Test Article", "https://example.com/1", "TechCrunch"),
-        )
-        conn.commit()
-        conn.close()
 
         response = client.get("/metrics")
         assert response.status_code == 200
@@ -335,26 +233,18 @@ class TestFilteredArticlesEndpoint:
         assert response.status_code == 200
         assert response.json() == {"filtered": []}
 
-    def test_returns_filtered_articles_for_run(self, client, temp_db):
-        conn = sqlite3.connect(str(temp_db))
-        conn.execute(
-            "INSERT INTO runs (id, started_at, status, article_count) VALUES (?,?,?,?)",
-            ("filt-run-1", "2026-04-14T07:00:00", "success", 5),
-        )
-        conn.execute(
-            "INSERT INTO filtered_articles (run_id, url, title, publication, relevance_score, relevance_reason) "
-            "VALUES (?,?,?,?,?,?)",
-            (
-                "filt-run-1",
-                "https://example.com/dropped",
-                "Dropped Article",
-                "TechCrunch",
-                3,
-                "Not relevant to AI",
+    def test_returns_filtered_articles_for_run(self, client):
+        _seed(
+            Run(id="filt-run-1", started_at="2026-04-14T07:00:00", status="success", article_count=5),
+            FilteredArticle(
+                run_id="filt-run-1",
+                url="https://example.com/dropped",
+                title="Dropped Article",
+                publication="TechCrunch",
+                relevance_score=3,
+                relevance_reason="Not relevant to AI",
             ),
         )
-        conn.commit()
-        conn.close()
 
         response = client.get("/runs/filt-run-1/filtered")
         assert response.status_code == 200
@@ -367,20 +257,19 @@ class TestFilteredArticlesEndpoint:
         assert article["relevance_score"] == 3
         assert article["relevance_reason"] == "Not relevant to AI"
 
-    def test_only_returns_articles_for_requested_run(self, client, temp_db):
-        conn = sqlite3.connect(str(temp_db))
+    def test_only_returns_articles_for_requested_run(self, client):
         for run_id in ("filt-run-a", "filt-run-b"):
-            conn.execute(
-                "INSERT INTO runs (id, started_at, status) VALUES (?,?,?)",
-                (run_id, "2026-04-14T07:00:00", "success"),
+            _seed(
+                Run(id=run_id, started_at="2026-04-14T07:00:00", status="success"),
+                FilteredArticle(
+                    run_id=run_id,
+                    url=f"https://example.com/{run_id}",
+                    title=f"Article for {run_id}",
+                    publication="Source",
+                    relevance_score=2,
+                    relevance_reason="Low relevance",
+                ),
             )
-            conn.execute(
-                "INSERT INTO filtered_articles (run_id, url, title, publication, relevance_score, relevance_reason) "
-                "VALUES (?,?,?,?,?,?)",
-                (run_id, f"https://example.com/{run_id}", f"Article for {run_id}", "Source", 2, "Low relevance"),
-            )
-        conn.commit()
-        conn.close()
 
         response = client.get("/runs/filt-run-a/filtered")
         assert response.status_code == 200
@@ -399,25 +288,17 @@ class TestFailedArticlesEndpoint:
         assert response.status_code == 200
         assert response.json() == {"failed": []}
 
-    def test_returns_failed_articles_for_run(self, client, temp_db):
-        conn = sqlite3.connect(str(temp_db))
-        conn.execute(
-            "INSERT INTO runs (id, started_at, status, article_count) VALUES (?,?,?,?)",
-            ("fail-run-1", "2026-04-14T07:00:00", "success", 5),
-        )
-        conn.execute(
-            "INSERT INTO failed_articles (run_id, url, title, publication, reason) "
-            "VALUES (?,?,?,?,?)",
-            (
-                "fail-run-1",
-                "https://example.com/failed",
-                "Failed Article",
-                "Wired",
-                "LLM timeout",
+    def test_returns_failed_articles_for_run(self, client):
+        _seed(
+            Run(id="fail-run-1", started_at="2026-04-14T07:00:00", status="success", article_count=5),
+            FailedArticle(
+                run_id="fail-run-1",
+                url="https://example.com/failed",
+                title="Failed Article",
+                publication="Wired",
+                reason="LLM timeout",
             ),
         )
-        conn.commit()
-        conn.close()
 
         response = client.get("/runs/fail-run-1/failed")
         assert response.status_code == 200
@@ -429,20 +310,18 @@ class TestFailedArticlesEndpoint:
         assert article["publication"] == "Wired"
         assert article["reason"] == "LLM timeout"
 
-    def test_only_returns_articles_for_requested_run(self, client, temp_db):
-        conn = sqlite3.connect(str(temp_db))
+    def test_only_returns_articles_for_requested_run(self, client):
         for run_id in ("fail-run-a", "fail-run-b"):
-            conn.execute(
-                "INSERT INTO runs (id, started_at, status) VALUES (?,?,?)",
-                (run_id, "2026-04-14T07:00:00", "success"),
+            _seed(
+                Run(id=run_id, started_at="2026-04-14T07:00:00", status="success"),
+                FailedArticle(
+                    run_id=run_id,
+                    url=f"https://example.com/{run_id}",
+                    title=f"Failed for {run_id}",
+                    publication="Source",
+                    reason="error",
+                ),
             )
-            conn.execute(
-                "INSERT INTO failed_articles (run_id, url, title, publication, reason) "
-                "VALUES (?,?,?,?,?)",
-                (run_id, f"https://example.com/{run_id}", f"Failed for {run_id}", "Source", "error"),
-            )
-        conn.commit()
-        conn.close()
 
         response = client.get("/runs/fail-run-a/failed")
         assert response.status_code == 200
@@ -456,30 +335,18 @@ class TestFailedArticlesEndpoint:
 # ---------------------------------------------------------------------------
 
 class TestDashboardDroppedFailedColumns:
-    def test_dashboard_has_dropped_and_failed_headers(self, client, temp_db):
-        conn = sqlite3.connect(str(temp_db))
-        conn.execute(
-            "INSERT INTO runs (id, started_at, status, article_count, dropped_count, failed_count) "
-            "VALUES (?,?,?,?,?,?)",
-            ("hdr-run-1", "2026-04-14T07:00:00", "success", 8, 2, 1),
-        )
-        conn.commit()
-        conn.close()
+    def test_dashboard_has_dropped_and_failed_headers(self, client):
+        _seed(Run(id="hdr-run-1", started_at="2026-04-14T07:00:00", status="success",
+                  article_count=8, dropped_count=2, failed_count=1))
 
         response = client.get("/")
         assert response.status_code == 200
         assert "Dropped" in response.text
         assert "Failed" in response.text
 
-    def test_dashboard_shows_dropped_and_failed_counts(self, client, temp_db):
-        conn = sqlite3.connect(str(temp_db))
-        conn.execute(
-            "INSERT INTO runs (id, started_at, status, article_count, dropped_count, failed_count) "
-            "VALUES (?,?,?,?,?,?)",
-            ("dash-run-1", "2026-04-14T07:00:00", "success", 10, 4, 2),
-        )
-        conn.commit()
-        conn.close()
+    def test_dashboard_shows_dropped_and_failed_counts(self, client):
+        _seed(Run(id="dash-run-1", started_at="2026-04-14T07:00:00", status="success",
+                  article_count=10, dropped_count=4, failed_count=2))
 
         response = client.get("/")
         assert response.status_code == 200

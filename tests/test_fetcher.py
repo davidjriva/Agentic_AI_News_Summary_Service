@@ -1,53 +1,22 @@
 """Tests for src/fetcher.py (TDD)."""
-import sqlite3
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from types import SimpleNamespace
 
 import pytest
 
+from src.db import get_session
 from src.fetcher import _extract_author, _entry_to_dict
+from src.models import ArticleScore, SeenArticle
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Helpers
 # ---------------------------------------------------------------------------
 
-@pytest.fixture()
-def tmp_db(tmp_path):
-    """Return a fresh sqlite3 connection backed by a temp file."""
-    db_path = tmp_path / "test_news.db"
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS seen_articles (
-            url TEXT PRIMARY KEY,
-            seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS runs (
-            id TEXT PRIMARY KEY,
-            run_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            article_count INTEGER,
-            status TEXT,
-            html TEXT
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS article_scores (
-            url                 TEXT PRIMARY KEY,
-            impact_score        INTEGER,
-            authenticity_score  INTEGER,
-            relevance_score     INTEGER,
-            impact_reason       TEXT,
-            authenticity_reason TEXT,
-            relevance_reason    TEXT,
-            cached_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.commit()
-    yield conn
-    conn.close()
+def _seed(*objs):
+    """Persist ORM objects through the application's session."""
+    with get_session() as session:
+        session.add_all(objs)
 
 
 def _make_entry(url, title="Test Title", author="Test Author",
@@ -94,7 +63,7 @@ def _make_hn_hit(url, title="HN Title", author="hn_author",
 # (a) Articles older than LOOKBACK_HOURS are filtered out
 # ---------------------------------------------------------------------------
 
-def test_old_articles_filtered(tmp_db):
+def test_old_articles_filtered(db):
     """Articles published before the lookback window must be excluded."""
     from src.fetcher import fetch_articles
 
@@ -108,7 +77,6 @@ def test_old_articles_filtered(tmp_db):
 
     with patch("src.fetcher.feedparser.parse", return_value=feed), \
          patch("src.fetcher.requests.get") as mock_get, \
-         patch("src.fetcher.get_connection", return_value=tmp_db), \
          patch("src.fetcher.FEED_URLS", ["https://example.com/feed"]), \
          patch("src.fetcher.HN_ALGOLIA_URL", "https://hn.algolia.com/not-used"):
 
@@ -126,7 +94,7 @@ def test_old_articles_filtered(tmp_db):
 # (b) Articles already in seen_articles are skipped
 # ---------------------------------------------------------------------------
 
-def test_seen_articles_skipped(tmp_db):
+def test_seen_articles_skipped(db):
     """URLs already recorded in seen_articles must not appear in results."""
     from src.fetcher import fetch_articles
 
@@ -134,11 +102,7 @@ def test_seen_articles_skipped(tmp_db):
     new_url = "https://example.com/brand-new"
 
     # Pre-populate seen_articles
-    tmp_db.execute(
-        "INSERT INTO seen_articles (url, seen_at) VALUES (?, datetime('now'))",
-        (seen_url,),
-    )
-    tmp_db.commit()
+    _seed(SeenArticle(url=seen_url, seen_at=datetime.now(timezone.utc).isoformat()))
 
     entries = [
         _make_entry(seen_url, hours_ago=1),
@@ -148,7 +112,6 @@ def test_seen_articles_skipped(tmp_db):
 
     with patch("src.fetcher.feedparser.parse", return_value=feed), \
          patch("src.fetcher.requests.get") as mock_get, \
-         patch("src.fetcher.get_connection", return_value=tmp_db), \
          patch("src.fetcher.FEED_URLS", ["https://example.com/feed"]), \
          patch("src.fetcher.HN_ALGOLIA_URL", "https://hn.algolia.com/not-used"):
 
@@ -164,7 +127,7 @@ def test_seen_articles_skipped(tmp_db):
 # (c) fetch_articles does NOT insert into seen_articles; prunes article_scores
 # ---------------------------------------------------------------------------
 
-def test_fetcher_does_not_insert_seen_articles(tmp_db, tmp_path):
+def test_fetcher_does_not_insert_seen_articles(db):
     """fetch_articles() must not write to seen_articles — that is main.py's responsibility."""
     from src.fetcher import fetch_articles
 
@@ -174,63 +137,44 @@ def test_fetcher_does_not_insert_seen_articles(tmp_db, tmp_path):
 
     with patch("src.fetcher.feedparser.parse", return_value=feed), \
          patch("src.fetcher.requests.get") as mock_get, \
-         patch("src.fetcher.get_connection", return_value=tmp_db), \
          patch("src.fetcher.FEED_URLS", ["https://example.com/feed"]), \
          patch("src.fetcher.HN_ALGOLIA_URL", "https://hn.algolia.com/not-used"):
 
         mock_get.return_value.json.return_value = {"hits": []}
         fetch_articles()
 
-    # Re-open fresh connection since fetch_articles() closes the patched connection
-    conn2 = sqlite3.connect(str(tmp_path / "test_news.db"))
-    conn2.row_factory = sqlite3.Row
-    row = conn2.execute(
-        "SELECT url FROM seen_articles WHERE url = ?", (new_url,)
-    ).fetchone()
-    conn2.close()
+    with get_session() as session:
+        row = session.get(SeenArticle, new_url)
     assert row is None, "fetch_articles() must not insert into seen_articles"
 
 
-def test_fetcher_prunes_article_scores(tmp_db, tmp_path):
+def test_fetcher_prunes_article_scores(db):
     """fetch_articles() must delete article_scores rows older than 3 days."""
     from src.fetcher import fetch_articles
 
     stale_url = "https://example.com/stale"
     fresh_url = "https://example.com/fresh"
 
-    tmp_db.execute(
-        "INSERT INTO article_scores (url, impact_score, authenticity_score, relevance_score, "
-        "impact_reason, authenticity_reason, relevance_reason, cached_at) "
-        "VALUES (?, 5, 5, 5, 'r', 'r', 'r', datetime('now', '-4 days'))",
-        (stale_url,),
+    _seed(
+        ArticleScore(url=stale_url, impact_score=5, authenticity_score=5, relevance_score=5,
+                     impact_reason="r", authenticity_reason="r", relevance_reason="r",
+                     cached_at=datetime.now(timezone.utc) - timedelta(days=4)),
+        ArticleScore(url=fresh_url, impact_score=8, authenticity_score=7, relevance_score=9,
+                     impact_reason="r", authenticity_reason="r", relevance_reason="r",
+                     cached_at=datetime.now(timezone.utc)),
     )
-    tmp_db.execute(
-        "INSERT INTO article_scores (url, impact_score, authenticity_score, relevance_score, "
-        "impact_reason, authenticity_reason, relevance_reason, cached_at) "
-        "VALUES (?, 8, 7, 9, 'r', 'r', 'r', datetime('now'))",
-        (fresh_url,),
-    )
-    tmp_db.commit()
 
     with patch("src.fetcher.feedparser.parse", return_value=_make_feed([])), \
          patch("src.fetcher.requests.get") as mock_get, \
-         patch("src.fetcher.get_connection", return_value=tmp_db), \
          patch("src.fetcher.FEED_URLS", ["https://example.com/feed"]), \
          patch("src.fetcher.HN_ALGOLIA_URL", "https://hn.algolia.com/not-used"):
 
         mock_get.return_value.json.return_value = {"hits": []}
         fetch_articles()
 
-    # Re-open fresh connection since fetch_articles() closes the patched connection
-    conn2 = sqlite3.connect(str(tmp_path / "test_news.db"))
-    conn2.row_factory = sqlite3.Row
-    stale_row = conn2.execute(
-        "SELECT url FROM article_scores WHERE url = ?", (stale_url,)
-    ).fetchone()
-    fresh_row = conn2.execute(
-        "SELECT url FROM article_scores WHERE url = ?", (fresh_url,)
-    ).fetchone()
-    conn2.close()
+    with get_session() as session:
+        stale_row = session.get(ArticleScore, stale_url)
+        fresh_row = session.get(ArticleScore, fresh_url)
     assert stale_row is None, "Stale cache entry (>3 days) must be pruned"
     assert fresh_row is not None, "Fresh cache entry must be kept"
 
@@ -239,7 +183,7 @@ def test_fetcher_prunes_article_scores(tmp_db, tmp_path):
 # (d) author and publication fields extracted from feedparser entries
 # ---------------------------------------------------------------------------
 
-def test_author_and_publication_extracted(tmp_db):
+def test_author_and_publication_extracted(db):
     """author must come from entry; publication must be derived from feed URL domain."""
     from src.fetcher import fetch_articles
 
@@ -250,7 +194,6 @@ def test_author_and_publication_extracted(tmp_db):
 
     with patch("src.fetcher.feedparser.parse", return_value=feed), \
          patch("src.fetcher.requests.get") as mock_get, \
-         patch("src.fetcher.get_connection", return_value=tmp_db), \
          patch("src.fetcher.FEED_URLS", [feed_url]), \
          patch("src.fetcher.HN_ALGOLIA_URL", "https://hn.algolia.com/not-used"):
 
@@ -263,7 +206,7 @@ def test_author_and_publication_extracted(tmp_db):
     assert "techcrunch.com" in article["publication"]
 
 
-def test_missing_author_defaults_to_empty_string(tmp_db):
+def test_missing_author_defaults_to_empty_string(db):
     """When an entry has no author attribute, author must be empty string."""
     from src.fetcher import fetch_articles
 
@@ -275,7 +218,6 @@ def test_missing_author_defaults_to_empty_string(tmp_db):
 
     with patch("src.fetcher.feedparser.parse", return_value=feed), \
          patch("src.fetcher.requests.get") as mock_get, \
-         patch("src.fetcher.get_connection", return_value=tmp_db), \
          patch("src.fetcher.FEED_URLS", ["https://example.com/feed"]), \
          patch("src.fetcher.HN_ALGOLIA_URL", "https://hn.algolia.com/not-used"):
 
@@ -290,7 +232,7 @@ def test_missing_author_defaults_to_empty_string(tmp_db):
 # (e) HN Algolia JSON hits parsed into standard article dict shape
 # ---------------------------------------------------------------------------
 
-def test_hn_algolia_parsed_correctly(tmp_db):
+def test_hn_algolia_parsed_correctly(db):
     """HN hits must be parsed into the same shape as RSS articles."""
     from src.fetcher import fetch_articles
 
@@ -308,7 +250,6 @@ def test_hn_algolia_parsed_correctly(tmp_db):
 
     with patch("src.fetcher.feedparser.parse", return_value=_make_feed([])), \
          patch("src.fetcher.requests.get", return_value=mock_response), \
-         patch("src.fetcher.get_connection", return_value=tmp_db), \
          patch("src.fetcher.FEED_URLS", [hn_url]), \
          patch("src.fetcher.HN_ALGOLIA_URL", hn_url):
 
@@ -326,7 +267,7 @@ def test_hn_algolia_parsed_correctly(tmp_db):
     assert isinstance(article["published_at"], datetime)
 
 
-def test_hn_algolia_old_hits_filtered(tmp_db):
+def test_hn_algolia_old_hits_filtered(db):
     """HN hits older than LOOKBACK_HOURS must be filtered out."""
     from src.fetcher import fetch_articles
 
@@ -347,7 +288,6 @@ def test_hn_algolia_old_hits_filtered(tmp_db):
 
     with patch("src.fetcher.feedparser.parse", return_value=_make_feed([])), \
          patch("src.fetcher.requests.get", return_value=mock_response), \
-         patch("src.fetcher.get_connection", return_value=tmp_db), \
          patch("src.fetcher.FEED_URLS", [hn_url]), \
          patch("src.fetcher.HN_ALGOLIA_URL", hn_url):
 
@@ -362,7 +302,7 @@ def test_hn_algolia_old_hits_filtered(tmp_db):
 # Article dict shape completeness
 # ---------------------------------------------------------------------------
 
-def test_article_dict_has_all_required_keys(tmp_db):
+def test_article_dict_has_all_required_keys(db):
     """Every returned article dict must have the 6 required keys."""
     from src.fetcher import fetch_articles
 
@@ -372,7 +312,6 @@ def test_article_dict_has_all_required_keys(tmp_db):
 
     with patch("src.fetcher.feedparser.parse", return_value=feed), \
          patch("src.fetcher.requests.get") as mock_get, \
-         patch("src.fetcher.get_connection", return_value=tmp_db), \
          patch("src.fetcher.FEED_URLS", ["https://example.com/feed"]), \
          patch("src.fetcher.HN_ALGOLIA_URL", "https://hn.algolia.com/not-used"):
 
