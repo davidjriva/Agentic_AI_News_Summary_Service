@@ -15,7 +15,7 @@ from sqlalchemy import func, select
 import src.config as _cfg
 from src.db import get_session
 from src.main import run_pipeline
-from src.models import FailedArticle, FilteredArticle, Run, RunArticle, SeenArticle
+from src.models import FailedArticle, FilteredArticle, Run, RunArticle, SeenArticle, Subscriber
 from src.renderer import render_newsletter
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
@@ -381,7 +381,10 @@ def metrics(request: Request) -> HTMLResponse:
             .limit(20)
         ).mappings().all()
 
-    subscribers = len(_cfg.RECIPIENTS)
+        subscribers = session.scalar(
+            select(func.count()).select_from(Subscriber).where(Subscriber.status == "confirmed")
+        )
+
     emails_delivered = successful_runs * subscribers
 
     return templates.TemplateResponse(

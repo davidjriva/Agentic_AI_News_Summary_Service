@@ -38,6 +38,25 @@ The split is clean: **portfolio = all action-triggered transactional mail + publ
 - Rows are **never deleted** on unsubscribe (audit trail; supports CAN-SPAM honoring; prevents silent re-add). Re-subscribe flips an existing row back to `pending`.
 - **RLS:** enabled, **zero policies** — identical to the other tables. Only the `service_role` (portfolio) and the table-owning `postgres` role (this service) can access it; the public `anon`/publishable key cannot read subscriber emails. **No RLS policy changes are needed elsewhere.**
 
+## Data model — `newsletter_deliveries`
+
+Per-issue send tracking (added after review): one row per `(run, subscriber)`.
+
+| column | type | notes |
+|---|---|---|
+| `id` | bigint identity | primary key |
+| `run_id` | text | not null; the newsletter run |
+| `email` | text | not null; recipient at send time |
+| `status` | text | not null; `sent` or `failed` |
+| `error` | text | null; SMTP error on failure |
+| `sent_at` | timestamptz | default `now()` |
+
+`UNIQUE(run_id, email)` so recording is **idempotent** (a re-run upserts the row) — supports "who didn't get this issue → retry". RLS enabled, no policies, same as everything else.
+
+**Decisions (from review):**
+- **No batch-send.** Per-person unsubscribe requires one message per subscriber (personal token in body + `List-Unsubscribe` header), so we can't BCC. The emailer already does the only Gmail-scale optimization: one authenticated SMTP connection reused across the loop. Provider batch-with-substitution APIs are a future concern at thousands of subscribers.
+- **Subscribe/unsubscribe history:** latest dates on the subscriber row only (no events table); resubscription overwrites them.
+
 ## This repo's changes
 
 ### `src/models.py`
@@ -69,6 +88,7 @@ def send_newsletter(html, plain_text, run_time):
 ```
 
 - `_confirmed_subscribers()` queries `select(Subscriber.email, Subscriber.unsubscribe_token).where(Subscriber.status == "confirmed")` via `get_session()`.
+- `send_newsletter(html, plain_text, run_time, run_id=None)` gains `run_id`; `main.py` passes it. After the send loop it upserts a `newsletter_deliveries` row per subscriber (`sent`/`failed` + error) keyed on `(run_id, email)`.
 - **One message per subscriber** (each `To:` is a single address — no cross-recipient exposure) with that subscriber's unsubscribe URL.
 - **`List-Unsubscribe` + `List-Unsubscribe-Post: One-Click`** headers so Gmail/Apple Mail show a native Unsubscribe button that POSTs.
 - **Failure isolation:** a single bad address logs and is skipped; the batch continues. Reuse one authenticated SMTP connection for the whole batch (Gmail free tier allows ~500 recipients/day — ample).

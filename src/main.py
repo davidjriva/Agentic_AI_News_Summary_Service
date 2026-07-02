@@ -133,7 +133,7 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
                 print(html)
             else:
                 bar.set_description("Sending email")
-                send_newsletter(html, plain_text, started_at)
+                send_newsletter(html, plain_text, started_at, run_id=run_id)
                 tqdm.write(f"[{run_id}] Email sent")
             bar.update(1)
 

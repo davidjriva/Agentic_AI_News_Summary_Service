@@ -36,5 +36,7 @@ def render_newsletter(articles: list[dict], run_time: datetime) -> tuple[str, st
             f"{article['url']}"
         )
     plain_text = "\n\n".join(lines)
+    # Unsubscribe sentinel — emailer.py substitutes the per-recipient URL.
+    plain_text += "\n\n---\nUnsubscribe: %%UNSUBSCRIBE_URL%%"
 
     return html, plain_text

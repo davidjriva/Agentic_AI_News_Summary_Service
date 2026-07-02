@@ -24,6 +24,10 @@ LANGCHAIN_BLOG_URL = "https://www.langchain.com/blog"
 _recipients_env = os.getenv("EMAIL_RECIPIENTS", "")
 RECIPIENTS: list[str] = [r.strip() for r in _recipients_env.split(",") if r.strip()]
 
+# Base URL of the portfolio site that hosts the subscribe/confirm/unsubscribe
+# routes. Used to build per-subscriber unsubscribe links in the newsletter.
+PORTFOLIO_BASE_URL: str = os.getenv("PORTFOLIO_BASE_URL", "").rstrip("/")
+
 TOP_N: int = 10
 MAX_ARTICLES_PER_SOURCE: int = 10
 MAX_PER_NEWSLETTER_SOURCE: int = 3

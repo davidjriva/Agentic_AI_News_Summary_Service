@@ -1,175 +1,177 @@
-"""Tests for src/emailer.py - TDD approach."""
+"""Tests for src/emailer.py — per-subscriber newsletter delivery."""
 
-import unittest
-from datetime import datetime
-from email.mime.multipart import MIMEMultipart
-from unittest.mock import MagicMock, patch, call
 import email
+import smtplib
+from datetime import datetime
+from unittest.mock import MagicMock, patch
+
+import pytest
+from sqlalchemy import select
+
+from src import config as _cfg
+from src.db import get_session
+from src.models import NewsletterDelivery, Subscriber
 
 
-class TestSendNewsletter(unittest.TestCase):
-    """Tests for send_newsletter function."""
+def _deliveries(run_id):
+    with get_session() as session:
+        return {
+            (d.email, d.status, d.error)
+            for d in session.scalars(
+                select(NewsletterDelivery).where(NewsletterDelivery.run_id == run_id)
+            ).all()
+        }
 
-    def setUp(self):
-        """Set up common test fixtures."""
-        self.html_content = "<html><body><h1>Test Newsletter</h1></body></html>"
-        self.plain_content = "Test Newsletter - plain text version"
-        self.run_time_am = datetime(2026, 4, 14, 9, 30, 0)   # 9:30 AM
-        self.run_time_pm = datetime(2026, 4, 14, 15, 0, 0)   # 3:00 PM
-        self.test_sender = "sender@gmail.com"
-        self.test_password = "test_app_password"
-        self.test_recipients = ["recipient1@example.com", "recipient2@example.com"]
+HTML = "<html><body><h1>Digest</h1><footer>%%UNSUBSCRIBE_URL%%</footer></body></html>"
+PLAIN = "Digest - unsubscribe: %%UNSUBSCRIBE_URL%%"
+RUN_AM = datetime(2026, 4, 14, 9, 30, 0)
+RUN_PM = datetime(2026, 4, 14, 15, 0, 0)
 
-    def _make_smtp_mock(self):
-        """Create a MagicMock that works as an SMTP context manager."""
-        smtp_instance = MagicMock()
-        smtp_instance.__enter__ = MagicMock(return_value=smtp_instance)
-        smtp_instance.__exit__ = MagicMock(return_value=False)
-        smtp_class = MagicMock(return_value=smtp_instance)
-        return smtp_class, smtp_instance
 
-    @patch("src.emailer.RECIPIENTS", ["recipient1@example.com", "recipient2@example.com"])
-    @patch.dict("os.environ", {"GMAIL_SENDER": "sender@gmail.com", "GMAIL_APP_PASSWORD": "test_app_password"})
-    @patch("smtplib.SMTP")
-    def test_smtp_instantiated_with_correct_host_and_port(self, mock_smtp_class):
-        """Test (a): smtplib.SMTP is instantiated with host='smtp.gmail.com' and port=587."""
-        smtp_instance = MagicMock()
-        smtp_instance.__enter__ = MagicMock(return_value=smtp_instance)
-        smtp_instance.__exit__ = MagicMock(return_value=False)
-        mock_smtp_class.return_value = smtp_instance
+def _smtp_mock():
+    inst = MagicMock()
+    inst.__enter__ = MagicMock(return_value=inst)
+    inst.__exit__ = MagicMock(return_value=False)
+    cls = MagicMock(return_value=inst)
+    return cls, inst
 
+
+def _seed(*subs):
+    with get_session() as session:
+        session.add_all(subs)
+
+
+@pytest.fixture()
+def env(monkeypatch):
+    monkeypatch.setenv("GMAIL_SENDER", "sender@gmail.com")
+    monkeypatch.setenv("GMAIL_APP_PASSWORD", "pw")
+    monkeypatch.setattr(_cfg, "PORTFOLIO_BASE_URL", "https://portfolio.test")
+
+
+def test_only_confirmed_subscribers_receive_mail(db, env):
+    _seed(
+        Subscriber(email="c1@example.com", status="confirmed", unsubscribe_token="t1"),
+        Subscriber(email="c2@example.com", status="confirmed", unsubscribe_token="t2"),
+        Subscriber(email="pending@example.com", status="pending", unsubscribe_token="tp"),
+        Subscriber(email="gone@example.com", status="unsubscribed", unsubscribe_token="tu"),
+    )
+    cls, inst = _smtp_mock()
+    with patch("smtplib.SMTP", cls):
         from src.emailer import send_newsletter
-        send_newsletter(self.html_content, self.plain_content, self.run_time_am)
+        send_newsletter(HTML, PLAIN, RUN_AM)
 
-        mock_smtp_class.assert_called_once_with("smtp.gmail.com", 587)
+    assert inst.sendmail.call_count == 2
+    recipients = {addr for c in inst.sendmail.call_args_list for addr in c.args[1]}
+    assert recipients == {"c1@example.com", "c2@example.com"}
 
-    @patch("src.emailer.RECIPIENTS", ["recipient1@example.com", "recipient2@example.com"])
-    @patch.dict("os.environ", {"GMAIL_SENDER": "sender@gmail.com", "GMAIL_APP_PASSWORD": "test_app_password"})
-    @patch("smtplib.SMTP")
-    def test_starttls_is_called(self, mock_smtp_class):
-        """Test (b): starttls() is called on the SMTP instance."""
-        smtp_instance = MagicMock()
-        smtp_instance.__enter__ = MagicMock(return_value=smtp_instance)
-        smtp_instance.__exit__ = MagicMock(return_value=False)
-        mock_smtp_class.return_value = smtp_instance
 
+def test_each_message_is_single_recipient_with_personal_unsubscribe(db, env):
+    _seed(Subscriber(email="c@example.com", status="confirmed", unsubscribe_token="abc123"))
+    cls, inst = _smtp_mock()
+    with patch("smtplib.SMTP", cls):
         from src.emailer import send_newsletter
-        send_newsletter(self.html_content, self.plain_content, self.run_time_am)
+        send_newsletter(HTML, PLAIN, RUN_AM)
 
-        smtp_instance.starttls.assert_called_once()
+    raw = inst.sendmail.call_args.args[2]
+    msg = email.message_from_string(raw)
+    expected = "https://portfolio.test/newsletter/unsubscribe?token=abc123"
 
-    @patch("src.emailer.RECIPIENTS", ["recipient1@example.com", "recipient2@example.com"])
-    @patch.dict("os.environ", {"GMAIL_SENDER": "sender@gmail.com", "GMAIL_APP_PASSWORD": "test_app_password"})
-    @patch("smtplib.SMTP")
-    def test_login_called_with_credentials(self, mock_smtp_class):
-        """Test (c): login() is called with GMAIL_SENDER and GMAIL_APP_PASSWORD values."""
-        smtp_instance = MagicMock()
-        smtp_instance.__enter__ = MagicMock(return_value=smtp_instance)
-        smtp_instance.__exit__ = MagicMock(return_value=False)
-        mock_smtp_class.return_value = smtp_instance
+    assert msg["To"] == "c@example.com"             # one recipient per message
+    assert expected in raw                           # sentinel substituted in body
+    assert "%%UNSUBSCRIBE_URL%%" not in raw
+    assert msg["List-Unsubscribe"] == f"<{expected}>"
+    assert msg["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
 
+
+def test_message_is_multipart_alternative_with_both_parts(db, env):
+    _seed(Subscriber(email="c@example.com", status="confirmed", unsubscribe_token="t"))
+    cls, inst = _smtp_mock()
+    with patch("smtplib.SMTP", cls):
         from src.emailer import send_newsletter
-        send_newsletter(self.html_content, self.plain_content, self.run_time_am)
+        send_newsletter(HTML, PLAIN, RUN_AM)
 
-        smtp_instance.login.assert_called_once_with("sender@gmail.com", "test_app_password")
+    msg = email.message_from_string(inst.sendmail.call_args.args[2])
+    assert msg.get_content_type() == "multipart/alternative"
+    types = [p.get_content_type() for p in msg.get_payload()]
+    assert "text/plain" in types and "text/html" in types
 
-    @patch("src.emailer.RECIPIENTS", ["recipient1@example.com", "recipient2@example.com"])
-    @patch.dict("os.environ", {"GMAIL_SENDER": "sender@gmail.com", "GMAIL_APP_PASSWORD": "test_app_password"})
-    @patch("smtplib.SMTP")
-    def test_message_is_mime_multipart_alternative_with_both_parts(self, mock_smtp_class):
-        """Test (d): the sent message is MIMEMultipart('alternative') containing both plain-text and HTML parts."""
-        smtp_instance = MagicMock()
-        smtp_instance.__enter__ = MagicMock(return_value=smtp_instance)
-        smtp_instance.__exit__ = MagicMock(return_value=False)
-        mock_smtp_class.return_value = smtp_instance
 
+def test_subject_contains_date_and_meridiem(db, env):
+    _seed(Subscriber(email="c@example.com", status="confirmed", unsubscribe_token="t"))
+    cls, inst = _smtp_mock()
+    with patch("smtplib.SMTP", cls):
         from src.emailer import send_newsletter
-        send_newsletter(self.html_content, self.plain_content, self.run_time_am)
+        send_newsletter(HTML, PLAIN, RUN_PM)
 
-        # Check sendmail was called
-        smtp_instance.sendmail.assert_called_once()
-        call_args = smtp_instance.sendmail.call_args
-        raw_message = call_args[0][2]  # third positional arg is msg.as_string()
+    subject = email.message_from_string(inst.sendmail.call_args.args[2])["Subject"]
+    assert "April 14, 2026" in subject
+    assert "PM" in subject and "AM" not in subject
 
-        # Parse the raw message
-        msg = email.message_from_string(raw_message)
-        self.assertEqual(msg.get_content_type(), "multipart/alternative")
 
-        payloads = msg.get_payload()
-        content_types = [part.get_content_type() for part in payloads]
-        self.assertIn("text/plain", content_types)
-        self.assertIn("text/html", content_types)
-
-    @patch("src.emailer.RECIPIENTS", ["recipient1@example.com", "recipient2@example.com"])
-    @patch.dict("os.environ", {"GMAIL_SENDER": "sender@gmail.com", "GMAIL_APP_PASSWORD": "test_app_password"})
-    @patch("smtplib.SMTP")
-    def test_subject_contains_date_and_am(self, mock_smtp_class):
-        """Test (e): subject line contains run_time date and 'AM' for morning hours."""
-        smtp_instance = MagicMock()
-        smtp_instance.__enter__ = MagicMock(return_value=smtp_instance)
-        smtp_instance.__exit__ = MagicMock(return_value=False)
-        mock_smtp_class.return_value = smtp_instance
-
+def test_per_recipient_failure_does_not_abort_batch(db, env):
+    _seed(
+        Subscriber(email="a@example.com", status="confirmed", unsubscribe_token="ta"),
+        Subscriber(email="b@example.com", status="confirmed", unsubscribe_token="tb"),
+    )
+    cls, inst = _smtp_mock()
+    inst.sendmail.side_effect = [smtplib.SMTPException("boom"), None]
+    with patch("smtplib.SMTP", cls):
         from src.emailer import send_newsletter
-        send_newsletter(self.html_content, self.plain_content, self.run_time_am)
+        send_newsletter(HTML, PLAIN, RUN_AM)  # must not raise
 
-        smtp_instance.sendmail.assert_called_once()
-        call_args = smtp_instance.sendmail.call_args
-        raw_message = call_args[0][2]
-        msg = email.message_from_string(raw_message)
+    assert inst.sendmail.call_count == 2  # second still attempted
 
-        subject = msg["Subject"]
-        expected_date = self.run_time_am.strftime("%B %d, %Y")
-        self.assertIn(expected_date, subject)
-        self.assertIn("AM", subject)
-        self.assertNotIn("PM", subject)
 
-    @patch("src.emailer.RECIPIENTS", ["recipient1@example.com", "recipient2@example.com"])
-    @patch.dict("os.environ", {"GMAIL_SENDER": "sender@gmail.com", "GMAIL_APP_PASSWORD": "test_app_password"})
-    @patch("smtplib.SMTP")
-    def test_subject_contains_date_and_pm(self, mock_smtp_class):
-        """Test (e continued): subject line contains run_time date and 'PM' for afternoon hours."""
-        smtp_instance = MagicMock()
-        smtp_instance.__enter__ = MagicMock(return_value=smtp_instance)
-        smtp_instance.__exit__ = MagicMock(return_value=False)
-        mock_smtp_class.return_value = smtp_instance
-
+def test_no_confirmed_subscribers_opens_no_connection(db, env):
+    _seed(Subscriber(email="pending@example.com", status="pending", unsubscribe_token="tp"))
+    cls, inst = _smtp_mock()
+    with patch("smtplib.SMTP", cls):
         from src.emailer import send_newsletter
-        send_newsletter(self.html_content, self.plain_content, self.run_time_pm)
+        send_newsletter(HTML, PLAIN, RUN_AM)
 
-        smtp_instance.sendmail.assert_called_once()
-        call_args = smtp_instance.sendmail.call_args
-        raw_message = call_args[0][2]
-        msg = email.message_from_string(raw_message)
+    cls.assert_not_called()
+    inst.sendmail.assert_not_called()
 
-        subject = msg["Subject"]
-        expected_date = self.run_time_pm.strftime("%B %d, %Y")
-        self.assertIn(expected_date, subject)
-        self.assertIn("PM", subject)
-        self.assertNotIn("AM", subject)
 
-    @patch("src.emailer.RECIPIENTS", ["recipient1@example.com", "recipient2@example.com"])
-    @patch.dict("os.environ", {"GMAIL_SENDER": "sender@gmail.com", "GMAIL_APP_PASSWORD": "test_app_password"})
-    @patch("smtplib.SMTP")
-    def test_all_recipients_in_to_header(self, mock_smtp_class):
-        """Test (f): all addresses in RECIPIENTS appear in the message To header."""
-        smtp_instance = MagicMock()
-        smtp_instance.__enter__ = MagicMock(return_value=smtp_instance)
-        smtp_instance.__exit__ = MagicMock(return_value=False)
-        mock_smtp_class.return_value = smtp_instance
-
+def test_records_a_delivery_per_confirmed_subscriber(db, env):
+    _seed(
+        Subscriber(email="a@example.com", status="confirmed", unsubscribe_token="ta"),
+        Subscriber(email="b@example.com", status="confirmed", unsubscribe_token="tb"),
+    )
+    cls, inst = _smtp_mock()
+    with patch("smtplib.SMTP", cls):
         from src.emailer import send_newsletter
-        send_newsletter(self.html_content, self.plain_content, self.run_time_am)
+        send_newsletter(HTML, PLAIN, RUN_AM, run_id="run-x")
 
-        smtp_instance.sendmail.assert_called_once()
-        call_args = smtp_instance.sendmail.call_args
-        raw_message = call_args[0][2]
-        msg = email.message_from_string(raw_message)
-
-        to_header = msg["To"]
-        for recipient in ["recipient1@example.com", "recipient2@example.com"]:
-            self.assertIn(recipient, to_header)
+    assert _deliveries("run-x") == {
+        ("a@example.com", "sent", None),
+        ("b@example.com", "sent", None),
+    }
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_failed_send_recorded_as_failed_with_error(db, env):
+    _seed(
+        Subscriber(email="a@example.com", status="confirmed", unsubscribe_token="ta"),
+        Subscriber(email="b@example.com", status="confirmed", unsubscribe_token="tb"),
+    )
+    cls, inst = _smtp_mock()
+    inst.sendmail.side_effect = [smtplib.SMTPException("boom"), None]
+    with patch("smtplib.SMTP", cls):
+        from src.emailer import send_newsletter
+        send_newsletter(HTML, PLAIN, RUN_AM, run_id="run-y")
+
+    rows = _deliveries("run-y")
+    assert sorted(status for _, status, _ in rows) == ["failed", "sent"]
+    failed = next(r for r in rows if r[1] == "failed")
+    assert "boom" in failed[2]
+
+
+def test_delivery_recording_is_idempotent(db, env):
+    _seed(Subscriber(email="a@example.com", status="confirmed", unsubscribe_token="ta"))
+    cls, inst = _smtp_mock()
+    with patch("smtplib.SMTP", cls):
+        from src.emailer import send_newsletter
+        send_newsletter(HTML, PLAIN, RUN_AM, run_id="run-z")
+        send_newsletter(HTML, PLAIN, RUN_AM, run_id="run-z")  # re-run same issue
+
+    assert _deliveries("run-z") == {("a@example.com", "sent", None)}  # still one row

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 
 from src.db import get_session
-from src.models import FailedArticle, FilteredArticle, Run, RunArticle
+from src.models import FailedArticle, FilteredArticle, Run, RunArticle, Subscriber
 
 
 # ---------------------------------------------------------------------------
@@ -221,6 +221,17 @@ class TestMetricsRoute:
         assert "Metrics" in response.text
         # Empty JSON arrays rendered safely
         assert "[]" in response.text
+
+    def test_subscribers_stat_counts_confirmed_only(self, client):
+        """The Subscribers stat reflects confirmed subscribers, not RECIPIENTS."""
+        _seed(
+            *[Subscriber(email=f"c{i}@example.com", status="confirmed", unsubscribe_token=f"t{i}") for i in range(7)],
+            Subscriber(email="p@example.com", status="pending", unsubscribe_token="tp"),
+            Subscriber(email="u@example.com", status="unsubscribed", unsubscribe_token="tu"),
+        )
+        response = client.get("/metrics")
+        assert response.status_code == 200
+        assert '<div class="stat-value">7</div>' in response.text
 
 
 # ---------------------------------------------------------------------------

@@ -54,7 +54,11 @@ fetcher.py → processor.py → ranker.py → renderer.py → emailer.py
 
 ### Configuration
 
-All non-secret config lives in `src/config.py`. Secrets (`ANTHROPIC_API_KEY`, `GMAIL_APP_PASSWORD`, `GMAIL_SENDER`, `DB_PASSWORD`) and overrides (`LLM_PROVIDER`, `LOCAL_LLM_URL`, `LOCAL_LLM_MODEL`, `EMAIL_RECIPIENTS`, `SUPABASE_DB_HOST`/`SUPABASE_DB_USER`/`SUPABASE_DB_PORT`/`SUPABASE_DB_NAME`, `DATABASE_URL`) are loaded from `.env` via `python-dotenv`. `.env.example` documents all env vars. The Supabase connection uses the **Session pooler** (port 5432).
+All non-secret config lives in `src/config.py`. Secrets (`ANTHROPIC_API_KEY`, `GMAIL_APP_PASSWORD`, `GMAIL_SENDER`, `DB_PASSWORD`) and overrides (`LLM_PROVIDER`, `LOCAL_LLM_URL`, `LOCAL_LLM_MODEL`, `SUPABASE_DB_HOST`/`SUPABASE_DB_USER`/`SUPABASE_DB_PORT`/`SUPABASE_DB_NAME`, `DATABASE_URL`, `PORTFOLIO_BASE_URL`) are loaded from `.env` via `python-dotenv`. `.env.example` documents all env vars. The Supabase connection uses the **Session pooler** (port 5432).
+
+### Newsletter subscriptions
+
+The newsletter is sent to every `confirmed` row in the **`subscribers`** table (not a static `EMAIL_RECIPIENTS` list — that's no longer the send source). `emailer.py` sends **one message per subscriber** with a personalized unsubscribe link (`PORTFOLIO_BASE_URL/newsletter/unsubscribe?token=…`) + `List-Unsubscribe` one-click headers, isolating per-recipient failures. Each send is recorded in **`newsletter_deliveries`** (`sent`/`failed` per `run_id`). The public subscribe/confirm/unsubscribe routes live in the **portfolio** (Next.js) repo and hit Supabase with the `service_role` key — see `docs/portfolio-newsletter-integration.md`. Both new tables are RLS-enabled with no policies.
 
 `RECIPIENTS` is populated from the `EMAIL_RECIPIENTS` env var (comma-separated); it is empty by default — the `.env` file must set it for email delivery to work.
 

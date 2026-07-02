@@ -81,6 +81,29 @@ def test_run_pipeline_uses_tqdm(db):
 # Test: filter_articles called between process and rank
 # ---------------------------------------------------------------------------
 
+def test_send_newsletter_receives_run_id(db):
+    """run_pipeline must pass its run_id to send_newsletter (for delivery tracking)."""
+    kept = [_make_article("http://kept.com", relevance_score=9)]
+    captured = {}
+
+    def capture_send(html, plain, run_time, run_id=None):
+        captured["run_id"] = run_id
+
+    with (
+        patch("src.main.fetch_articles", return_value=kept),
+        patch("src.main.process_articles", return_value=kept),
+        patch("src.main.filter_articles", return_value=(kept, [])),
+        patch("src.main.rank_articles", return_value=kept),
+        patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
+        patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
+        patch("src.main.send_newsletter", side_effect=capture_send),
+    ):
+        from src.main import run_pipeline
+        run_pipeline(run_id="rid-123")
+
+    assert captured["run_id"] == "rid-123"
+
+
 class TestFilterCalledBetweenProcessAndRank:
     """filter_articles must be called after process_articles and before rank_articles."""
 
