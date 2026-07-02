@@ -101,7 +101,7 @@ const token = randomBytes(32).toString("base64url"); // URL-safe, ~43 chars
 Use any provider (Resend, SendGrid, Postmark, SMTP). Two emails:
 
 1. **Subscription confirmation** — sent from `POST /subscribe`. Contains the confirm link:
-   `https://<portfolio>/newsletter/confirm?token=<confirm_token>`.
+   `https://davidriva.dev/newsletter/confirm?token=<confirm_token>`.
 2. **Unsubscribe confirmation** — sent from `POST /unsubscribe`. "You've been unsubscribed." May
    include an optional re-subscribe link back to the form.
 
