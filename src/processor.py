@@ -8,6 +8,7 @@ Articles that fail LLM processing after all retries are written to the
 failed_articles dead-letter queue and excluded from results.
 """
 
+import hashlib
 import json
 import re
 import time
@@ -23,6 +24,71 @@ from src import config as _cfg
 from src.db import get_session
 from src.models import ArticleScore, FailedArticle
 
+TRIAGE_SYSTEM_PROMPT = """You are an AI news analyst specializing in agentic AI, machine learning, and deep learning. For the article provided, judge only how directly relevant it is to those topics. Return a JSON object with exactly these keys:
+- relevance_score: integer 1-10 (1 = completely unrelated, 10 = core topic)
+- relevance_reason: one-line rationale for the relevance_score
+
+Relevance scoring rubric:
+- Score 8-10: Directly about agentic AI systems, LLM research, ML model training/deployment, deep learning breakthroughs, AI safety
+- Score 5-7: Adjacent topics — AI in business/product, general ML tooling, AI policy with technical substance
+- Score 1-4: Tangentially AI-related (e.g. tech company news, crypto, general software, climate tech)
+
+Return ONLY a valid JSON object with no additional text."""
+
+SCORING_SYSTEM_PROMPT = """You are an AI news analyst specializing in agentic AI, machine learning, and deep learning. For the article provided, rate its impact and authenticity. Return a JSON object with exactly these keys:
+- impact_score: integer 1-10 rating of the article's impact on the AI/ML field
+- authenticity_score: integer 1-10 rating of the article's authenticity/credibility
+- impact_reason: one-line rationale for the impact_score
+- authenticity_reason: one-line rationale for the authenticity_score
+
+Impact scoring rubric:
+- Score 9-10: Frontier model releases or field-moving research (new SOTA, major capability or paradigm shift)
+- Score 7-8: Notable models, widely-useful tools, or significant papers
+- Score 5-6: Incremental research, ecosystem/tooling news with real substance
+- Score 3-4: Routine business, funding, or product news
+- Score 1-2: Negligible relevance or substance
+Calibration: most articles score 4-6; reserve 8+ for genuinely field-moving news.
+
+Authenticity scoring rubric:
+- Score 9-10: Primary source (lab blog, company announcement) or peer-reviewed venue by a named researcher/practitioner
+- Score 7-8: Credible journalist or established outlet reporting original material
+- Score 5-6: Secondary commentary or analysis with clear attribution
+- Score 3-4: Anonymous authorship, aggregators, or reposts
+- Score 1-2: Unverifiable or low-credibility content
+Unknown/anonymous authors score conservatively.
+
+Return ONLY a valid JSON object with no additional text."""
+
+
+def _prompt_hash(text: str) -> str:
+    """12-char stable hash identifying a prompt version for cache invalidation."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+TRIAGE_VERSION = _prompt_hash(TRIAGE_SYSTEM_PROMPT)
+SCORE_VERSION = _prompt_hash(SCORING_SYSTEM_PROMPT)
+
+_TRIAGE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "relevance_score": {"type": "integer", "minimum": 1, "maximum": 10},
+        "relevance_reason": {"type": "string"},
+    },
+    "required": ["relevance_score", "relevance_reason"],
+}
+
+_SCORE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "impact_score": {"type": "integer", "minimum": 1, "maximum": 10},
+        "authenticity_score": {"type": "integer", "minimum": 1, "maximum": 10},
+        "impact_reason": {"type": "string"},
+        "authenticity_reason": {"type": "string"},
+    },
+    "required": ["impact_score", "authenticity_score", "impact_reason", "authenticity_reason"],
+}
+
+# Legacy combined prompt for backward compatibility with _call_anthropic/_call_local_llm (Task 3 replaces these)
 SYSTEM_PROMPT = """You are an AI news analyst specializing in agentic AI, machine learning, and deep learning. For each article provided, return a JSON object with exactly these keys:
 - impact_score: integer 1-10 rating of the article's impact on the AI/ML field
 - authenticity_score: integer 1-10 rating of the article's authenticity/credibility

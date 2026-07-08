@@ -400,6 +400,30 @@ class TestArticleTqdmBar:
         assert len(results) == 2
 
 
+class TestRubricPrompts:
+    def test_triage_prompt_is_relevance_only(self):
+        from src.processor import TRIAGE_SYSTEM_PROMPT
+        assert "relevance_score" in TRIAGE_SYSTEM_PROMPT
+        assert "impact_score" not in TRIAGE_SYSTEM_PROMPT
+
+    def test_scoring_prompt_has_anchored_impact_bands(self):
+        from src.processor import SCORING_SYSTEM_PROMPT
+        assert "impact_score" in SCORING_SYSTEM_PROMPT
+        assert "authenticity_score" in SCORING_SYSTEM_PROMPT
+        # Calibration guard against 6-8 clustering
+        assert "4-6" in SCORING_SYSTEM_PROMPT
+
+    def test_version_hashes_are_short_hex(self):
+        from src.processor import TRIAGE_VERSION, SCORE_VERSION
+        assert len(TRIAGE_VERSION) == 12
+        assert len(SCORE_VERSION) == 12
+        assert TRIAGE_VERSION != SCORE_VERSION
+
+    def test_version_hash_tracks_prompt(self):
+        from src.processor import _prompt_hash, TRIAGE_SYSTEM_PROMPT, TRIAGE_VERSION
+        assert _prompt_hash(TRIAGE_SYSTEM_PROMPT) == TRIAGE_VERSION
+
+
 class TestRelevanceScore:
     def test_relevance_score_in_result(self):
         article = make_article()
@@ -422,8 +446,8 @@ class TestRelevanceScore:
         assert results[0]["relevance_reason"] == VALID_CLAUDE_RESPONSE["relevance_reason"]
 
     def test_relevance_score_in_system_prompt(self):
-        from src.processor import SYSTEM_PROMPT
-        assert "relevance_score" in SYSTEM_PROMPT
+        from src.processor import TRIAGE_SYSTEM_PROMPT
+        assert "relevance_score" in TRIAGE_SYSTEM_PROMPT
 
 
 class TestRetryAndDeadLetter:
