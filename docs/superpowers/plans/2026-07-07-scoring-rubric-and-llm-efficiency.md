@@ -256,10 +256,19 @@ git commit -m "feat: split scoring into triage + scoring rubric prompts with ver
 
 **Interfaces:**
 - Produces:
+  - `TRIAGE_DESC_CHARS = 500`, `SCORE_DESC_CHARS = 1900` (per-stage description caps)
   - `_build_user_content(article: dict, max_desc: int = 500) -> str`
   - `_call_local(system_prompt: str, user_content: str, max_tokens: int, schema: dict) -> str`
   - `_call_anthropic(client, system_prompt: str, user_content: str, max_tokens: int) -> str`
 - Consumes: `TRIAGE_SYSTEM_PROMPT`, `_TRIAGE_SCHEMA` (Task 2).
+
+**Rationale for the per-stage caps (see spec §2):** measured feed data shows
+only arXiv descriptions exceed ~400 chars (median ~1,430, arXiv-capped at
+1,920), so the cap only bites arXiv. Relevance is settled by the lead
+sentences → 500 for triage (which runs on *all* articles). Impact/authenticity
+claims live in the abstract's tail (Sun et al. 2019, BERT classification) → the
+full abstract (1,900) for scoring, which runs only on gate survivors and is a
+no-op for every non-arXiv source.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -267,13 +276,26 @@ Add to `tests/test_processor.py`:
 
 ```python
 class TestCallHelpers:
-    def test_build_user_content_truncates_description(self):
+    def test_build_user_content_default_truncates_at_500(self):
         from src.processor import _build_user_content
         article = make_article(description="x" * 2000)
         content = _build_user_content(article)
-        # 500-char cap on description plus the label lines; well under 800 total
+        # default 500-char cap on description
         assert "x" * 500 in content
         assert "x" * 501 not in content
+
+    def test_build_user_content_respects_max_desc(self):
+        from src.processor import _build_user_content, SCORE_DESC_CHARS
+        assert SCORE_DESC_CHARS == 1900
+        article = make_article(description="y" * 2500)
+        content = _build_user_content(article, SCORE_DESC_CHARS)
+        assert "y" * 1900 in content
+        assert "y" * 1901 not in content
+
+    def test_stage_caps_defined(self):
+        from src.processor import TRIAGE_DESC_CHARS, SCORE_DESC_CHARS
+        assert TRIAGE_DESC_CHARS == 500
+        assert SCORE_DESC_CHARS == 1900
 
     def test_local_call_includes_response_format_schema(self):
         from src.processor import _call_local, _TRIAGE_SCHEMA
@@ -307,6 +329,14 @@ Expected: FAIL — `ImportError: cannot import name '_build_user_content'`
 Delete the old `_call_anthropic`, `_call_local_llm`, `_call_anthropic_summary`, `_call_local_llm_summary` bodies for scoring (keep the summary ones as-is — Task 5 note) and add the generalized helpers. Insert after the schema constants:
 
 ```python
+# Per-stage description caps. Only arXiv descriptions exceed ~400 chars
+# (arXiv-capped at 1,920), so these only affect arXiv abstracts: relevance is
+# settled by the lead sentences (500), impact/authenticity claims live in the
+# abstract tail so scoring gets the full abstract (1,900).
+TRIAGE_DESC_CHARS = 500
+SCORE_DESC_CHARS = 1900
+
+
 def _build_user_content(article: dict, max_desc: int = 500) -> str:
     """Assemble the user message, truncating the description to bound prompt size."""
     description = (article.get("description", "") or "")[:max_desc]
@@ -519,7 +549,7 @@ def _triage_one(article, client, use_local, run_id=None, score_cache=None) -> di
         if cached.get("relevance_score") is not None and cached.get("triage_version") == TRIAGE_VERSION:
             return {**article, **{f: cached[f] for f in _TRIAGE_FIELDS}}
 
-    user_content = _build_user_content(article)
+    user_content = _build_user_content(article, TRIAGE_DESC_CHARS)
     last_exc: Exception | None = None
     for attempt in range(_cfg.PROCESSOR_MAX_RETRIES + 1):
         try:
@@ -703,7 +733,7 @@ def _score_one(article, client, use_local, run_id=None, score_cache=None) -> dic
         if cached.get("impact_score") is not None and cached.get("score_version") == SCORE_VERSION:
             return {**article, **{f: cached[f] for f in _SCORE_FIELDS}}
 
-    user_content = _build_user_content(article)
+    user_content = _build_user_content(article, SCORE_DESC_CHARS)
     last_exc: Exception | None = None
     for attempt in range(_cfg.PROCESSOR_MAX_RETRIES + 1):
         try:
@@ -1225,7 +1255,7 @@ Expected: PASS. Investigate any failure referencing `process_articles`, `SYSTEM_
 In the `src/processor.py` bullet under "Module responsibilities", replace the single-call description with the two-stage shape:
 
 ```
-- **`src/processor.py`** — Two-stage LLM scoring. `triage_articles()` makes one cheap relevance-only call per fetched article; after the relevance gate (`filter.py`), `score_articles()` makes one impact+authenticity call per survivor. Local calls use grammar-constrained JSON (`response_format`) and truncate descriptions to 500 chars. Scores cache in `article_scores` keyed by URL, versioned per stage (`triage_version`/`score_version`) so a prompt change invalidates stale rows. Failures dead-letter to `failed_articles` and are excluded.
+- **`src/processor.py`** — Two-stage LLM scoring. `triage_articles()` makes one cheap relevance-only call per fetched article; after the relevance gate (`filter.py`), `score_articles()` makes one impact+authenticity call per survivor. Local calls use grammar-constrained JSON (`response_format`). Descriptions are truncated per stage — 500 chars for triage, 1,900 (≈ a full arXiv abstract) for scoring, since only arXiv descriptions exceed ~400 chars. Scores cache in `article_scores` keyed by URL, versioned per stage (`triage_version`/`score_version`) so a prompt change invalidates stale rows. Failures dead-letter to `failed_articles` and are excluded.
 ```
 
 Also update the `src/ranker.py` bullet's formula to `impact*0.5 + relevance*0.3 + authenticity*0.2`.

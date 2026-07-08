@@ -68,8 +68,24 @@ fields only — the model already allows NULL impact/auth).
 
 ### 2. Call tightening
 
-- Descriptions truncated to **500 chars** in both scoring prompts (the
-  summary call already does this).
+- Descriptions truncated **per stage**, not a single flat cap. Measured feed
+  data shows only arXiv descriptions exceed ~400 chars (arXiv median ~1,430,
+  p90 ~1,905; The Verge ~345; TechCrunch ~141; HuggingFace empty), so the cap
+  only ever bites arXiv abstracts.
+  - **Triage (relevance): 500 chars.** Relevance is a topic judgment settled
+    by the title + lead sentences, and this pass runs on *all* fetched
+    articles, so token savings matter most here.
+  - **Scoring (impact/authenticity): 1,900 chars** (≈ the full arXiv abstract;
+    arXiv hard-caps abstracts at 1,920 chars). The impact-signaling claims
+    ("SOTA", "first to…", result magnitudes) live in the abstract's tail, and
+    classification signal is known to sit at both the head and tail of a
+    document (Sun et al. 2019, *How to Fine-Tune BERT for Text
+    Classification?*). This pass runs only on the ~40–50% of articles that
+    survive the gate, and for every non-arXiv source the larger cap is a no-op.
+    Cost: ~355 extra prefill tokens (~4 chars/token, per OpenAI's token
+    guidance) on a minority of articles — negligible against per-call decode.
+  - Implemented via a `max_desc` argument on the shared `_build_user_content`;
+    triage passes 500, scoring passes 1,900.
 - Local provider calls add **`response_format: json_schema`** so llama.cpp
   grammar-constrains decoding to the exact response schema — malformed JSON
   becomes impossible, eliminating parse-failure retries. The Anthropic path
