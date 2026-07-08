@@ -84,8 +84,12 @@ fields only — the model already allows NULL impact/auth).
     survive the gate, and for every non-arXiv source the larger cap is a no-op.
     Cost: ~355 extra prefill tokens (~4 chars/token, per OpenAI's token
     guidance) on a minority of articles — negligible against per-call decode.
+  - **Summary generation: 1,900 chars.** Same reasoning as scoring — the
+    summary reads better from the full abstract than its first third — and it
+    runs only on the top 10. `summarize_articles` reuses `_build_user_content`
+    (its inline snippet build is the same field layout), so there is one path.
   - Implemented via a `max_desc` argument on the shared `_build_user_content`;
-    triage passes 500, scoring passes 1,900.
+    triage passes 500, scoring and summary pass 1,900.
 - Local provider calls add **`response_format: json_schema`** so llama.cpp
   grammar-constrains decoding to the exact response schema — malformed JSON
   becomes impossible, eliminating parse-failure retries. The Anthropic path

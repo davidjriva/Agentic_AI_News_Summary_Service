@@ -332,9 +332,11 @@ Delete the old `_call_anthropic`, `_call_local_llm`, `_call_anthropic_summary`, 
 # Per-stage description caps. Only arXiv descriptions exceed ~400 chars
 # (arXiv-capped at 1,920), so these only affect arXiv abstracts: relevance is
 # settled by the lead sentences (500), impact/authenticity claims live in the
-# abstract tail so scoring gets the full abstract (1,900).
+# abstract tail so scoring gets the full abstract (1,900), and the summary
+# likewise reads better from the full abstract than the first third.
 TRIAGE_DESC_CHARS = 500
 SCORE_DESC_CHARS = 1900
+SUMMARY_DESC_CHARS = 1900
 
 
 def _build_user_content(article: dict, max_desc: int = 500) -> str:
@@ -777,6 +779,77 @@ Expected: PASS (triage, score, cache, summary, and the version-column tests). If
 ```bash
 git add src/processor.py tests/test_processor.py
 git commit -m "feat: add score_articles with versioned impact/authenticity cache"
+```
+
+---
+
+### Task 5b: Raise the summary input cap to the full abstract
+
+**Files:**
+- Modify: `src/processor.py` (`summarize_articles` user-content construction)
+- Test: `tests/test_processor.py` (extend `TestSummarizeArticles`)
+
+**Interfaces:**
+- Consumes: `_build_user_content` (Task 3), `SUMMARY_DESC_CHARS = 1900` (Task 3).
+
+The summary call currently truncates the description at 500 chars via an inline
+snippet. Same rationale as scoring: for arXiv (the only source over ~400 chars)
+the summary reads better from the full abstract. Reuse `_build_user_content`
+(the inline construction is byte-for-byte the same field layout) so there is
+one code path.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `TestSummarizeArticles` in `tests/test_processor.py`:
+
+```python
+    def test_summary_input_uses_full_abstract_not_500(self):
+        article = {**_make_processed_article(), "description": "z" * 2000}
+        mock_resp = _make_local_mock_response(json.dumps({"summary": "ok"}))
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            summarize_articles([article])
+        sent = mock_post.call_args[1]["json"]["messages"][1]["content"]
+        assert "z" * 1900 in sent      # full abstract, not truncated at 500
+        assert "z" * 1901 not in sent  # still capped at SUMMARY_DESC_CHARS
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `just test-one tests/test_processor.py::TestSummarizeArticles::test_summary_input_uses_full_abstract_not_500 -v`
+Expected: FAIL — only 500 `z`s reach the payload (`assert "z" * 1900 in sent`).
+
+- [ ] **Step 3: Use `_build_user_content` with the summary cap**
+
+In `summarize_articles` (`src/processor.py`), replace the inline snippet build:
+
+```python
+            # Cap description length to avoid overflowing local model context windows
+            description_snippet = (article.get("description", "") or "")[:500]
+            user_content = (
+                f"Author: {article.get('author', '')}\n"
+                f"Publication: {article.get('publication', '')}\n"
+                f"Title: {article.get('title', '')}\n"
+                f"Description: {description_snippet}"
+            )
+```
+
+with:
+
+```python
+            user_content = _build_user_content(article, SUMMARY_DESC_CHARS)
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `just test-one tests/test_processor.py::TestSummarizeArticles -v`
+Expected: PASS (new test plus the existing summary tests; the fallback-on-failure tests are unaffected — they assert the `_clean_description` fallback, not the prompt input).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/processor.py tests/test_processor.py
+git commit -m "feat: feed summary generation the full abstract (1900 chars)"
 ```
 
 ---
