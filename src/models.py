@@ -94,6 +94,11 @@ class ArticleScore(Base):
     impact_reason: Mapped[str | None] = mapped_column(Text)
     authenticity_reason: Mapped[str | None] = mapped_column(Text)
     relevance_reason: Mapped[str | None] = mapped_column(Text)
+    # Short hash of the triage / scoring system prompt in effect when this row
+    # was written. A cache read only reuses a value when its stage's hash still
+    # matches the current code, so a rubric change auto-invalidates stale rows.
+    triage_version: Mapped[str | None] = mapped_column(Text)
+    score_version: Mapped[str | None] = mapped_column(Text)
     cached_at: Mapped[object] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

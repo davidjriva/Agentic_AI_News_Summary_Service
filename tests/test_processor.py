@@ -729,3 +729,19 @@ class TestScoreCache:
 
         mock_client.messages.create.assert_called_once()
         assert results[0]["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
+
+
+class TestCacheVersionColumns:
+    def test_article_score_has_version_columns(self, db):
+        from src.models import ArticleScore
+        url = "https://example.com/versioned"
+        with get_session() as session:
+            session.add(ArticleScore(
+                url=url, impact_score=8, authenticity_score=7, relevance_score=9,
+                impact_reason="r", authenticity_reason="r", relevance_reason="r",
+                triage_version="abc123", score_version="def456",
+            ))
+        with get_session() as session:
+            row = session.get(ArticleScore, url)
+        assert row.triage_version == "abc123"
+        assert row.score_version == "def456"

@@ -30,6 +30,7 @@ def test_article_scores_has_expected_columns(db):
     expected = {
         "url", "impact_score", "authenticity_score", "relevance_score",
         "impact_reason", "authenticity_reason", "relevance_reason", "cached_at",
+        "triage_version", "score_version",
     }
     assert expected == cols
 
