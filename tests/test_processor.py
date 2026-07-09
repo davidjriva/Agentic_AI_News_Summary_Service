@@ -1,14 +1,14 @@
 import json
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 import src.config as _cfg
 from src.db import get_session
 from src.models import ArticleScore
-from src.processor import process_articles, summarize_articles
+from src.processor import triage_articles, score_articles, summarize_articles
 
 
 def make_article(**overrides) -> dict:
@@ -22,16 +22,6 @@ def make_article(**overrides) -> dict:
     }
     base.update(overrides)
     return base
-
-
-VALID_CLAUDE_RESPONSE = {
-    "impact_score": 8,
-    "authenticity_score": 7,
-    "impact_reason": "Significant advancement in agentic AI reliability with broad implications.",
-    "authenticity_reason": "Published by named researcher at credible AI lab.",
-    "relevance_score": 9,
-    "relevance_reason": "Directly about agentic AI systems and autonomous task completion.",
-}
 
 
 def _make_mock_client(response_text: str):
@@ -49,6 +39,14 @@ def _make_mock_client(response_text: str):
     mock_client.messages = mock_messages
 
     return mock_client
+
+
+def _make_local_mock_response(content: str) -> MagicMock:
+    """Build a mock requests.Response for a llama.cpp /v1/chat/completions call."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"choices": [{"message": {"content": content}}]}
+    mock_resp.raise_for_status.return_value = None
+    return mock_resp
 
 
 @contextmanager
@@ -73,303 +71,172 @@ def _isolate_db(request):
         yield
 
 
-class TestValidJsonResponse:
-    """(a) Valid Claude JSON response is parsed and keys merged into the article dict."""
+# ---------------------------------------------------------------------------
+# Test: call helpers (_build_user_content, _call_local, _call_anthropic)
+# ---------------------------------------------------------------------------
 
-    def test_valid_json_keys_merged_into_article(self):
+class TestCallHelpers:
+    def test_build_user_content_default_truncates_at_500(self):
+        from src.processor import _build_user_content
+        article = make_article(description="x" * 2000)
+        content = _build_user_content(article)
+        # default 500-char cap on description
+        assert "x" * 500 in content
+        assert "x" * 501 not in content
+
+    def test_build_user_content_respects_max_desc(self):
+        from src.processor import _build_user_content, SCORE_DESC_CHARS
+        assert SCORE_DESC_CHARS == 1900
+        article = make_article(description="y" * 2500)
+        content = _build_user_content(article, SCORE_DESC_CHARS)
+        assert "y" * 1900 in content
+        assert "y" * 1901 not in content
+
+    def test_stage_caps_defined(self):
+        from src.processor import TRIAGE_DESC_CHARS, SCORE_DESC_CHARS
+        assert TRIAGE_DESC_CHARS == 500
+        assert SCORE_DESC_CHARS == 1900
+
+    def test_local_call_includes_response_format_schema(self):
+        from src.processor import _call_local, _TRIAGE_SCHEMA
+        mock_resp = _make_local_mock_response('{"relevance_score": 8, "relevance_reason": "r"}')
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            _call_local("SYS", "USER", 128, _TRIAGE_SCHEMA)
+        payload = mock_post.call_args[1]["json"]
+        assert payload["response_format"]["type"] == "json_schema"
+        assert payload["response_format"]["json_schema"]["schema"] == _TRIAGE_SCHEMA
+        assert payload["max_tokens"] == 128
+        assert payload["chat_template_kwargs"] == {"enable_thinking": False}
+
+    def test_anthropic_call_passes_system_and_max_tokens(self):
+        from src.processor import _call_anthropic
+        mock_client = _make_mock_client('{"relevance_score": 8, "relevance_reason": "r"}')
+        _call_anthropic(mock_client, "SYS PROMPT", "USER", 128)
+        kwargs = mock_client.messages.create.call_args.kwargs
+        assert kwargs["max_tokens"] == 128
+        assert kwargs["system"][0]["text"] == "SYS PROMPT"
+        assert kwargs["system"][0]["cache_control"]["type"] == "ephemeral"
+
+
+# ---------------------------------------------------------------------------
+# Test: triage_articles
+# ---------------------------------------------------------------------------
+
+TRIAGE_RESPONSE = {"relevance_score": 9, "relevance_reason": "Directly about agentic AI systems."}
+
+
+class TestTriageArticles:
+    def test_relevance_merged_into_article(self):
         article = make_article()
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
+        mock_client = _make_mock_client(json.dumps(TRIAGE_RESPONSE))
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
              patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([article])
+            results = triage_articles([article])
+        assert results[0]["relevance_score"] == 9
+        assert results[0]["relevance_reason"] == TRIAGE_RESPONSE["relevance_reason"]
+        assert results[0]["title"] == article["title"]
 
-        result = results[0]
-        assert result["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
-        assert result["authenticity_score"] == VALID_CLAUDE_RESPONSE["authenticity_score"]
-        assert result["impact_reason"] == VALID_CLAUDE_RESPONSE["impact_reason"]
-        assert result["authenticity_reason"] == VALID_CLAUDE_RESPONSE["authenticity_reason"]
-
-    def test_original_article_keys_preserved(self):
+    def test_local_provider_used_for_triage(self):
         article = make_article()
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
+        mock_resp = _make_local_mock_response(json.dumps(TRIAGE_RESPONSE))
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            results = triage_articles([article])
+        assert results[0]["relevance_score"] == 9
+        assert mock_post.call_args[1]["json"]["max_tokens"] == 128
 
+    def test_failure_dead_letters_and_excludes(self):
+        article = make_article()
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = Exception("api down")
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([article])
-
-        result = results[0]
-        assert result["title"] == article["title"]
-        assert result["url"] == article["url"]
-        assert result["description"] == article["description"]
-        assert result["author"] == article["author"]
-        assert result["publication"] == article["publication"]
-        assert result["published_at"] == article["published_at"]
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client), \
+             patch("src.processor._write_failed") as mock_dlq:
+            results = triage_articles([article])
+        assert len(results) == 0
+        mock_dlq.assert_called_once()
 
     def test_processes_multiple_articles(self):
         articles = [make_article(url=f"https://example.com/{i}") for i in range(3)]
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
+        mock_client = _make_mock_client(json.dumps(TRIAGE_RESPONSE))
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
              patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles(articles)
-
+            results = triage_articles(articles)
         assert len(results) == 3
         for result in results:
-            assert "impact_score" in result
-
-    def test_returns_list(self):
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([make_article()])
-
-        assert isinstance(results, list)
+            assert "relevance_score" in result
 
 
-class TestFallbackOnMalformedResponse:
-    """(b) When Claude returns malformed/non-JSON or raises, article is excluded (no fallback scores)."""
+class TestTriageRetryAndDeadLetter:
+    """Migrated from the old process_articles retry/dead-letter tests (Task 4)."""
 
-    def test_malformed_json_excludes_article(self):
+    def test_retries_on_api_failure_before_giving_up(self):
         article = make_article()
-        mock_client = _make_mock_client("This is not valid JSON at all!")
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
-             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
-             patch("anthropic.Anthropic", return_value=mock_client), \
-             patch("src.processor._write_failed"):
-            results = process_articles([article])
-
-        assert len(results) == 0
-
-    def test_api_exception_excludes_article(self):
-        article = make_article()
-        mock_messages = MagicMock()
-        mock_messages.create.side_effect = Exception("API error")
         mock_client = MagicMock()
-        mock_client.messages = mock_messages
+        mock_client.messages.create.side_effect = Exception("transient error")
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 2), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client), \
+             patch("src.processor._write_failed") as mock_dlq:
+            results = triage_articles([article])
+
+        assert mock_client.messages.create.call_count == 3  # 1 attempt + 2 retries
+        mock_dlq.assert_called_once()
+        assert len(results) == 0
+
+    def test_succeeds_on_second_attempt(self):
+        article = make_article()
+        call_count = {"n": 0}
+
+        def side_effect(**kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                raise Exception("transient")
+            mock_msg = MagicMock()
+            mock_msg.content = [MagicMock(text=json.dumps(TRIAGE_RESPONSE))]
+            return mock_msg
+
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = side_effect
+
+        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
+             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 2), \
+             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
+             patch("anthropic.Anthropic", return_value=mock_client):
+            results = triage_articles([article])
+
+        assert len(results) == 1
+        assert results[0]["relevance_score"] == TRIAGE_RESPONSE["relevance_score"]
+
+    def test_dead_letter_receives_article_url_and_reason(self):
+        article = make_article()
+        mock_client = MagicMock()
+        mock_client.messages.create.side_effect = Exception("api down")
+
+        written = {}
+
+        def capture_dlq(article, reason, run_id):
+            written["url"] = article["url"]
+            written["reason"] = reason
 
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
              patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
              patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
              patch("anthropic.Anthropic", return_value=mock_client), \
-             patch("src.processor._write_failed"):
-            results = process_articles([article])
+             patch("src.processor._write_failed", side_effect=capture_dlq):
+            triage_articles([article])
 
-        assert len(results) == 0
-
-
-class TestPromptCachingSystemMessage:
-    """(c) The messages.create call includes a system message with cache_control type='ephemeral'."""
-
-    def test_system_message_has_cache_control_ephemeral(self):
-        article = make_article()
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            process_articles([article])
-
-        call_kwargs = mock_client.messages.create.call_args
-        # Support both positional and keyword argument styles
-        kwargs = call_kwargs.kwargs if call_kwargs.kwargs else call_kwargs[1]
-        system = kwargs.get("system") or (call_kwargs[0][1] if len(call_kwargs[0]) > 1 else None)
-
-        assert system is not None, "system parameter must be present in messages.create call"
-        assert isinstance(system, list), "system must be a list of content blocks"
-        assert len(system) > 0, "system must have at least one block"
-
-        first_block = system[0]
-        assert "cache_control" in first_block, "system block must have cache_control"
-        assert first_block["cache_control"]["type"] == "ephemeral"
-
-    def test_system_message_has_type_text(self):
-        article = make_article()
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            process_articles([article])
-
-        call_kwargs = mock_client.messages.create.call_args
-        kwargs = call_kwargs.kwargs if call_kwargs.kwargs else call_kwargs[1]
-        system = kwargs.get("system")
-
-        assert system[0]["type"] == "text"
-
-    def test_user_message_contains_article_fields(self):
-        article = make_article()
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            process_articles([article])
-
-        call_kwargs = mock_client.messages.create.call_args
-        kwargs = call_kwargs.kwargs if call_kwargs.kwargs else call_kwargs[1]
-        messages = kwargs.get("messages")
-
-        assert messages is not None
-        assert len(messages) > 0
-        user_msg = messages[0]
-        assert user_msg["role"] == "user"
-        content = user_msg["content"]
-        assert article["author"] in content
-        assert article["publication"] in content
-        assert article["title"] in content
-        assert article["description"] in content
-
-    def test_messages_create_called_once_per_article(self):
-        articles = [make_article(url=f"https://example.com/{i}") for i in range(4)]
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            process_articles(articles)
-
-        assert mock_client.messages.create.call_count == 4
-
-    def test_model_parameter_passed_to_create(self):
-        article = make_article()
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            process_articles([article])
-
-        call_kwargs = mock_client.messages.create.call_args
-        kwargs = call_kwargs.kwargs if call_kwargs.kwargs else call_kwargs[1]
-        assert "model" in kwargs
-
-    def test_max_tokens_parameter_passed_to_create(self):
-        article = make_article()
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            process_articles([article])
-
-        call_kwargs = mock_client.messages.create.call_args
-        kwargs = call_kwargs.kwargs if call_kwargs.kwargs else call_kwargs[1]
-        assert "max_tokens" in kwargs
-        assert kwargs["max_tokens"] == 1024
+        assert written["url"] == article["url"]
+        assert "api down" in written["reason"]
 
 
-def _make_local_mock_response(content: str) -> MagicMock:
-    """Build a mock requests.Response for a llama.cpp /v1/chat/completions call."""
-    mock_resp = MagicMock()
-    mock_resp.json.return_value = {"choices": [{"message": {"content": content}}]}
-    mock_resp.raise_for_status.return_value = None
-    return mock_resp
-
-
-class TestLocalLLMProvider:
-    """Tests for LLM_PROVIDER='local' (llama.cpp OpenAI-compatible endpoint)."""
-
-    def test_local_provider_returns_parsed_scores(self):
-        article = make_article()
-        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch("requests.post", return_value=mock_resp):
-            results = process_articles([article])
-
-        assert results[0]["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
-        assert results[0]["authenticity_score"] == VALID_CLAUDE_RESPONSE["authenticity_score"]
-
-    def test_local_provider_calls_correct_url(self):
-        article = make_article()
-        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch.object(_cfg, "LOCAL_LLM_URL", "http://localhost:8080"), \
-             patch("requests.post", return_value=mock_resp) as mock_post:
-            process_articles([article])
-
-        called_url = mock_post.call_args[0][0]
-        assert called_url == "http://localhost:8080/v1/chat/completions"
-
-    def test_local_provider_sends_system_and_user_messages(self):
-        article = make_article()
-        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch("requests.post", return_value=mock_resp) as mock_post:
-            process_articles([article])
-
-        payload = mock_post.call_args[1]["json"]
-        messages = payload["messages"]
-        roles = [m["role"] for m in messages]
-        assert "system" in roles
-        assert "user" in roles
-
-    def test_local_provider_user_message_contains_article_fields(self):
-        article = make_article()
-        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch("requests.post", return_value=mock_resp) as mock_post:
-            process_articles([article])
-
-        payload = mock_post.call_args[1]["json"]
-        user_msg = next(m for m in payload["messages"] if m["role"] == "user")
-        assert article["title"] in user_msg["content"]
-        assert article["author"] in user_msg["content"]
-        assert article["publication"] in user_msg["content"]
-
-    def test_local_provider_sends_model_name(self):
-        article = make_article()
-        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch.object(_cfg, "LOCAL_LLM_MODEL", "qwen2.5-7b"), \
-             patch("requests.post", return_value=mock_resp) as mock_post:
-            process_articles([article])
-
-        payload = mock_post.call_args[1]["json"]
-        assert payload["model"] == "qwen2.5-7b"
-
-    def test_local_provider_excludes_article_on_request_error(self):
-        article = make_article()
-
-        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
-             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
-             patch("requests.post", side_effect=Exception("connection refused")), \
-             patch("src.processor._write_failed"):
-            results = process_articles([article])
-
-        assert len(results) == 0
-
-    def test_local_provider_excludes_article_on_malformed_json(self):
-        article = make_article()
-        mock_resp = _make_local_mock_response("not valid json")
-
-        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
-             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
-             patch("requests.post", return_value=mock_resp), \
-             patch("src.processor._write_failed"):
-            results = process_articles([article])
-
-        assert len(results) == 0
-
-    def test_local_provider_does_not_call_anthropic(self):
-        article = make_article()
-        mock_resp = _make_local_mock_response(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
-             patch("requests.post", return_value=mock_resp), \
-             patch("anthropic.Anthropic") as mock_anthropic:
-            process_articles([article])
-
-        mock_anthropic.assert_not_called()
-
-
-class TestArticleTqdmBar:
-    """process_articles should tick tqdm once per article."""
+class TestTriageTqdmBar:
+    """triage_articles should tick tqdm once per article."""
 
     def test_tqdm_called_with_correct_total(self):
         articles = [
@@ -382,22 +249,58 @@ class TestArticleTqdmBar:
         bar_mock.__exit__ = MagicMock(return_value=False)
         tqdm_cls = MagicMock(return_value=bar_mock)
 
-        good_response = json.dumps({
-            "summary": "s", "impact_score": 7, "authenticity_score": 6,
-            "relevance_score": 8, "impact_reason": "r", "authenticity_reason": "r",
-            "relevance_reason": "r",
-        })
-
         with (
             patch.object(_cfg, "LLM_PROVIDER", "local"),
-            patch("requests.post", return_value=_make_local_mock_response(good_response)),
+            patch("requests.post", return_value=_make_local_mock_response(json.dumps(TRIAGE_RESPONSE))),
             patch("src.processor.tqdm", tqdm_cls),
         ):
-            results = process_articles(articles)
+            results = triage_articles(articles)
 
-        tqdm_cls.assert_called_once_with(total=2, desc="Articles", unit="art", leave=False)
+        tqdm_cls.assert_called_once_with(total=2, desc="Triage", unit="art", leave=False)
         assert bar_mock.update.call_count == 2
         assert len(results) == 2
+
+
+class TestTriageCache:
+    def test_cache_hit_skips_llm_when_version_matches(self, db):
+        from src.processor import TRIAGE_VERSION
+        url = "https://example.com/triage-cached"
+        with get_session() as session:
+            session.add(ArticleScore(
+                url=url, relevance_score=9, relevance_reason="cached",
+                triage_version=TRIAGE_VERSION,
+            ))
+        with patch("anthropic.Anthropic") as mock_cls, \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            results = triage_articles([make_article(url=url)])
+        mock_cls.return_value.messages.create.assert_not_called()
+        assert results[0]["relevance_score"] == 9
+
+    def test_stale_version_treated_as_miss(self, db):
+        url = "https://example.com/triage-stale"
+        with get_session() as session:
+            session.add(ArticleScore(
+                url=url, relevance_score=3, relevance_reason="old",
+                triage_version="OLDVERSION00",
+            ))
+        mock_client = _make_mock_client(json.dumps(TRIAGE_RESPONSE))
+        with patch("anthropic.Anthropic", return_value=mock_client), \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            results = triage_articles([make_article(url=url)])
+        mock_client.messages.create.assert_called_once()
+        assert results[0]["relevance_score"] == 9
+
+    def test_cache_miss_writes_triage_version(self, db):
+        url = "https://example.com/triage-write"
+        from src.processor import TRIAGE_VERSION
+        mock_client = _make_mock_client(json.dumps(TRIAGE_RESPONSE))
+        with patch("anthropic.Anthropic", return_value=mock_client), \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            triage_articles([make_article(url=url)])
+        with get_session() as session:
+            row = session.get(ArticleScore, url)
+        assert row.relevance_score == 9
+        assert row.triage_version == TRIAGE_VERSION
 
 
 class TestRubricPrompts:
@@ -423,100 +326,114 @@ class TestRubricPrompts:
         from src.processor import _prompt_hash, TRIAGE_SYSTEM_PROMPT, TRIAGE_VERSION
         assert _prompt_hash(TRIAGE_SYSTEM_PROMPT) == TRIAGE_VERSION
 
-
-class TestRelevanceScore:
-    def test_relevance_score_in_result(self):
-        article = make_article()
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([article])
-
-        assert results[0]["relevance_score"] == 9
-
-    def test_relevance_reason_in_result(self):
-        article = make_article()
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([article])
-
-        assert results[0]["relevance_reason"] == VALID_CLAUDE_RESPONSE["relevance_reason"]
-
     def test_relevance_score_in_system_prompt(self):
         from src.processor import TRIAGE_SYSTEM_PROMPT
         assert "relevance_score" in TRIAGE_SYSTEM_PROMPT
 
 
-class TestRetryAndDeadLetter:
-    def test_retries_on_api_failure_before_giving_up(self):
-        article = make_article()
-        mock_messages = MagicMock()
-        mock_messages.create.side_effect = Exception("transient error")
-        mock_client = MagicMock()
-        mock_client.messages = mock_messages
+# ---------------------------------------------------------------------------
+# Test: score_articles
+# ---------------------------------------------------------------------------
 
+SCORE_RESPONSE = {
+    "impact_score": 8, "authenticity_score": 7,
+    "impact_reason": "Field-moving research.", "authenticity_reason": "Named lab source.",
+}
+
+
+def _triaged_article(url="https://example.com/s", relevance=9) -> dict:
+    return {**make_article(url=url), "relevance_score": relevance, "relevance_reason": "on topic"}
+
+
+class TestScoreArticles:
+    def test_impact_and_auth_merged_preserving_triage(self):
+        article = _triaged_article()
+        mock_client = _make_mock_client(json.dumps(SCORE_RESPONSE))
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 2), \
-             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
-             patch("anthropic.Anthropic", return_value=mock_client), \
-             patch("src.processor._write_failed") as mock_dlq:
-            results = process_articles([article])
-
-        assert mock_client.messages.create.call_count == 3  # 1 attempt + 2 retries
-        mock_dlq.assert_called_once()
-        assert len(results) == 0  # failed article excluded
-
-    def test_succeeds_on_second_attempt(self):
-        article = make_article()
-
-        call_count = {"n": 0}
-
-        def side_effect(**kwargs):
-            call_count["n"] += 1
-            if call_count["n"] == 1:
-                raise Exception("transient")
-            # Return a valid mock response on second attempt
-            mock_msg = MagicMock()
-            mock_msg.content = [MagicMock(text=json.dumps(VALID_CLAUDE_RESPONSE))]
-            return mock_msg
-
-        mock_client = MagicMock()
-        mock_client.messages.create.side_effect = side_effect
-
-        with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
-             patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 2), \
-             patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
              patch("anthropic.Anthropic", return_value=mock_client):
-            results = process_articles([article])
+            results = score_articles([article])
+        assert results[0]["impact_score"] == 8
+        assert results[0]["authenticity_score"] == 7
+        assert results[0]["relevance_score"] == 9  # triage field preserved
 
-        assert len(results) == 1
-        assert results[0]["relevance_score"] == VALID_CLAUDE_RESPONSE["relevance_score"]
+    def test_local_scoring_uses_512_max_tokens(self):
+        article = _triaged_article()
+        mock_resp = _make_local_mock_response(json.dumps(SCORE_RESPONSE))
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            score_articles([article])
+        assert mock_post.call_args[1]["json"]["max_tokens"] == 512
 
-    def test_dead_letter_receives_article_url_and_reason(self):
-        article = make_article()
-        mock_messages = MagicMock()
-        mock_messages.create.side_effect = Exception("api down")
+    def test_failure_dead_letters_and_excludes(self):
+        article = _triaged_article()
         mock_client = MagicMock()
-        mock_client.messages = mock_messages
-
-        written = {}
-
-        def capture_dlq(article, reason, run_id):
-            written["url"] = article["url"]
-            written["reason"] = reason
-
+        mock_client.messages.create.side_effect = Exception("down")
         with patch.object(_cfg, "LLM_PROVIDER", "anthropic"), \
              patch.object(_cfg, "PROCESSOR_MAX_RETRIES", 0), \
              patch.object(_cfg, "PROCESSOR_RETRY_DELAY", 0.0), \
              patch("anthropic.Anthropic", return_value=mock_client), \
-             patch("src.processor._write_failed", side_effect=capture_dlq):
-            process_articles([article])
+             patch("src.processor._write_failed") as mock_dlq:
+            results = score_articles([article])
+        assert len(results) == 0
+        mock_dlq.assert_called_once()
 
-        assert written["url"] == article["url"]
-        assert "api down" in written["reason"]
+
+class TestScoreCache:
+    def test_cache_hit_skips_llm_when_version_matches(self, db):
+        from src.processor import SCORE_VERSION
+        url = "https://example.com/score-cached"
+        with get_session() as session:
+            session.add(ArticleScore(
+                url=url, impact_score=8, authenticity_score=7,
+                impact_reason="i", authenticity_reason="a", score_version=SCORE_VERSION,
+            ))
+        with patch("anthropic.Anthropic") as mock_cls, \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            results = score_articles([_triaged_article(url=url)])
+        mock_cls.return_value.messages.create.assert_not_called()
+        assert results[0]["impact_score"] == 8
+
+    def test_stale_score_version_is_miss(self, db):
+        url = "https://example.com/score-stale"
+        with get_session() as session:
+            session.add(ArticleScore(
+                url=url, impact_score=2, authenticity_score=2,
+                impact_reason="old", authenticity_reason="old", score_version="OLD000000000",
+            ))
+        mock_client = _make_mock_client(json.dumps(SCORE_RESPONSE))
+        with patch("anthropic.Anthropic", return_value=mock_client), \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            results = score_articles([_triaged_article(url=url)])
+        mock_client.messages.create.assert_called_once()
+        assert results[0]["impact_score"] == 8
+
+    def test_cache_miss_writes_score_version(self, db):
+        from src.processor import SCORE_VERSION
+        url = "https://example.com/score-write"
+        mock_client = _make_mock_client(json.dumps(SCORE_RESPONSE))
+        with patch("anthropic.Anthropic", return_value=mock_client), \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            score_articles([_triaged_article(url=url)])
+        with get_session() as session:
+            row = session.get(ArticleScore, url)
+        assert row.impact_score == 8
+        assert row.score_version == SCORE_VERSION
+
+
+class TestCacheVersionColumns:
+    def test_article_score_has_version_columns(self, db):
+        from src.models import ArticleScore
+        url = "https://example.com/versioned"
+        with get_session() as session:
+            session.add(ArticleScore(
+                url=url, impact_score=8, authenticity_score=7, relevance_score=9,
+                impact_reason="r", authenticity_reason="r", relevance_reason="r",
+                triage_version="abc123", score_version="def456",
+            ))
+        with get_session() as session:
+            row = session.get(ArticleScore, url)
+        assert row.triage_version == "abc123"
+        assert row.score_version == "def456"
 
 
 # ---------------------------------------------------------------------------
@@ -684,88 +601,12 @@ class TestSummarizeArticles:
         payload = mock_post.call_args[1]["json"]
         assert payload["max_tokens"] == 512
 
-
-class TestScoreCache:
-    """Score caching: cache hit skips LLM; cache miss calls LLM and writes cache."""
-
-    def test_cache_hit_skips_llm(self, db):
-        url = "https://example.com/cached"
-        with get_session() as session:
-            session.add(ArticleScore(
-                url=url, impact_score=8, authenticity_score=7, relevance_score=9,
-                impact_reason="big impact", authenticity_reason="credible source",
-                relevance_reason="on topic",
-            ))
-
-        article = make_article(url=url)
-
-        with patch("anthropic.Anthropic") as mock_anthropic_cls, \
-             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
-            results = process_articles([article])
-
-        mock_anthropic_cls.return_value.messages.create.assert_not_called()
-        assert len(results) == 1
-        assert results[0]["impact_score"] == 8
-        assert results[0]["relevance_score"] == 9
-        assert results[0]["impact_reason"] == "big impact"
-
-    def test_cache_miss_calls_llm(self, db):
-        article = make_article(url="https://example.com/new")
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch("anthropic.Anthropic", return_value=mock_client), \
-             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
-            results = process_articles([article])
-
-        mock_client.messages.create.assert_called_once()
-        assert results[0]["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
-
-    def test_cache_miss_writes_scores_to_db(self, db):
-        url = "https://example.com/write-test"
-        article = make_article(url=url)
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch("anthropic.Anthropic", return_value=mock_client), \
-             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
-            process_articles([article])
-
-        with get_session() as session:
-            row = session.get(ArticleScore, url)
-        assert row is not None
-        assert row.impact_score == VALID_CLAUDE_RESPONSE["impact_score"]
-        assert row.relevance_score == VALID_CLAUDE_RESPONSE["relevance_score"]
-
-    def test_expired_cache_entry_treated_as_miss(self, db):
-        url = "https://example.com/expired"
-        with get_session() as session:
-            session.add(ArticleScore(
-                url=url, impact_score=3, authenticity_score=3, relevance_score=3,
-                impact_reason="old", authenticity_reason="old", relevance_reason="old",
-                cached_at=datetime.now(timezone.utc) - timedelta(days=4),
-            ))
-
-        article = make_article(url=url)
-        mock_client = _make_mock_client(json.dumps(VALID_CLAUDE_RESPONSE))
-
-        with patch("anthropic.Anthropic", return_value=mock_client), \
-             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
-            results = process_articles([article])
-
-        mock_client.messages.create.assert_called_once()
-        assert results[0]["impact_score"] == VALID_CLAUDE_RESPONSE["impact_score"]
-
-
-class TestCacheVersionColumns:
-    def test_article_score_has_version_columns(self, db):
-        from src.models import ArticleScore
-        url = "https://example.com/versioned"
-        with get_session() as session:
-            session.add(ArticleScore(
-                url=url, impact_score=8, authenticity_score=7, relevance_score=9,
-                impact_reason="r", authenticity_reason="r", relevance_reason="r",
-                triage_version="abc123", score_version="def456",
-            ))
-        with get_session() as session:
-            row = session.get(ArticleScore, url)
-        assert row.triage_version == "abc123"
-        assert row.score_version == "def456"
+    def test_summary_input_uses_full_abstract_not_500(self):
+        article = {**_make_processed_article(), "description": "z" * 2000}
+        mock_resp = _make_local_mock_response(json.dumps({"summary": "ok"}))
+        with patch.object(_cfg, "LLM_PROVIDER", "local"), \
+             patch("requests.post", return_value=mock_resp) as mock_post:
+            summarize_articles([article])
+        sent = mock_post.call_args[1]["json"]["messages"][1]["content"]
+        assert "z" * 1900 in sent      # full abstract, not truncated at 500
+        assert "z" * 1901 not in sent  # still capped at SUMMARY_DESC_CHARS

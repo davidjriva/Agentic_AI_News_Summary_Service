@@ -16,7 +16,7 @@ from src.models import FailedArticle, FilteredArticle, Run, RunArticle, SeenArti
 from src.emailer import send_newsletter
 from src.fetcher import fetch_articles
 from src.filter import filter_articles
-from src.processor import process_articles, summarize_articles
+from src.processor import triage_articles, score_articles, summarize_articles
 from src.ranker import rank_articles
 from src.renderer import render_newsletter
 
@@ -59,16 +59,16 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
                 )
             tqdm.write(f"[{run_id}] Clean run: cleared seen_articles for past {LOOKBACK_HOURS} hours")
 
-        with tqdm(total=7, desc="Pipeline", leave=True) as bar:
+        with tqdm(total=8, desc="Pipeline", leave=True) as bar:
             bar.set_description("Fetching articles")
             articles = fetch_articles()
             tqdm.write(f"[{run_id}] Fetched {len(articles)} articles")
             bar.update(1)
 
             provider_label = "local llama server" if LLM_PROVIDER == "local" else "Claude"
-            bar.set_description(f"Processing with {provider_label}")
-            articles = process_articles(articles, run_id=run_id)
-            tqdm.write(f"[{run_id}] Processed {len(articles)} articles")
+            bar.set_description(f"Triaging relevance with {provider_label}")
+            articles = triage_articles(articles, run_id=run_id)
+            tqdm.write(f"[{run_id}] Triaged {len(articles)} articles")
             bar.update(1)
 
             bar.set_description("Filtering by relevance")
@@ -89,6 +89,11 @@ def run_pipeline(dry_run: bool = False, run_id: str | None = None, clean: bool =
                         )
                         for a in dropped_articles
                     ])
+
+            bar.set_description("Scoring impact & authenticity")
+            articles = score_articles(articles, run_id=run_id)
+            tqdm.write(f"[{run_id}] Scored {len(articles)} articles")
+            bar.update(1)
 
             bar.set_description("Ranking")
             articles = rank_articles(articles)

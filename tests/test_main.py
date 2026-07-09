@@ -55,7 +55,7 @@ def _seen_urls():
 # ---------------------------------------------------------------------------
 
 def test_run_pipeline_uses_tqdm(db):
-    """Stage bar should be created with total=7 during a dry run."""
+    """Stage bar should be created with total=8 during a dry run."""
     bar_mock = MagicMock()
     bar_mock.__enter__ = MagicMock(return_value=bar_mock)
     bar_mock.__exit__ = MagicMock(return_value=False)
@@ -63,7 +63,8 @@ def test_run_pipeline_uses_tqdm(db):
 
     with (
         patch("src.main.fetch_articles", return_value=[]),
-        patch("src.main.process_articles", return_value=[]),
+        patch("src.main.triage_articles", return_value=[]),
+        patch("src.main.score_articles", return_value=[]),
         patch("src.main.filter_articles", return_value=([], [])),
         patch("src.main.rank_articles", return_value=[]),
         patch("src.main.summarize_articles", return_value=[]),
@@ -73,8 +74,8 @@ def test_run_pipeline_uses_tqdm(db):
         from src.main import run_pipeline
         run_pipeline(dry_run=True)
 
-    tqdm_cls.assert_called_once_with(total=7, desc="Pipeline", leave=True)
-    assert bar_mock.update.call_count == 7
+    tqdm_cls.assert_called_once_with(total=8, desc="Pipeline", leave=True)
+    assert bar_mock.update.call_count == 8
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +92,8 @@ def test_send_newsletter_receives_run_id(db):
 
     with (
         patch("src.main.fetch_articles", return_value=kept),
-        patch("src.main.process_articles", return_value=kept),
+        patch("src.main.triage_articles", return_value=kept),
+        patch("src.main.score_articles", return_value=kept),
         patch("src.main.filter_articles", return_value=(kept, [])),
         patch("src.main.rank_articles", return_value=kept),
         patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
@@ -105,7 +107,7 @@ def test_send_newsletter_receives_run_id(db):
 
 
 class TestFilterCalledBetweenProcessAndRank:
-    """filter_articles must be called after process_articles and before rank_articles."""
+    """filter_articles must run after triage, and score_articles between filter and rank."""
 
     def test_filter_called_after_process_before_rank(self, db):
         kept = [_make_article("http://kept.com", relevance_score=8)]
@@ -115,13 +117,17 @@ class TestFilterCalledBetweenProcessAndRank:
         def mock_fetch():
             return [_make_article("http://kept.com"), _make_article("http://dropped.com")]
 
-        def mock_process(articles, run_id=None):
-            call_order.append("process")
+        def mock_triage(articles, run_id=None):
+            call_order.append("triage")
             return articles
 
         def mock_filter(articles):
             call_order.append("filter")
             return kept, dropped
+
+        def mock_score(articles, run_id=None):
+            call_order.append("score")
+            return articles
 
         def mock_rank(articles):
             call_order.append("rank")
@@ -129,8 +135,9 @@ class TestFilterCalledBetweenProcessAndRank:
 
         with (
             patch("src.main.fetch_articles", side_effect=mock_fetch),
-            patch("src.main.process_articles", side_effect=mock_process),
+            patch("src.main.triage_articles", side_effect=mock_triage),
             patch("src.main.filter_articles", side_effect=mock_filter),
+            patch("src.main.score_articles", side_effect=mock_score),
             patch("src.main.rank_articles", side_effect=mock_rank),
             patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.render_newsletter", return_value=("<html/>", "plain")),
@@ -139,8 +146,8 @@ class TestFilterCalledBetweenProcessAndRank:
             from src.main import run_pipeline
             run_pipeline(run_id="test-order-run")
 
-        assert call_order == ["process", "filter", "rank"], (
-            f"Expected process→filter→rank, got {call_order}"
+        assert call_order == ["triage", "filter", "score", "rank"], (
+            f"Expected triage→filter→score→rank, got {call_order}"
         )
 
     def test_rank_receives_only_kept_articles(self, db):
@@ -154,7 +161,8 @@ class TestFilterCalledBetweenProcessAndRank:
 
         with (
             patch("src.main.fetch_articles", return_value=kept + dropped),
-            patch("src.main.process_articles", return_value=kept + dropped),
+            patch("src.main.triage_articles", return_value=kept + dropped),
+            patch("src.main.score_articles", side_effect=lambda articles, **kw: articles),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", side_effect=mock_rank),
             patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
@@ -187,7 +195,8 @@ class TestDroppedArticlesPersisted:
 
         with (
             patch("src.main.fetch_articles", return_value=kept + dropped),
-            patch("src.main.process_articles", return_value=kept + dropped),
+            patch("src.main.triage_articles", return_value=kept + dropped),
+            patch("src.main.score_articles", return_value=kept + dropped),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", return_value=kept),
             patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
@@ -208,7 +217,8 @@ class TestDroppedArticlesPersisted:
 
         with (
             patch("src.main.fetch_articles", return_value=kept),
-            patch("src.main.process_articles", return_value=kept),
+            patch("src.main.triage_articles", return_value=kept),
+            patch("src.main.score_articles", return_value=kept),
             patch("src.main.filter_articles", return_value=(kept, [])),
             patch("src.main.rank_articles", return_value=kept),
             patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
@@ -227,7 +237,8 @@ class TestDroppedArticlesPersisted:
 
         with (
             patch("src.main.fetch_articles", return_value=dropped),
-            patch("src.main.process_articles", return_value=dropped),
+            patch("src.main.triage_articles", return_value=dropped),
+            patch("src.main.score_articles", return_value=dropped),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", return_value=kept),
             patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
@@ -258,7 +269,8 @@ class TestRunCountersUpdated:
 
         with (
             patch("src.main.fetch_articles", return_value=kept + dropped),
-            patch("src.main.process_articles", return_value=kept + dropped),
+            patch("src.main.triage_articles", return_value=kept + dropped),
+            patch("src.main.score_articles", return_value=kept + dropped),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", return_value=kept),
             patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
@@ -283,7 +295,8 @@ class TestRunCountersUpdated:
 
         with (
             patch("src.main.fetch_articles", return_value=kept),
-            patch("src.main.process_articles", return_value=kept),
+            patch("src.main.triage_articles", return_value=kept),
+            patch("src.main.score_articles", return_value=kept),
             patch("src.main.filter_articles", return_value=(kept, [])),
             patch("src.main.rank_articles", return_value=kept),
             patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
@@ -312,7 +325,8 @@ class TestRunCountersUpdated:
 
         with (
             patch("src.main.fetch_articles", return_value=kept + dropped),
-            patch("src.main.process_articles", return_value=kept + dropped),
+            patch("src.main.triage_articles", return_value=kept + dropped),
+            patch("src.main.score_articles", return_value=kept + dropped),
             patch("src.main.filter_articles", return_value=(kept, dropped)),
             patch("src.main.rank_articles", return_value=kept),
             patch("src.main.summarize_articles", side_effect=lambda articles, **kw: articles),
@@ -356,7 +370,8 @@ def test_top_n_urls_written_to_seen_articles(db):
     top_articles = ranked_articles[:TOP_N]
 
     with patch("src.main.fetch_articles", return_value=[]), \
-         patch("src.main.process_articles", return_value=ranked_articles), \
+         patch("src.main.triage_articles", return_value=ranked_articles), \
+         patch("src.main.score_articles", return_value=ranked_articles), \
          patch("src.main.filter_articles", return_value=(ranked_articles, [])), \
          patch("src.main.rank_articles", return_value=ranked_articles), \
          patch("src.main.summarize_articles", return_value=top_articles), \
