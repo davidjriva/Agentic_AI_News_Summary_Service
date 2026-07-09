@@ -73,6 +73,11 @@ run-clean:
 # (start `just llama` and your Supabase access separately)
 dev: migrate serve
 
+# Evaluate scoring prompts against eval/golden_articles.json (HITS THE LLM —
+# only run when the llama.cpp server is free). Reports MAE + gate agreement.
+eval:
+    poetry run python -m scripts.eval_prompts
+
 # --- Deploy -----------------------------------------------------------------
 
 # Register launchd scheduling (macOS, 7 AM + 6 PM daily)
