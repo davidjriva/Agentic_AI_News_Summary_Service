@@ -302,6 +302,22 @@ class TestTriageCache:
         assert row.relevance_score == 9
         assert row.triage_version == TRIAGE_VERSION
 
+    def test_expired_cache_entry_treated_as_miss(self, db):
+        from src.processor import TRIAGE_VERSION
+        url = "https://example.com/triage-expired"
+        with get_session() as session:
+            session.add(ArticleScore(
+                url=url, relevance_score=3, relevance_reason="stale but valid version",
+                triage_version=TRIAGE_VERSION,
+                cached_at=datetime.now(timezone.utc) - timedelta(days=4),
+            ))
+        mock_client = _make_mock_client(json.dumps(TRIAGE_RESPONSE))
+        with patch("anthropic.Anthropic", return_value=mock_client), \
+             patch.object(_cfg, "LLM_PROVIDER", "anthropic"):
+            results = triage_articles([make_article(url=url)])
+        mock_client.messages.create.assert_called_once()
+        assert results[0]["relevance_score"] == 9
+
 
 class TestRubricPrompts:
     def test_triage_prompt_is_relevance_only(self):
