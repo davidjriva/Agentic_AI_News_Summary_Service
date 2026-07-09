@@ -82,6 +82,6 @@ DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
 #   relevance_reason:    str   — one-line rationale for relevance_score
 #
 # Added by ranker.py:
-#   rank_score:          float — (impact_score * 0.6) + (authenticity_score * 0.4)
+#   rank_score:          float — (impact_score * 0.5) + (relevance_score * 0.3) + (authenticity_score * 0.2)
 #   rank:                int   — 1-based position after descending sort
 # ---------------------------------------------------------------------------
