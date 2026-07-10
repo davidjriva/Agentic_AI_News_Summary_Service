@@ -3,12 +3,14 @@ from src.ranker import rank_articles
 from src.config import TOP_N, MAX_PER_NEWSLETTER_SOURCE
 
 
-def make_article(url: str, impact: float, authenticity: float, publication: str = "example.com") -> dict:
-    return {"url": url, "impact_score": impact, "authenticity_score": authenticity, "publication": publication}
+def make_article(url: str, impact: float, authenticity: float, publication: str = "example.com",
+                 relevance: float = 8.0) -> dict:
+    return {"url": url, "impact_score": impact, "authenticity_score": authenticity,
+            "relevance_score": relevance, "publication": publication}
 
 
-def expected_rank(impact: float, authenticity: float) -> float:
-    return impact * 0.6 + authenticity * 0.4
+def expected_rank(impact: float, authenticity: float, relevance: float = 8.0) -> float:
+    return impact * 0.5 + relevance * 0.3 + authenticity * 0.2
 
 
 class TestRankScoreComputation:
@@ -24,15 +26,23 @@ class TestRankScoreComputation:
 
     def test_rank_score_formula_various(self):
         articles = [
-            make_article("http://a.com", 10.0, 10.0),
-            make_article("http://b.com", 1.0, 1.0),
-            make_article("http://c.com", 5.0, 7.5),
+            make_article("http://a.com", 10.0, 10.0, relevance=10.0),
+            make_article("http://b.com", 1.0, 1.0, relevance=1.0),
+            make_article("http://c.com", 5.0, 7.5, relevance=6.0),
         ]
         result = rank_articles(articles)
         scores = {a["url"]: a["rank_score"] for a in result}
-        assert scores["http://a.com"] == pytest.approx(expected_rank(10.0, 10.0))
-        assert scores["http://b.com"] == pytest.approx(expected_rank(1.0, 1.0))
-        assert scores["http://c.com"] == pytest.approx(expected_rank(5.0, 7.5))
+        assert scores["http://a.com"] == pytest.approx(expected_rank(10.0, 10.0, 10.0))
+        assert scores["http://b.com"] == pytest.approx(expected_rank(1.0, 1.0, 1.0))
+        assert scores["http://c.com"] == pytest.approx(expected_rank(5.0, 7.5, 6.0))
+
+    def test_relevance_breaks_impact_auth_tie(self):
+        articles = [
+            make_article("http://core.com", 7.0, 7.0, relevance=10.0),
+            make_article("http://adjacent.com", 7.0, 7.0, relevance=6.0),
+        ]
+        result = rank_articles(articles)
+        assert result[0]["url"] == "http://core.com"
 
 
 class TestSortOrder:

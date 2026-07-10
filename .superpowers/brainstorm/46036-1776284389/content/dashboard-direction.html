@@ -1,0 +1,70 @@
+<h2>Dashboard Visual Direction</h2>
+<p class="subtitle">The current dashboard has a generic dark-navy dev-tool look. Which design direction should we move toward?</p>
+
+<div class="cards">
+  <div class="card" data-choice="editorial" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#fafaf8;border:1px solid #e8e0d0;border-radius:6px;padding:16px;font-family:'Georgia',serif;">
+      <div style="border-bottom:3px solid #1a1a1a;padding-bottom:8px;margin-bottom:12px;">
+        <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px;color:#1a1a1a;">The Agentic Times</div>
+        <div style="font-size:10px;color:#666;text-transform:uppercase;letter-spacing:1px;margin-top:2px;">Pipeline Dashboard</div>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:10px;">
+        <div style="width:60%;background:#f0ede8;border-radius:3px;height:8px;"></div>
+        <div style="width:30%;background:#d4c9b8;border-radius:3px;height:8px;"></div>
+      </div>
+      <div style="font-size:9px;color:#444;border-top:1px solid #ccc;padding-top:8px;line-height:1.8;">
+        <div>Apr 15 · Success · 12 articles · 42s &nbsp;<span style="color:#1a1a1a;font-weight:600;text-decoration:underline">View →</span></div>
+        <div>Apr 15 · Success · 9 articles · 38s &nbsp;<span style="color:#1a1a1a;font-weight:600;text-decoration:underline">View →</span></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Editorial / NYT-Inspired</h3>
+      <p>Serif typography, cream & ink palette, broadsheet grid. Matches the newsletter aesthetic — the dashboard feels like the back office of a real publication.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="modern-minimal" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f13;border:1px solid #2a2a3a;border-radius:6px;padding:16px;font-family:'Inter',system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;border-bottom:1px solid #1e1e2e;padding-bottom:10px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:#6366f1;"></div>
+        <div style="font-size:13px;font-weight:700;color:#e2e8f0;letter-spacing:0.3px;">Agentic AI Monitor</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+        <div style="background:#1a1a28;border:1px solid #2a2a4a;border-radius:5px;padding:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:700;color:#6366f1;">24</div>
+          <div style="font-size:8px;color:#7070aa;text-transform:uppercase;">Total Runs</div>
+        </div>
+        <div style="background:#1a1a28;border:1px solid #2a2a4a;border-radius:5px;padding:8px;text-align:center;">
+          <div style="font-size:18px;font-weight:700;color:#22c55e;">98%</div>
+          <div style="font-size:8px;color:#7070aa;text-transform:uppercase;">Success</div>
+        </div>
+      </div>
+      <div style="font-size:9px;color:#7070aa;border-top:1px solid #2a2a4a;padding-top:8px;line-height:2;">
+        <div><span style="color:#22c55e;">●</span> Success · 12 articles · 42s</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Dark Modern / Command Center</h3>
+      <p>Dark glass-morphism, stat cards front-and-center, neon accent. Feels like a live monitoring dashboard for an AI system.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="clean-light" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;padding:16px;font-family:'Inter',system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #f3f4f6;">
+        <div style="font-size:14px;font-weight:700;color:#111827;">Agentic AI</div>
+        <div style="background:#6366f1;color:#fff;font-size:9px;font-weight:600;padding:3px 10px;border-radius:20px;">Run Now</div>
+      </div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:8px 10px;margin-bottom:6px;font-size:9px;color:#374151;display:flex;justify-content:space-between;">
+        <span>Apr 15, 07:00</span><span style="color:#15803d;font-weight:600;">✓ Success</span><span>12 articles</span><span style="color:#6366f1;">View</span>
+      </div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:8px 10px;font-size:9px;color:#374151;display:flex;justify-content:space-between;">
+        <span>Apr 15, 06:00</span><span style="color:#15803d;font-weight:600;">✓ Success</span><span>9 articles</span><span style="color:#6366f1;">View</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Clean Light / Linear-Style</h3>
+      <p>White canvas, card-based rows, crisp sans-serif. Calm, professional, instantly scannable. Inspired by Linear, Vercel, or Stripe dashboards.</p>
+    </div>
+  </div>
+</div>

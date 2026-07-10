@@ -1,0 +1,22 @@
+[
+  {
+    "url": "https://arxiv.org/abs/2506.00001",
+    "title": "Scaling Agentic Reasoning with Tool-Use Curricula",
+    "description": "A new training curriculum improves multi-step tool use in LLM agents...",
+    "author": "A. Researcher",
+    "publication": "arxiv.org",
+    "relevance_score": 9,
+    "impact_score": 7,
+    "authenticity_score": 9
+  },
+  {
+    "url": "https://techcrunch.com/2026/06/30/startup-raises-series-a",
+    "title": "AI note-taking startup raises $12M Series A",
+    "description": "The company plans to expand its sales team...",
+    "author": "Staff",
+    "publication": "techcrunch.com",
+    "relevance_score": 4,
+    "impact_score": 3,
+    "authenticity_score": 6
+  }
+]

@@ -70,6 +70,14 @@ def test_html_contains_article_count(articles, run_time):
     assert str(len(articles)) in html, f"Article count '{len(articles)}' not found in HTML"
 
 
+def test_newsletter_contains_unsubscribe_placeholder(articles, run_time):
+    """Both outputs carry the unsubscribe sentinel for per-recipient substitution."""
+    from src.emailer import UNSUBSCRIBE_PLACEHOLDER
+    html, plain = render_newsletter(articles, run_time)
+    assert UNSUBSCRIBE_PLACEHOLDER in html, "HTML footer missing unsubscribe placeholder"
+    assert UNSUBSCRIBE_PLACEHOLDER in plain, "Plain text missing unsubscribe placeholder"
+
+
 def test_returns_tuple_and_plain_contains_titles(articles, run_time):
     """render_newsletter should return (html_str, plain_str); plain_str contains all titles."""
     result = render_newsletter(articles, run_time)

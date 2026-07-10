@@ -294,7 +294,7 @@
     }
 
     .runs-table thead th {
-      padding: 12px 20px;
+      padding: 12px 14px;
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 10px;
       font-weight: 700;
@@ -313,10 +313,14 @@
     .runs-table tbody tr:hover { background: var(--bg-warm); }
 
     .runs-table td {
-      padding: 16px 20px;
+      padding: 16px 14px;
       font-size: 13px;
       vertical-align: middle;
     }
+
+    /* Action column hugs the right edge so the link never overflows the card */
+    .runs-table th:last-child,
+    .runs-table td:last-child { text-align: right; }
 
     /* ── STATUS BADGES ──────────────────────────────── */
     .badge {
@@ -348,6 +352,7 @@
       font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
       font-size: 12px;
       color: var(--gray-dark);
+      white-space: nowrap;
     }
 
     .duration {
@@ -373,6 +378,7 @@
       text-decoration: none;
       border-bottom: 1px solid transparent;
       transition: border-color 0.15s;
+      white-space: nowrap;
     }
 
     .view-link:hover { border-bottom-color: var(--red); }
@@ -521,7 +527,7 @@
         <tbody>
           {% for run in runs %}
           <tr>
-            <td><span class="ts">{{ run.started_at }}</span></td>
+            <td><span class="ts">{{ run.started_at[:16].replace('T', ' ') if run.started_at else '—' }}</span></td>
 
             <td>
               {% if run.status == 'success' %}
@@ -677,7 +683,8 @@
         const row = document.createElement('tr');
 
         const startedTd = document.createElement('td');
-        startedTd.innerHTML = `<span class="ts">${run.started_at}</span>`;
+        const startedLabel = run.started_at ? run.started_at.slice(0, 16).replace('T', ' ') : '&mdash;';
+        startedTd.innerHTML = `<span class="ts">${startedLabel}</span>`;
         row.appendChild(startedTd);
 
         const statusTd = document.createElement('td');

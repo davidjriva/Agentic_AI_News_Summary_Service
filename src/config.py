@@ -24,6 +24,10 @@ LANGCHAIN_BLOG_URL = "https://www.langchain.com/blog"
 _recipients_env = os.getenv("EMAIL_RECIPIENTS", "")
 RECIPIENTS: list[str] = [r.strip() for r in _recipients_env.split(",") if r.strip()]
 
+# Base URL of the portfolio site that hosts the subscribe/confirm/unsubscribe
+# routes. Used to build per-subscriber unsubscribe links in the newsletter.
+PORTFOLIO_BASE_URL: str = os.getenv("PORTFOLIO_BASE_URL", "").rstrip("/")
+
 TOP_N: int = 10
 MAX_ARTICLES_PER_SOURCE: int = 10
 MAX_PER_NEWSLETTER_SOURCE: int = 3
@@ -43,6 +47,19 @@ LOCAL_LLM_MODEL: str = os.getenv("LOCAL_LLM_MODEL", "local")
 RELEVANCE_THRESHOLD: int = int(os.getenv("RELEVANCE_THRESHOLD", "6"))
 PROCESSOR_MAX_RETRIES: int = int(os.getenv("PROCESSOR_MAX_RETRIES", "2"))
 PROCESSOR_RETRY_DELAY: float = float(os.getenv("PROCESSOR_RETRY_DELAY", "2.0"))
+
+# ---------------------------------------------------------------------------
+# Database (Supabase Postgres) — secrets come from .env
+# ---------------------------------------------------------------------------
+# The SQLAlchemy URL is assembled in db.py via URL.create() so the password
+# (which may contain URL-reserved characters) is escaped correctly. Tests can
+# override the whole URL with DATABASE_URL.
+DATABASE_URL: str | None = os.getenv("DATABASE_URL")  # full override (e.g. tests)
+SUPABASE_DB_HOST: str = os.getenv("SUPABASE_DB_HOST", "")
+SUPABASE_DB_PORT: int = int(os.getenv("SUPABASE_DB_PORT", "5432"))
+SUPABASE_DB_USER: str = os.getenv("SUPABASE_DB_USER", "postgres")
+SUPABASE_DB_NAME: str = os.getenv("SUPABASE_DB_NAME", "postgres")
+DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
 
 # ---------------------------------------------------------------------------
 # Article dict schema — locked contract shared by all pipeline stages
@@ -65,6 +82,6 @@ PROCESSOR_RETRY_DELAY: float = float(os.getenv("PROCESSOR_RETRY_DELAY", "2.0"))
 #   relevance_reason:    str   — one-line rationale for relevance_score
 #
 # Added by ranker.py:
-#   rank_score:          float — (impact_score * 0.6) + (authenticity_score * 0.4)
+#   rank_score:          float — (impact_score * 0.5) + (relevance_score * 0.3) + (authenticity_score * 0.2)
 #   rank:                int   — 1-based position after descending sort
 # ---------------------------------------------------------------------------

@@ -14,9 +14,11 @@ from urllib.parse import urlparse
 import feedparser
 import requests
 from bs4 import BeautifulSoup
+from sqlalchemy import delete, select
 
 from src.config import FEED_URLS, HN_ALGOLIA_URL, LANGCHAIN_BLOG_URL, LOOKBACK_HOURS, MAX_ARTICLES_PER_SOURCE, SCORE_CACHE_TTL_DAYS
-from src.db import get_connection
+from src.db import get_session
+from src.models import ArticleScore, SeenArticle
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -110,26 +112,20 @@ def fetch_articles() -> list[dict]:
     Returns a list of dicts with keys:
         title, url, description, author, publication, published_at
     """
-    conn = get_connection()
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(hours=LOOKBACK_HOURS)
     prune_cutoff = now - timedelta(days=7)
+    score_prune_cutoff = now - timedelta(days=SCORE_CACHE_TTL_DAYS)
 
-    conn.execute(
-        "DELETE FROM seen_articles WHERE seen_at < ?",
-        (prune_cutoff.isoformat(),),
-    )
-    # SCORE_CACHE_TTL_DAYS is a module-level int constant — not user input; f-string is safe
-    conn.execute(
-        f"DELETE FROM article_scores WHERE cached_at < datetime('now', '-{SCORE_CACHE_TTL_DAYS} days')"
-    )
-    conn.commit()
-
-    seen_urls: set[str] = {
-        row[0]
-        for row in conn.execute("SELECT url FROM seen_articles").fetchall()
-    }
-    conn.close()
+    with get_session() as session:
+        # seen_at is stored as an ISO-8601 string; lexicographic comparison is chronological.
+        session.execute(
+            delete(SeenArticle).where(SeenArticle.seen_at < prune_cutoff.isoformat())
+        )
+        session.execute(
+            delete(ArticleScore).where(ArticleScore.cached_at < score_prune_cutoff)
+        )
+        seen_urls: set[str] = set(session.scalars(select(SeenArticle.url)).all())
 
     return _fetch_parallel(seen_urls, cutoff, now)
 

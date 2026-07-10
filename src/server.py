@@ -10,10 +10,12 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func, select
 
 import src.config as _cfg
-from src.db import get_connection
+from src.db import get_session
 from src.main import run_pipeline
+from src.models import FailedArticle, FilteredArticle, Run, RunArticle, SeenArticle, Subscriber
 from src.renderer import render_newsletter
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
@@ -149,21 +151,32 @@ _running_lock = threading.Lock()
 _is_running: bool = False
 
 
+def _list_runs() -> list[dict]:
+    """Return all runs (newest first) as plain dicts for the dashboard/JSON API."""
+    stmt = (
+        select(
+            Run.id,
+            Run.started_at,
+            Run.completed_at,
+            Run.status,
+            Run.article_count,
+            Run.error,
+            Run.dropped_count,
+            Run.failed_count,
+        )
+        .order_by(Run.started_at.desc())
+    )
+    with get_session() as session:
+        return [dict(row) for row in session.execute(stmt).mappings().all()]
+
+
 @app.get("/", response_class=HTMLResponse)
 def dashboard(request: Request) -> HTMLResponse:
     """Serve the run-history dashboard."""
-    conn = get_connection()
-    rows = conn.execute(
-        "SELECT id, started_at, completed_at, status, article_count, error, "
-        "dropped_count, failed_count "
-        "FROM runs ORDER BY started_at DESC"
-    ).fetchall()
-    conn.close()
-    runs = [dict(row) for row in rows]
     return templates.TemplateResponse(
         request,
         "dashboard.html.jinja2",
-        {"runs": runs, "running": _is_running, "active": "dashboard"},
+        {"runs": _list_runs(), "running": _is_running, "active": "dashboard"},
     )
 
 
@@ -230,14 +243,7 @@ def trigger_run(clean: bool = False) -> dict:
 @app.get("/runs")
 def list_runs() -> list[dict]:
     """Return metadata for all past runs, newest first."""
-    conn = get_connection()
-    rows = conn.execute(
-        "SELECT id, started_at, completed_at, status, article_count, error, "
-        "dropped_count, failed_count "
-        "FROM runs ORDER BY started_at DESC"
-    ).fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    return _list_runs()
 
 
 @app.get("/runs/{run_id}/newsletter", response_class=HTMLResponse)
@@ -247,11 +253,10 @@ def get_run_newsletter(run_id: str) -> HTMLResponse:
     Raises:
         HTTPException(404) if run_id is unknown or the run did not succeed.
     """
-    conn = get_connection()
-    row = conn.execute(
-        "SELECT html, status FROM runs WHERE id=?", (run_id,)
-    ).fetchone()
-    conn.close()
+    with get_session() as session:
+        row = session.execute(
+            select(Run.html, Run.status).where(Run.id == run_id)
+        ).mappings().first()
 
     if row is None:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -268,13 +273,19 @@ def get_filtered_articles(run_id: str) -> dict:
     Returns:
         {"filtered": list[dict]} — articles dropped due to low relevance score.
     """
-    conn = get_connection()
-    rows = conn.execute(
-        "SELECT url, title, publication, relevance_score, relevance_reason "
-        "FROM filtered_articles WHERE run_id = ? ORDER BY relevance_score DESC",
-        (run_id,),
-    ).fetchall()
-    conn.close()
+    stmt = (
+        select(
+            FilteredArticle.url,
+            FilteredArticle.title,
+            FilteredArticle.publication,
+            FilteredArticle.relevance_score,
+            FilteredArticle.relevance_reason,
+        )
+        .where(FilteredArticle.run_id == run_id)
+        .order_by(FilteredArticle.relevance_score.desc())
+    )
+    with get_session() as session:
+        rows = session.execute(stmt).mappings().all()
     return {"filtered": [dict(r) for r in rows]}
 
 
@@ -285,14 +296,27 @@ def get_failed_articles(run_id: str) -> dict:
     Returns:
         {"failed": list[dict]} — articles that failed LLM processing.
     """
-    conn = get_connection()
-    rows = conn.execute(
-        "SELECT url, title, publication, reason, failed_at "
-        "FROM failed_articles WHERE run_id = ? ORDER BY failed_at DESC",
-        (run_id,),
-    ).fetchall()
-    conn.close()
-    return {"failed": [dict(r) for r in rows]}
+    stmt = (
+        select(
+            FailedArticle.url,
+            FailedArticle.title,
+            FailedArticle.publication,
+            FailedArticle.reason,
+            FailedArticle.failed_at,
+        )
+        .where(FailedArticle.run_id == run_id)
+        .order_by(FailedArticle.failed_at.desc())
+    )
+    with get_session() as session:
+        rows = session.execute(stmt).mappings().all()
+    failed = []
+    for r in rows:
+        d = dict(r)
+        # failed_at is timestamptz; serialise to ISO string for JSON.
+        if d.get("failed_at") is not None:
+            d["failed_at"] = d["failed_at"].isoformat()
+        failed.append(d)
+    return {"failed": failed}
 
 
 @app.get("/runs/{run_id}", response_class=HTMLResponse)
@@ -302,15 +326,15 @@ def get_run(request: Request, run_id: str) -> HTMLResponse:
     Raises:
         HTTPException(404) if run_id is unknown or the run did not succeed.
     """
-    conn = get_connection()
-    row = conn.execute(
-        "SELECT status, started_at FROM runs WHERE id=?", (run_id,)
-    ).fetchone()
-    source_rows = conn.execute(
-        "SELECT publication, title, url, rank_score FROM run_articles WHERE run_id=? ORDER BY publication, title",
-        (run_id,),
-    ).fetchall()
-    conn.close()
+    with get_session() as session:
+        row = session.execute(
+            select(Run.status, Run.started_at).where(Run.id == run_id)
+        ).mappings().first()
+        source_rows = session.execute(
+            select(RunArticle.publication, RunArticle.title, RunArticle.url, RunArticle.rank_score)
+            .where(RunArticle.run_id == run_id)
+            .order_by(RunArticle.publication, RunArticle.title)
+        ).mappings().all()
 
     if row is None:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -332,32 +356,35 @@ def get_run(request: Request, run_id: str) -> HTMLResponse:
 @app.get("/metrics", response_class=HTMLResponse)
 def metrics(request: Request) -> HTMLResponse:
     """Serve the lifetime metrics dashboard."""
-    conn = get_connection()
+    with get_session() as session:
+        articles_seen = session.scalar(select(func.count()).select_from(SeenArticle))
+        total_runs = session.scalar(select(func.count()).select_from(Run))
+        successful_runs = session.scalar(
+            select(func.count()).select_from(Run).where(Run.status == "success")
+        )
 
-    articles_seen = conn.execute("SELECT COUNT(*) FROM seen_articles").fetchone()[0]
-    total_runs = conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0]
-    successful_runs = conn.execute(
-        "SELECT COUNT(*) FROM runs WHERE status='success'"
-    ).fetchone()[0]
+        status_rows = session.execute(
+            select(Run.status, func.count().label("count")).group_by(Run.status)
+        ).mappings().all()
+        status_counts = {row["status"]: row["count"] for row in status_rows}
 
-    status_rows = conn.execute(
-        "SELECT status, COUNT(*) as count FROM runs GROUP BY status"
-    ).fetchall()
-    status_counts = {row["status"]: row["count"] for row in status_rows}
+        source_rows = session.execute(
+            select(RunArticle.publication, func.count().label("count"))
+            .group_by(RunArticle.publication)
+            .order_by(func.count().desc())
+        ).mappings().all()
 
-    source_rows = conn.execute(
-        "SELECT publication, COUNT(*) as count FROM run_articles "
-        "GROUP BY publication ORDER BY 2 DESC"
-    ).fetchall()
+        run_rows = session.execute(
+            select(Run.started_at, Run.article_count)
+            .where(Run.status == "success")
+            .order_by(Run.started_at.asc())
+            .limit(20)
+        ).mappings().all()
 
-    run_rows = conn.execute(
-        "SELECT started_at, article_count FROM runs WHERE status='success' "
-        "ORDER BY started_at ASC LIMIT 20"
-    ).fetchall()
+        subscribers = session.scalar(
+            select(func.count()).select_from(Subscriber).where(Subscriber.status == "confirmed")
+        )
 
-    conn.close()
-
-    subscribers = len(_cfg.RECIPIENTS)
     emails_delivered = successful_runs * subscribers
 
     return templates.TemplateResponse(

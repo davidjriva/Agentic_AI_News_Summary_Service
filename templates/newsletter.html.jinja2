@@ -497,7 +497,7 @@
                 </h2>
 
                 <!-- Byline -->
-                <p class="article-byline">By {{ article.author }}</p>
+                {% if article.author %}<p class="article-byline">By {{ article.author }}</p>{% endif %}
 
                 <!-- Summary -->
                 <p class="article-summary">{{ article.summary }}</p>
@@ -544,6 +544,9 @@
                     <span class="footer-meta">Generated {{ run_time.strftime('%Y-%m-%d at %H:%M UTC') }}</span>
                     <span class="footer-meta" style="margin-top:8px;">
                       <a href="http://localhost:8000">View Dashboard</a>
+                    </span>
+                    <span class="footer-meta" style="margin-top:8px;">
+                      <a href="%%UNSUBSCRIBE_URL%%">Unsubscribe</a>
                     </span>
                   </div>
                 </td>
